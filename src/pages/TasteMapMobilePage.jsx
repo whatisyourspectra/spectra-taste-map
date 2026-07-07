@@ -651,9 +651,7 @@ export default function TasteMapMobilePage() {
                       type="button"
                       className="tmm-expand-cover"
                       style={{
-                        backgroundImage: coverUrl
-                          ? `linear-gradient(145deg, rgba(22, 34, 62, 0.26), rgba(5, 10, 18, 0.5)), url(${coverUrl})`
-                          : undefined,
+                        backgroundImage: coverUrl ? `url(${coverUrl})` : undefined,
                       }}
                       onClick={() => handleExpandListen(track)}
                       aria-label={`${track.name} 재생`}

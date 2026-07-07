@@ -1454,7 +1454,7 @@ function drawMap(canvas, tracks, assignments, centroids, hoveredIdx, activeTrack
     ctx.clearRect(0, 0, W, H);
 
     // Background
-    ctx.fillStyle = '#0d0f12';
+    ctx.fillStyle = '#12161d';
     ctx.fillRect(0, 0, W, H);
 
     // Grid lines
@@ -1475,7 +1475,7 @@ function drawMap(canvas, tracks, assignments, centroids, hoveredIdx, activeTrack
 
     // Axis labels
     ctx.fillStyle = 'rgba(255,255,255,0.35)';
-    ctx.font = '11px "Neue Montreal", "Pretendard Variable", "Noto Sans KR", sans-serif';
+    ctx.font = '11px "Pretendard Variable", "Pretendard", "Noto Sans KR", sans-serif';
     ctx.textAlign = 'left';
     ctx.fillText(xMeta.low.toUpperCase(), PADDING.left, PADDING.top - 8);
     ctx.textAlign = 'right';
@@ -1598,6 +1598,8 @@ export default function TasteMapPage() {
     const canvasRef = useRef(null);
     const containerRef = useRef(null);
     const bubbleFieldRef = useRef(null);
+    const heatmapCanvasRef = useRef(null);
+    const heatmapSpritesRef = useRef(new Map());
     const threeFieldRef = useRef(null);
     const followedListRef = useRef(null);
     const savedAlbumListRef = useRef(null);
@@ -3204,6 +3206,100 @@ export default function TasteMapPage() {
         expandedClusterPulseId,
     ]);
 
+    // Density heatmap: soft cluster-colored glow accumulated under the bubbles.
+    // Drawn at low resolution and blurred via CSS, so per-frame cost stays low.
+    useEffect(() => {
+        const canvas = heatmapCanvasRef.current;
+        if (!canvas) return;
+        const { w, h } = bubbleFieldSize;
+        if (!w || !h) return;
+
+        const scale = 0.22;
+        const cw = Math.max(1, Math.round(w * scale));
+        const ch = Math.max(1, Math.round(h * scale));
+        if (canvas.width !== cw) canvas.width = cw;
+        if (canvas.height !== ch) canvas.height = ch;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.clearRect(0, 0, cw, ch);
+        if (viewMode !== 'bubble' || bubbleRenderItems.length === 0) return;
+
+        const sprites = heatmapSpritesRef.current;
+        const getSprite = (color) => {
+            let sprite = sprites.get(color);
+            if (sprite) return sprite;
+            const SPRITE = 64;
+            const half = SPRITE / 2;
+            sprite = document.createElement('canvas');
+            sprite.width = SPRITE;
+            sprite.height = SPRITE;
+            const sctx = sprite.getContext('2d');
+            sctx.fillStyle = color;
+            sctx.fillRect(0, 0, SPRITE, SPRITE);
+            const falloff = sctx.createRadialGradient(half, half, 0, half, half, half);
+            falloff.addColorStop(0, 'rgba(0, 0, 0, 0.36)');
+            falloff.addColorStop(0.55, 'rgba(0, 0, 0, 0.15)');
+            falloff.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            sctx.globalCompositeOperation = 'destination-in';
+            sctx.fillStyle = falloff;
+            sctx.fillRect(0, 0, SPRITE, SPRITE);
+            sprites.set(color, sprite);
+            return sprite;
+        };
+
+        const bubbleScale = Math.max(1, bubbleZoom / 1.2);
+        const step = Math.max(1, Math.ceil(bubbleRenderItems.length / 1600));
+        ctx.globalCompositeOperation = 'lighter';
+        for (let i = 0; i < bubbleRenderItems.length; i += step) {
+            const item = bubbleRenderItems[i];
+            const radius = (item.sizePx * bubbleScale * 1.6 + 30) * scale;
+            if (item.xPx < -radius / scale || item.xPx > w + radius / scale) continue;
+            if (item.yPx < -radius / scale || item.yPx > h + radius / scale) continue;
+            const color = item.node.style['--tm-bubble-color'] || '#7896c8';
+            ctx.drawImage(
+                getSprite(color),
+                item.xPx * scale - radius,
+                item.yPx * scale - radius,
+                radius * 2,
+                radius * 2,
+            );
+        }
+    }, [bubbleRenderItems, bubbleFieldSize, viewMode, bubbleZoom]);
+
+    // Cluster "region" name labels, placed at the weighted centroid of each
+    // cluster's bubbles — reads like place names on a map.
+    const bubbleRegionLabels = useMemo(() => {
+        if (viewMode !== 'bubble' || bubbleRenderItems.length === 0 || clusterStats.length === 0) return [];
+        const centroids = new Map();
+        for (const item of bubbleRenderItems) {
+            if (item.clusterId === null || item.clusterId === undefined || item.clusterId < 0) continue;
+            let entry = centroids.get(item.clusterId);
+            if (!entry) {
+                entry = { x: 0, y: 0, weight: 0, count: 0 };
+                centroids.set(item.clusterId, entry);
+            }
+            entry.x += item.xPx * item.sizePx;
+            entry.y += item.yPx * item.sizePx;
+            entry.weight += item.sizePx;
+            entry.count += 1;
+        }
+        const labels = [];
+        for (const cluster of clusterStats.slice(0, 8)) {
+            const entry = centroids.get(cluster.j);
+            if (!entry || entry.count < 3 || !entry.weight) continue;
+            labels.push({
+                id: cluster.j,
+                name: cluster.label?.name || '',
+                color: cluster.color,
+                x: entry.x / entry.weight,
+                y: entry.y / entry.weight,
+            });
+        }
+        return labels;
+    }, [viewMode, bubbleRenderItems, clusterStats]);
+
     useEffect(() => {
         if (!exploreEnabled) {
             setExploreLoading(false);
@@ -4490,11 +4586,6 @@ export default function TasteMapPage() {
 
     return (
         <div className={`tm-root tm-lang-${lang}${mapFullscreen ? ' tm-root-fullscreen' : ''}`} ref={containerRef}>
-            <div className="tm-atmo-scene" aria-hidden>
-                <span className="tm-atmo-orb orb-a" />
-                <span className="tm-atmo-orb orb-b" />
-                <span className="tm-atmo-orb orb-c" />
-            </div>
             {/* Header */}
             <header className="tm-header">
                 <div className="tm-header-main">
@@ -4530,30 +4621,48 @@ export default function TasteMapPage() {
             </header>
 
             {isAnalyzing && (
-                <section className="tm-analysis-loading" aria-live="polite">
-                    <div className="tm-analysis-head">
-                        <strong>{copy.analyzingTitle}</strong>
-                        <span>{Math.round(analysisProgress)}%</span>
-                    </div>
-                    <p className="tm-analysis-message">{analysisMessage}</p>
-                    <div className="tm-analysis-progress">
-                        <div className="tm-analysis-progress-fill" style={{ width: `${analysisProgress}%` }} />
-                    </div>
-                    <div className="tm-analysis-steps">
-                        <div className={`tm-analysis-step ${analysisStep >= 1 ? 'active' : ''}`}>
-                            <span className="tm-analysis-step-no">01</span>
-                            <span className="tm-analysis-step-text">{copy.analyzingStep1}</span>
+                <>
+                    <section className="tm-analysis-loading" aria-live="polite">
+                        <div className="tm-analysis-head">
+                            <strong>{copy.analyzingTitle}</strong>
+                            <span>{Math.round(analysisProgress)}%</span>
                         </div>
-                        <div className={`tm-analysis-step ${analysisStep >= 2 ? 'active' : ''}`}>
-                            <span className="tm-analysis-step-no">02</span>
-                            <span className="tm-analysis-step-text">{copy.analyzingStep2}</span>
+                        <p className="tm-analysis-message">{analysisMessage}</p>
+                        <div className="tm-analysis-progress">
+                            <div className="tm-analysis-progress-fill" style={{ width: `${analysisProgress}%` }} />
                         </div>
-                        <div className={`tm-analysis-step ${analysisStep >= 3 ? 'active' : ''}`}>
-                            <span className="tm-analysis-step-no">03</span>
-                            <span className="tm-analysis-step-text">{copy.analyzingStep3}</span>
+                        <div className="tm-analysis-steps">
+                            <div className={`tm-analysis-step ${analysisStep >= 1 ? 'active' : ''}`}>
+                                <span className="tm-analysis-step-no">01</span>
+                                <span className="tm-analysis-step-text">{copy.analyzingStep1}</span>
+                            </div>
+                            <div className={`tm-analysis-step ${analysisStep >= 2 ? 'active' : ''}`}>
+                                <span className="tm-analysis-step-no">02</span>
+                                <span className="tm-analysis-step-text">{copy.analyzingStep2}</span>
+                            </div>
+                            <div className={`tm-analysis-step ${analysisStep >= 3 ? 'active' : ''}`}>
+                                <span className="tm-analysis-step-no">03</span>
+                                <span className="tm-analysis-step-text">{copy.analyzingStep3}</span>
+                            </div>
                         </div>
-                    </div>
-                </section>
+                    </section>
+                    <section className="tm-skeleton" aria-hidden>
+                        <div className="tm-skeleton-row">
+                            <div className="tm-skeleton-block tm-skeleton-chip" />
+                            <div className="tm-skeleton-block tm-skeleton-chip" />
+                            <div className="tm-skeleton-block tm-skeleton-chip" />
+                            <div className="tm-skeleton-block tm-skeleton-chip" />
+                        </div>
+                        <div className="tm-skeleton-body">
+                            <div className="tm-skeleton-block tm-skeleton-map" />
+                            <div className="tm-skeleton-side">
+                                <div className="tm-skeleton-block tm-skeleton-card" />
+                                <div className="tm-skeleton-block tm-skeleton-card" />
+                                <div className="tm-skeleton-block tm-skeleton-card tall" />
+                            </div>
+                        </div>
+                    </section>
+                </>
             )}
             {error && (
                 <div className="tm-error">
@@ -4565,7 +4674,7 @@ export default function TasteMapPage() {
                                 type="button"
                                 onClick={login}
                                 style={{
-                                    color: '#a78bfa',
+                                    color: '#3182f6',
                                     background: 'transparent',
                                     border: 0,
                                     padding: 0,
@@ -4951,6 +5060,7 @@ export default function TasteMapPage() {
                             onPointerMove={() => revealAmbientUi(2200)}
                             onPointerDown={() => revealAmbientUi(2800)}
                         >
+                            <div className="tm-map-top-bar">
                             <div className="tm-map-top-actions">
                                 <div className="tm-map-overlay-controls">
                                     <button
@@ -5028,24 +5138,42 @@ export default function TasteMapPage() {
                                     </button>
                                 ))}
                             </div>
+                            </div>
                             <div
                                 className={`tm-bubble-wrap tm-form-phase-${formationPhase}`}
                                 ref={bubbleFieldRef}
                                 style={{
-                                    background: mapTheme === 'day'
-                                        ? '#ffffff'
-                                        : `
-                                            radial-gradient(1200px 620px at 10% -6%, rgba(79, 121, 205, 0.3), transparent 64%),
-                                            radial-gradient(980px 560px at 90% -10%, rgba(71, 108, 182, 0.22), transparent 60%),
-                                            radial-gradient(860px 560px at 52% 108%, rgba(62, 95, 165, 0.16), transparent 68%),
-                                            linear-gradient(162deg, #050913 0%, #040710 55%, #02050b 100%)
-                                        `,
+                                    background: mapTheme === 'day' ? '#ffffff' : '#12161d',
                                 }}
                             >
+                                    <canvas
+                                        ref={heatmapCanvasRef}
+                                        className={`tm-heatmap-layer${mapTheme === 'day' ? ' day' : ''}`}
+                                        aria-hidden
+                                    />
+                                    <div
+                                        className={`tm-region-label-layer${mapTheme === 'day' ? ' day' : ''}`}
+                                        style={{ opacity: bubbleZoom < 1.35 ? 1 : 0.45 }}
+                                        aria-hidden
+                                    >
+                                        {bubbleRegionLabels.map((region) => (
+                                            <span
+                                                key={`region-label-${region.id}`}
+                                                className="tm-region-map-label"
+                                                style={{
+                                                    left: `${region.x}px`,
+                                                    top: `${region.y}px`,
+                                                    '--tm-region-label-color': region.color,
+                                                }}
+                                            >
+                                                {region.name}
+                                            </span>
+                                        ))}
+                                    </div>
                                     <div className="tm-zoom-hud">
-                                        <button className="tm-zoom-btn" onClick={() => handleZoomButton(1 / 1.2)} aria-label="zoom out">−</button>
-                                        <span className="tm-zoom-value">{Math.round(bubbleZoom * 100)}%</span>
                                         <button className="tm-zoom-btn" onClick={() => handleZoomButton(1.2)} aria-label="zoom in">+</button>
+                                        <span className="tm-zoom-value">{Math.round(bubbleZoom * 100)}%</span>
+                                        <button className="tm-zoom-btn" onClick={() => handleZoomButton(1 / 1.2)} aria-label="zoom out">−</button>
                                         <button
                                             className="tm-zoom-reset"
                                             onClick={focusCurrentBubbles}
