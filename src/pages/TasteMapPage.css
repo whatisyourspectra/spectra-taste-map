@@ -52,7 +52,9 @@
     box-sizing: border-box;
     font-family: var(--tm-font-ui);
     position: relative;
-    overflow-x: clip;
+    /* horizontal overflow is clipped on <body> (index.css) so the
+       dashboard sidebar can hang outside this centered column */
+    overflow-x: visible;
     /* commercial layout: content column is capped and centered */
     width: 100%;
     max-width: 1360px;
@@ -1645,29 +1647,31 @@
     min-height: 0;
     align-items: flex-start;
     position: relative;
-    --tm-sidebar-overlay-w: min(320px, 32vw);
-    --tm-sidebar-overlay-gap: 22px;
-    --tm-control-sidebar-gap: 18px;
+    --tm-sidebar-w: min(320px, 30vw);
     --tm-overlay-top: 12px;
     --tm-overlay-bottom: 12px;
-    --tm-overlay-right: calc(var(--tm-sidebar-overlay-w) + var(--tm-sidebar-overlay-gap));
+    --tm-overlay-right: 10px;
     --tm-corner-btn-offset: 92px;
+    /* dashboard slide-out: the map keeps its size and slides left,
+       the sidebar hangs off the map's right edge into the viewport margin */
+    --tm-dash-gap: 20px;
+    --tm-dash-total: calc(var(--tm-sidebar-w) + var(--tm-dash-gap));
+    /* space between the content column edge and the viewport edge (1360px = .tm-root max-width, 24px = its padding) */
+    --tm-side-margin: calc((100vw - min(1360px, 100vw)) / 2 + 24px);
+    /* slide the map by half the sidebar so the pair stays visually centered, capped so it never leaves the viewport */
+    --tm-dash-shift: min(calc(var(--tm-dash-total) / 2), calc(var(--tm-side-margin) - 12px));
+    /* how far the sidebar may extend past the map before it would be cut off by the viewport */
+    --tm-dash-ext: min(var(--tm-dash-total), calc(var(--tm-side-margin) + var(--tm-dash-shift) - 12px));
+    transition: transform 0.35s ease;
 }
 
-.tm-body.tm-dashboard-closed {
-    --tm-sidebar-overlay-w: 0px;
-    --tm-sidebar-overlay-gap: 10px;
-    --tm-control-sidebar-gap: 0px;
+.tm-body.tm-dashboard-open {
+    transform: translateX(calc(-1 * var(--tm-dash-shift)));
 }
 
-.tm-body.tm-dashboard-closed .tm-bubble-wrap {
-    min-height: 560px;
-    height: min(82vh, 900px);
-}
-
-.tm-body.tm-dashboard-closed .tm-3d-wrap {
-    min-height: 560px;
-    height: min(82vh, 900px);
+/* a transform would break the fixed-position fullscreen map */
+.tm-root-fullscreen .tm-body {
+    transform: none;
 }
 
 /* ── Canvas ─────────────────────────────────────────────────── */
@@ -1677,25 +1681,38 @@
     min-width: 0;
 }
 
-.tm-map-top-actions {
+/* single top row: cluster chips on the left, action buttons on the right */
+.tm-map-top-bar {
     position: absolute;
     top: var(--tm-overlay-top);
-    right: calc(var(--tm-overlay-right) + var(--tm-control-sidebar-gap));
+    left: 12px;
+    right: var(--tm-overlay-right);
     z-index: 22;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    pointer-events: none;
+}
+
+.tm-map-top-bar > * {
+    pointer-events: auto;
+}
+
+.tm-map-top-actions {
+    order: 1;
+    margin-left: auto;
+    flex: none;
     display: inline-flex;
     align-items: center;
     justify-content: flex-end;
     flex-wrap: wrap;
     gap: 8px;
-    max-width: calc(100% - var(--tm-overlay-right) - var(--tm-control-sidebar-gap) - 20px);
 }
 
 .tm-map-tag-strip {
-    position: absolute;
-    top: calc(var(--tm-overlay-top) + 60px);
-    left: 12px;
-    right: 12px;
-    z-index: 21;
+    order: 0;
+    flex: 0 1 auto;
+    min-width: 0;
     display: flex;
     flex-wrap: nowrap;
     align-items: center;
@@ -1886,16 +1903,8 @@
     position: static;
 }
 
-.tm-canvas-wrap.fullscreen .tm-map-top-actions {
+.tm-canvas-wrap.fullscreen .tm-map-top-bar {
     top: 10px;
-    right: 10px;
-    justify-content: flex-end;
-    flex-wrap: wrap;
-    max-width: calc(100% - 20px);
-}
-
-.tm-canvas-wrap.fullscreen .tm-map-tag-strip {
-    top: 62px;
     left: 10px;
     right: 10px;
 }
@@ -1911,8 +1920,8 @@
 .tm-bubble-wrap {
     position: relative;
     width: 100%;
-    min-height: 420px;
-    height: min(68vh, 720px);
+    min-height: 560px;
+    height: min(82vh, 900px);
     border-radius: var(--tm-radius-md);
     border: none;
     overflow: hidden;
@@ -1956,8 +1965,8 @@
 .tm-3d-wrap {
     position: relative;
     width: 100%;
-    min-height: 420px;
-    height: min(68vh, 720px);
+    min-height: 560px;
+    height: min(82vh, 900px);
     border-radius: var(--tm-radius-md);
     border: none;
     overflow: hidden;
@@ -2989,14 +2998,14 @@
     color: var(--tm-text-sub);
 }
 
-/* ── Sidebar — floating card over map ───────────────────────── */
+/* ── Sidebar — slides out to the right of the map ───────────── */
 .tm-sidebar {
     position: absolute;
-    top: var(--tm-overlay-top);
-    bottom: var(--tm-overlay-bottom);
-    right: var(--tm-sidebar-overlay-gap);
-    width: var(--tm-sidebar-overlay-w);
-    height: auto;
+    top: 0;
+    right: calc(-1 * var(--tm-dash-ext));
+    width: var(--tm-sidebar-w);
+    height: min(82vh, 900px);
+    min-height: 560px;
     max-height: none;
     z-index: 18;
     overflow-y: auto;
@@ -3009,6 +3018,26 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
+}
+
+.tm-body.tm-dashboard-open .tm-sidebar {
+    animation: tm-sidebar-fade 0.35s ease;
+}
+
+@keyframes tm-sidebar-fade {
+    from {
+        opacity: 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .tm-body {
+        transition: none;
+    }
+
+    .tm-body.tm-dashboard-open .tm-sidebar {
+        animation: none;
+    }
 }
 
 .tm-sidebar::-webkit-scrollbar {
@@ -3647,12 +3676,14 @@
 
     .tm-body {
         flex-direction: column;
+        transform: none;
     }
 
     .tm-sidebar {
         position: static;
         width: 100%;
         height: auto;
+        min-height: 0;
         max-height: none;
         overflow: visible;
         padding: 0;
@@ -3670,14 +3701,15 @@
         grid-template-columns: repeat(2, minmax(130px, 1fr));
     }
 
-    .tm-map-top-actions {
+    .tm-map-top-bar {
+        left: 10px;
         right: 10px;
-        gap: 6px;
+        flex-wrap: wrap;
+        gap: 8px;
     }
 
-    .tm-map-tag-strip {
-        left: 12px;
-        right: 12px;
+    .tm-map-top-actions {
+        gap: 6px;
     }
 
     .tm-overview-map {
@@ -3823,15 +3855,13 @@
         font-size: 11px;
     }
 
-    .tm-map-top-actions {
-        top: 48px;
+    .tm-map-top-bar {
+        top: 8px;
+        left: 8px;
         right: 8px;
     }
 
     .tm-map-tag-strip {
-        top: 90px;
-        left: 8px;
-        right: 8px;
         gap: 6px;
     }
 

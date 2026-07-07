@@ -5060,6 +5060,7 @@ export default function TasteMapPage() {
                             onPointerMove={() => revealAmbientUi(2200)}
                             onPointerDown={() => revealAmbientUi(2800)}
                         >
+                            <div className="tm-map-top-bar">
                             <div className="tm-map-top-actions">
                                 <div className="tm-map-overlay-controls">
                                     <button
@@ -5136,6 +5137,7 @@ export default function TasteMapPage() {
                                         <span>{cluster.label.name}</span>
                                     </button>
                                 ))}
+                            </div>
                             </div>
                             <div
                                 className={`tm-bubble-wrap tm-form-phase-${formationPhase}`}
