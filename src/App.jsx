@@ -337,18 +337,8 @@ function AppInner() {
 
   if (loading) {
     return (
-      <div style={{
-        position: 'fixed', inset: 0, background: '#0d0f12',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}>
-        <div style={{
-          width: 28, height: 28,
-          border: '2px solid rgba(167,139,250,0.15)',
-          borderTopColor: '#a78bfa',
-          borderRadius: '50%',
-          animation: 'spin 0.8s linear infinite',
-        }} />
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <div className="app-loading">
+        <div className="app-loading__spinner" />
       </div>
     );
   }
