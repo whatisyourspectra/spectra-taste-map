@@ -18,13 +18,8 @@ export default defineConfig({
         ws: true,
         changeOrigin: true,
       },
-      // Spotify API proxy (token + search stay on server, no client secret in browser)
+      // API proxy — Last.fm enrichment / discovery / handoff (key stays server-side).
       '/api': {
-        target: proxyTarget,
-        changeOrigin: true,
-      },
-      // Auth endpoints for Spotify login
-      '/auth': {
         target: proxyTarget,
         changeOrigin: true,
       },

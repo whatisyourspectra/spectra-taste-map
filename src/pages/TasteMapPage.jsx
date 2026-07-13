@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
-import { db } from '../firebase';
-import { collection, getDocs, query, orderBy } from 'firebase/firestore';
-import { useSpotifyAuth } from '../context/SpotifyAuthContext';
+import QRCode from 'qrcode';
+import { useTasteData } from '../context/TasteDataContext';
 import { useSocket } from '../hooks/useSocket';
 import './TasteMapPage.css';
 
@@ -20,19 +19,19 @@ const TM_I18N = {
     ko: {
         mappedSubtitle: 'Listening history, mapped in space.',
         explorerLabel: 'EXPLORER',
-        explorerMeta: 'Spotify synced taste universe.',
+        explorerMeta: 'Last.fm tag-mapped taste universe.',
         langKo: '한국어',
         langEn: 'English',
         analyzingTitle: '취향 분석 진행 중',
-        analyzingStep1: 'Spotify 연결',
-        analyzingStep2: '좋아요/재생 이력 분석',
+        analyzingStep1: '목록 불러오기',
+        analyzingStep2: 'Last.fm 태그 분석',
         analyzingStep3: '내 취향 지도 생성',
-        loginRequired: 'Spotify 로그인이 필요합니다.',
-        loginAction: '로그인하기',
+        loginRequired: '먼저 곡 목록을 가져와 주세요.',
+        loginAction: '목록 가져오기',
         noAudioData: '오디오 분석 데이터를 가져오지 못했습니다.',
         genreFallback: '장르 데이터가 충분하지 않아 audio 기반으로 클러스터링 중입니다.',
         emptyMap1: '아직 취향 지도를 만들 만큼의 곡이 없습니다.',
-        emptyMap2: 'Spotify에서 곡을 저장하거나 Digging에서 ♡를 눌러 내 지도를 채워보세요.',
+        emptyMap2: 'Digging에서 ♡를 눌러 내 지도를 채워보세요.',
         memoryVolumeSuffix: '곡',
         memoryMeta: '개의 청취 기억이 만든 분포 · 취향 영역',
         regionsSuffix: '개',
@@ -93,19 +92,19 @@ const TM_I18N = {
     en: {
         mappedSubtitle: 'Listening history, mapped in space.',
         explorerLabel: 'CURRENT EXPLORER',
-        explorerMeta: 'Spotify synced taste universe.',
+        explorerMeta: 'Last.fm tag-mapped taste universe.',
         langKo: '한국어',
         langEn: 'English',
         analyzingTitle: 'Analyzing your taste field',
-        analyzingStep1: 'Connect Spotify',
-        analyzingStep2: 'Analyze likes & history',
+        analyzingStep1: 'Import your list',
+        analyzingStep2: 'Analyze Last.fm tags',
         analyzingStep3: 'Build taste map',
-        loginRequired: 'Spotify login is required.',
-        loginAction: 'Log in',
+        loginRequired: 'Import a track list first.',
+        loginAction: 'Import list',
         noAudioData: 'Could not load audio analysis data.',
         genreFallback: 'Not enough genre data. Falling back to audio-based clustering.',
         emptyMap1: 'Not enough tracks yet to build your taste map.',
-        emptyMap2: 'Save tracks on Spotify or press ♡ in Digging to grow your map.',
+        emptyMap2: 'Press ♡ in Digging to grow your map.',
         memoryVolumeSuffix: 'tracks',
         memoryMeta: 'listening memories shaped this field ·',
         regionsSuffix: 'regions',
@@ -1593,7 +1592,15 @@ function SpectraSymbol({ symbol = 'headset', className = '' }) {
 
 // ─── Main Page Component ──────────────────────────────────────────────────────
 export default function TasteMapPage() {
-    const { user, login } = useSpotifyAuth();
+    const {
+        tracks: importedTracks,
+        featuresSource: importedFeaturesSource,
+        stats: importedStats,
+        mapId,
+        reset,
+    } = useTasteData();
+    const user = null; // no account model — taste comes from the imported list
+    const login = reset; // "re-import" replaces the old "re-login"
     const { socketRef } = useSocket();
     const canvasRef = useRef(null);
     const containerRef = useRef(null);
@@ -1614,14 +1621,6 @@ export default function TasteMapPage() {
     const formationTimersRef = useRef([]);
     const expandHighlightTimerRef = useRef(null);
     const spectraAutoCenterPendingRef = useRef(false);
-    const autoNearPlaybackRef = useRef({
-        enabled: false,
-        pending: false,
-        lastTrackId: null,
-        lastStartedAt: 0,
-        lastAdvanceAt: 0,
-        recentIds: [],
-    });
 
     const [tracks, setTracks] = useState([]);
     const [assignments, setAssignments] = useState([]);
@@ -1661,18 +1660,19 @@ export default function TasteMapPage() {
     const [scrollHint, setScrollHint] = useState(false);
     const [clusterLoading, setClusterLoading] = useState(false);
     const [bubbleNodesResult, setBubbleNodesResult] = useState([]);
-    const [recentPlayMap, setRecentPlayMap] = useState(new Map()); // trackId → recentPlayCount
+    const [recentPlayMap] = useState(() => new Map()); // Spotify recently-played is gone; stays empty.
     const [analysisProgress, setAnalysisProgress] = useState(0);
-    const [librarySummary, setLibrarySummary] = useState(null);
-    const [libraryLoading, setLibraryLoading] = useState(false);
-    const [libraryError, setLibraryError] = useState(null);
+    // Followed artists / saved albums were Spotify-only — these stay empty now.
+    const librarySummary = null;
+    const libraryLoading = false;
+    const libraryError = null;
     const [mapFullscreen, setMapFullscreen] = useState(false);
     const [exploreEnabled, setExploreEnabled] = useState(false);
     const [exploreLoading, setExploreLoading] = useState(false);
     const [exploreError, setExploreError] = useState(null);
     const [exploreRecs, setExploreRecs] = useState([]);
     const [hoveredExploreId, setHoveredExploreId] = useState(null);
-    const [savingLibraryTrackIds, setSavingLibraryTrackIds] = useState({});
+    const [savingLibraryTrackIds] = useState({}); // no async library save anymore; stays empty.
     const [savedFromRecIds, setSavedFromRecIds] = useState({});
     const [recActionMessage, setRecActionMessage] = useState(null);
     const [bubbleContextMenu, setBubbleContextMenu] = useState(null);
@@ -1685,6 +1685,8 @@ export default function TasteMapPage() {
     const [shareMessage, setShareMessage] = useState(null);
     const [mobileHandoffSaving, setMobileHandoffSaving] = useState(false);
     const [mobileHandoffStatus, setMobileHandoffStatus] = useState(null);
+    const [mobileLinkQr, setMobileLinkQr] = useState('');
+    const [mobileLinkCopied, setMobileLinkCopied] = useState(false);
     const [showUtilityControls, setShowUtilityControls] = useState(false);
     const [dashboardOpen, setDashboardOpen] = useState(false);
     const [ambientUiVisible, setAmbientUiVisible] = useState(false);
@@ -1733,24 +1735,9 @@ export default function TasteMapPage() {
     }, []);
 
     useEffect(() => {
-        let alive = true;
-        fetch(api('/api/me/profile'), { credentials: 'include' })
-            .then((r) => (r.ok ? r.json() : null))
-            .then((data) => {
-                if (!alive) return;
-                setCacheUserId(data?.id || 'guest');
-            })
-            .catch(() => {
-                if (!alive) return;
-                setCacheUserId('guest');
-            })
-            .finally(() => {
-                if (alive) setCacheReady(true);
-            });
-        return () => {
-            alive = false;
-        };
-    }, []);
+        setCacheUserId(mapId || 'guest');
+        setCacheReady(true);
+    }, [mapId]);
 
     useEffect(() => {
         if (typeof window !== 'undefined') {
@@ -1766,161 +1753,32 @@ export default function TasteMapPage() {
         window.localStorage.setItem(TM_THEME_STORAGE_KEY, mapTheme);
     }, [mapTheme]);
 
-    // ── Fetch recently-played to build per-track listen frequency ────────────
-    useEffect(() => {
-        fetch(api('/api/me/recently-played?limit=50'), { credentials: 'include' })
-            .then((r) => (r.ok ? r.json() : null))
-            .then((data) => {
-                if (!data?.tracks) return;
-                const map = new Map();
-                data.tracks.forEach((t) => {
-                    if (t.id && t.recentPlayCount) map.set(t.id, t.recentPlayCount);
-                });
-                setRecentPlayMap(map);
-            })
-            .catch(() => {});
-    }, []);
+    // Followed-artists / saved-albums came from Spotify and no longer apply.
+    // recentPlayMap stays empty; librarySummary stays null (UI renders empty).
 
-    useEffect(() => {
-        if (!cacheReady) return;
-        let cancelled = false;
-        const cacheKey = `${TM_LIBRARY_CACHE_PREFIX}|u:${cacheUserId}`;
-        const hit = readSessionCache(cacheKey, TM_LIBRARY_CACHE_TTL_MS);
-        if (hit) {
-            setLibrarySummary(hit);
-            setLibraryError(null);
-            return;
-        }
-        setLibraryLoading(true);
-        setLibraryError(null);
-        fetch(api('/api/me/taste-library-summary'), { credentials: 'include' })
-            .then(async (r) => {
-                if (!r.ok) {
-                    const txt = await r.text();
-                    throw new Error(txt || `HTTP ${r.status}`);
-                }
-                return r.json();
-            })
-            .then((data) => {
-                if (cancelled) return;
-                setLibrarySummary(data || null);
-                writeSessionCache(cacheKey, data || null);
-            })
-            .catch((e) => {
-                if (cancelled) return;
-                setLibrarySummary(null);
-                setLibraryError(e?.message || '팔로우/앨범 데이터를 불러오지 못했습니다.');
-            })
-            .finally(() => {
-                if (!cancelled) setLibraryLoading(false);
-            });
-        return () => {
-            cancelled = true;
-        };
-    }, [cacheReady, cacheUserId]);
-
-    // ── Fetch data ──────────────────────────────────────────────────────────
-    const fetchTracks = useCallback(async (src, basis = 'audio') => {
+    // ── Taste data (imported list → Last.fm enriched, from TasteDataContext) ──
+    const fetchTracks = useCallback(async () => {
         setLoading(true);
         setError(null);
-        setDataStats(null);
-        try {
-            const includeGenres = basis === 'genre';
-            const genreQuery = includeGenres ? 'includeGenres=1' : '';
-            const baseCacheKey = `${TM_FETCH_CACHE_PREFIX}|u:${cacheUserId}|s:${src}|b:${basis}`;
-            let res;
-            if (src === 'spotify') {
-                const hit = readSessionCache(baseCacheKey, TM_FETCH_CACHE_TTL_MS);
-                if (hit) {
-                    setFeaturesSource(hit.featuresSource || 'none');
-                    setDataStats(hit.dataStats || null);
-                    return Array.isArray(hit.tracks) ? hit.tracks : [];
-                }
-                const path = genreQuery ? `/api/me/liked-tracks-features?${genreQuery}` : '/api/me/liked-tracks-features';
-                res = await fetch(api(path), { credentials: 'include' });
-            } else {
-                // Firebase favorites → Spotify에서 메타데이터 + 피처 조회
-                const q = query(collection(db, 'favorites'), orderBy('createdAt', 'desc'));
-                const snap = await getDocs(q);
-                const seen = new Set();
-                const ids = [];
-                snap.forEach((doc) => {
-                    const d = doc.data();
-                    if (d.spotifyId && !seen.has(d.spotifyId)) {
-                        seen.add(d.spotifyId);
-                        ids.push(d.spotifyId);
-                    }
-                });
-                if (ids.length === 0) {
-                    setDataStats({
-                        mode: 'ids',
-                        fetchedCount: 0,
-                        totalAvailable: 0,
-                        audioFeatureCount: 0,
-                    });
-                    return [];
-                }
-                const idsSignature = `${ids.length}:${hashText(ids.join(','))}`;
-                const favCacheKey = `${baseCacheKey}|ids:${idsSignature}`;
-                const hit = readSessionCache(favCacheKey, TM_FETCH_CACHE_TTL_MS);
-                if (hit) {
-                    setFeaturesSource(hit.featuresSource || 'none');
-                    setDataStats(hit.dataStats || null);
-                    return Array.isArray(hit.tracks) ? hit.tracks : [];
-                }
-                const qs = new URLSearchParams({ ids: ids.join(',') });
-                if (includeGenres) qs.set('includeGenres', '1');
-                res = await fetch(api(`/api/me/liked-tracks-features?${qs.toString()}`), { credentials: 'include' });
-
-                if (!res.ok) {
-                    const text = await res.text();
-                    throw new Error(`HTTP ${res.status}: ${text}`);
-                }
-                const data = await res.json();
-                setFeaturesSource(data.featuresSource || 'none');
-                setDataStats(data.stats || null);
-
-                const usable = (data.tracks || []).filter((t) => t.valence !== null);
-                writeSessionCache(favCacheKey, {
-                    tracks: usable,
-                    featuresSource: data.featuresSource || 'none',
-                    dataStats: data.stats || null,
-                });
-                return usable;
-            }
-
-            if (!res.ok) {
-                const text = await res.text();
-                throw new Error(`HTTP ${res.status}: ${text}`);
-            }
-            const data = await res.json();
-            setFeaturesSource(data.featuresSource || 'none');
-            setDataStats(data.stats || null);
-
-            // valence가 있는 트랙만 클러스터링에 사용
-            const usable = (data.tracks || []).filter((t) => t.valence !== null);
-            writeSessionCache(baseCacheKey, {
-                tracks: usable,
-                featuresSource: data.featuresSource || 'none',
-                dataStats: data.stats || null,
-            });
-            return usable;
-        } catch (e) {
-            setError(e.message || '데이터를 불러오지 못했습니다.');
-            setDataStats(null);
-            return [];
-        } finally {
-            setLoading(false);
-        }
-    }, [cacheUserId]);
+        const usable = (importedTracks || []).filter(
+            (t) => t.valence !== null && t.valence !== undefined,
+        );
+        setFeaturesSource(importedFeaturesSource || 'none');
+        setDataStats(importedStats || {
+            fetchedCount: usable.length,
+            totalAvailable: usable.length,
+        });
+        setLoading(false);
+        return usable;
+    }, [importedTracks, importedFeaturesSource, importedStats]);
 
     useEffect(() => {
         if (!cacheReady) return;
-        fetchTracks(source, clusterBasis).then((data) => {
+        fetchTracks().then((data) => {
             setTracks(data);
             setSelectedCluster(null);
         });
-    }, [source, clusterBasis, fetchTracks, cacheReady]);
+    }, [fetchTracks, cacheReady]);
 
     useEffect(() => {
         const matched = resolveAxisPreset(xAxis, yAxis);
@@ -2708,17 +2566,12 @@ export default function TasteMapPage() {
         const analyzed = tracks.length;
         const missing = Math.max(total - fetched, 0);
         const dropped = Math.max(fetched - analyzed, 0);
-        if (dataStats.mode === 'ids') {
-            return {
-                partial: missing > 0,
-                text: `Favorites ${fetched}/${total}곡 반영`,
-                detail: dropped > 0 ? `분석 제외 ${dropped}곡` : '전량 분석 반영',
-            };
-        }
         return {
             partial: missing > 0,
-            text: `Spotify 좋아요 ${fetched}/${total}곡 반영`,
-            detail: missing > 0 ? `아직 ${missing}곡 미반영` : '좋아요 전량 반영',
+            text: `가져온 곡 ${fetched}/${total}곡 반영`,
+            detail: missing > 0
+                ? `아직 ${missing}곡 미반영`
+                : (dropped > 0 ? `분석 제외 ${dropped}곡` : '전량 분석 반영'),
         };
     }, [dataStats, tracks.length]);
 
@@ -3329,11 +3182,16 @@ export default function TasteMapPage() {
                         energy: String(clamp01(anchor.y)),
                         limit: seedTrackId ? '14' : '8',
                         seedGenres: exploreSeedGenres.join(','),
-                        strangeness: seedTrackId ? '0.62' : '0.82',
-                        market: 'KR',
                     });
-                    if (seedTrackId) params.set('seedTracks', seedTrackId);
-                    const res = await fetch(api(`/api/spotify/digging?${params.toString()}`));
+                    // Resolve the seed track id → "artist|title" for Last.fm getSimilar.
+                    if (seedTrackId) {
+                        const seedTrack = tracks.find((t) => t.id === seedTrackId);
+                        if (seedTrack?.artists && seedTrack?.name) {
+                            const seedArtist = String(seedTrack.artists).split(',')[0].trim();
+                            params.set('seedTracks', `${seedArtist}|${seedTrack.name}`);
+                        }
+                    }
+                    const res = await fetch(api(`/api/discover?${params.toString()}`));
                     if (!res.ok) throw new Error(`HTTP ${res.status}`);
                     const data = await res.json();
                     const tracksOut = Array.isArray(data?.tracks) ? data.tracks : [];
@@ -3843,173 +3701,41 @@ export default function TasteMapPage() {
         </div>
     );
 
-    const pickNearbyBubbleTrackId = useCallback((trackId) => {
-        if (!trackId) return null;
-        const history = autoNearPlaybackRef.current.recentIds || [];
-        const recentSet = new Set(history.slice(-6));
-
-        const currentBubble = bubbleRenderItems.find((item) => item.node.track.id === trackId);
-        if (currentBubble) {
-            const ranked = bubbleRenderItems
-                .filter((item) => item.node.track.id !== trackId && item.active)
-                .map((item) => ({
-                    id: item.node.track.id,
-                    dist: Math.hypot(item.worldX - currentBubble.worldX, item.worldY - currentBubble.worldY),
-                }))
-                .sort((a, b) => a.dist - b.dist);
-            const next = ranked.find((item) => !recentSet.has(item.id)) || ranked[0];
-            return next?.id || null;
+    // No Spotify playback control — open the track on an external service instead.
+    const playTrack = useCallback((trackId) => {
+        if (!trackId) return;
+        const t = tracks.find((x) => x.id === trackId)
+            || exploreRecs.find((r) => r.track?.id === trackId)?.track;
+        const query = `${t?.artists || ''} ${t?.name || ''}`.trim();
+        const url = t?.externalUrl
+            || (query ? `https://open.spotify.com/search/${encodeURIComponent(query)}` : null);
+        if (url && typeof window !== 'undefined') {
+            window.open(url, '_blank', 'noopener,noreferrer');
         }
+        setNowPlayingTrackId(trackId);
+    }, [tracks, exploreRecs]);
 
-        const currentTrack = tracks.find((track) => track.id === trackId);
-        if (!currentTrack) return null;
-        const ranked = tracks
-            .filter((track) => track.id !== trackId && activeTrackIds.has(track.id))
-            .map((track) => {
-                const dx = getTrackFeature(track, xAxis) - getTrackFeature(currentTrack, xAxis);
-                const dy = getTrackFeature(track, yAxis) - getTrackFeature(currentTrack, yAxis);
-                return { id: track.id, dist: Math.hypot(dx, dy) };
-            })
-            .sort((a, b) => a.dist - b.dist);
-        const next = ranked.find((item) => !recentSet.has(item.id)) || ranked[0];
-        return next?.id || null;
-    }, [bubbleRenderItems, tracks, activeTrackIds, xAxis, yAxis]);
-
-    const playTrack = useCallback(async (spotifyId, options = {}) => {
-        if (!spotifyId) return;
-        const { enableAutoNear = false, autoTriggered = false } = options;
-        try {
-            await fetch(api('/api/me/playback/play-track'), {
-                method: 'POST',
-                credentials: 'include',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ trackId: spotifyId }),
-            });
-            setNowPlayingTrackId(spotifyId);
-
-            const auto = autoNearPlaybackRef.current;
-            if (enableAutoNear || autoTriggered) {
-                auto.enabled = true;
-                auto.pending = false;
-                auto.lastTrackId = spotifyId;
-                auto.lastStartedAt = Date.now();
-                if (autoTriggered) {
-                    const nextHistory = [...(auto.recentIds || []).filter((id) => id !== spotifyId), spotifyId];
-                    auto.recentIds = nextHistory.slice(-12);
-                } else {
-                    auto.recentIds = [spotifyId];
-                }
-            } else {
-                auto.enabled = false;
-                auto.pending = false;
-                auto.lastTrackId = spotifyId;
-                auto.recentIds = [spotifyId];
-            }
-        } catch {
-            // ignore playback errors
-            autoNearPlaybackRef.current.pending = false;
-        }
-    }, []);
-
-    useEffect(() => {
-        let cancelled = false;
-        let inFlight = false;
-
-        const pollNowPlaying = async () => {
-            if (cancelled || inFlight) return;
-            const auto = autoNearPlaybackRef.current;
-            if (!auto.enabled && !auto.pending) return;
-
-            inFlight = true;
-            try {
-                const res = await fetch(api('/api/me/now-playing'), { credentials: 'include' });
-                if (!res.ok) return;
-                const data = await res.json();
-                const currentTrackId = data?.track?.id || null;
-                const isPlaying = Boolean(data?.playing && currentTrackId);
-
-                if (isPlaying) {
-                    setNowPlayingTrackId(currentTrackId);
-                    auto.pending = false;
-                    auto.lastTrackId = currentTrackId;
-                    return;
-                }
-
-                if (!auto.enabled || auto.pending || !auto.lastTrackId) return;
-                const elapsed = Date.now() - (auto.lastStartedAt || 0);
-                const coolDown = Date.now() - (auto.lastAdvanceAt || 0);
-                if (elapsed < 9000 || coolDown < 3200) return;
-
-                const nextTrackId = pickNearbyBubbleTrackId(auto.lastTrackId);
-                if (!nextTrackId) {
-                    auto.enabled = false;
-                    return;
-                }
-
-                auto.pending = true;
-                auto.lastAdvanceAt = Date.now();
-                await playTrack(nextTrackId, { autoTriggered: true });
-            } catch {
-                // noop
-            } finally {
-                inFlight = false;
-            }
-        };
-
-        pollNowPlaying();
-        const intervalId = window.setInterval(pollNowPlaying, 3500);
-        return () => {
-            cancelled = true;
-            window.clearInterval(intervalId);
-        };
-    }, [pickNearbyBubbleTrackId, playTrack]);
-
-    const saveTrackToMyBubble = useCallback(async (track) => {
+    // "Save" now folds the discovered track into the local field (no Spotify library).
+    const saveTrackToMyBubble = useCallback((track) => {
         const trackId = track?.id;
         if (!trackId) return;
-        if (knownTrackIds.has(trackId) || savedFromRecIds[trackId] || savingLibraryTrackIds[trackId]) return;
+        if (knownTrackIds.has(trackId) || savedFromRecIds[trackId]) return;
 
         if (isSpectraExpandMode && spectraExpandTrackId && spectraExpandTrackId !== trackId) {
             setSpectraAffinityMap((prev) => ({ ...prev, [trackId]: spectraExpandTrackId }));
         }
 
-        setSavingLibraryTrackIds((prev) => ({ ...prev, [trackId]: true }));
-        setRecActionMessage(null);
-        try {
-            const res = await fetch(api('/api/me/library/save'), {
-                method: 'PUT',
-                credentials: 'include',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ trackId }),
-            });
-            if (!res.ok) {
-                const text = await res.text();
-                throw new Error(text || `HTTP ${res.status}`);
-            }
-
-            setSavedFromRecIds((prev) => ({ ...prev, [trackId]: true }));
-            const refreshed = await fetchTracks(source, clusterBasis);
-            setTracks(refreshed);
-            setRecActionMessage(copy.recAddSuccess);
-        } catch (e) {
-            const detail = e?.message ? ` (${e.message})` : '';
-            setRecActionMessage(`${copy.recAddFail}${detail}`);
-        } finally {
-            setSavingLibraryTrackIds((prev) => {
-                const next = { ...prev };
-                delete next[trackId];
-                return next;
-            });
-        }
+        setSavedFromRecIds((prev) => ({ ...prev, [trackId]: true }));
+        setTracks((prev) => (
+            prev.some((t) => t.id === trackId)
+                ? prev
+                : [...prev, { ...track, addedAt: new Date().toISOString() }]
+        ));
+        setRecActionMessage(copy.recAddSuccess);
     }, [
         knownTrackIds,
         savedFromRecIds,
-        savingLibraryTrackIds,
-        fetchTracks,
-        source,
-        clusterBasis,
         copy.recAddSuccess,
-        copy.recAddFail,
         isSpectraExpandMode,
         spectraExpandTrackId,
     ]);
@@ -4282,57 +4008,68 @@ export default function TasteMapPage() {
         setShareMode((prev) => !prev);
         setShareMessage(null);
     }, []);
+    // Build the mobile-companion link + QR whenever the map id changes.
+    const mobileLink = useMemo(() => {
+        if (!mapId || typeof window === 'undefined') return '';
+        return `${window.location.origin}/taste-map/mobile?map=${mapId}`;
+    }, [mapId]);
+
+    useEffect(() => {
+        if (!mobileLink) return undefined;
+        let alive = true;
+        QRCode.toDataURL(mobileLink, {
+            margin: 1,
+            width: 240,
+            color: { dark: '#0b1020', light: '#ffffff' },
+        })
+            .then((url) => { if (alive) setMobileLinkQr(url); })
+            .catch(() => { if (alive) setMobileLinkQr(''); });
+        return () => { alive = false; };
+    }, [mobileLink]);
+
+    const copyMobileLink = useCallback(async () => {
+        if (!mobileLink) return;
+        try {
+            await navigator.clipboard.writeText(mobileLink);
+            setMobileLinkCopied(true);
+            window.setTimeout(() => setMobileLinkCopied(false), 1300);
+        } catch {
+            setMobileLinkCopied(false);
+        }
+    }, [mobileLink]);
+
     const syncDesktopHandoffToMobile = useCallback(async () => {
-        if (!tracks.length) {
+        if (!tracks.length || !mapId) {
             setMobileHandoffStatus(null);
             return;
         }
         const handoffTracks = compactCompareTracks(mobileHandoffTracks, 16);
-        if (!handoffTracks.length) {
-            setMobileHandoffStatus(null);
-            return;
-        }
-
-        const sortedByTime = [...tracks].sort((a, b) => (getTrackTimeMs(b) || 0) - (getTrackTimeMs(a) || 0));
-        const sortedByPopularity = [...tracks].sort((a, b) => (Number(b?.popularity) || 0) - (Number(a?.popularity) || 0));
-        const snapshot = {
-            updatedAt: Date.now(),
-            profileHint: {
-                id: user?.id || null,
-                displayName: user?.displayName || null,
-            },
-            topGenres: buildTopGenresFromTracks(tracks, 12),
-            topArtistIds: [],
-            topTrackIds: sortedByPopularity.slice(0, 8).map((track) => track.id).filter(Boolean),
-            bubbleTracks: {
-                recent: compactCompareTracks(sortedByTime, 24),
-                liked: compactCompareTracks(sortedByTime, 24),
-                top: compactCompareTracks(sortedByPopularity, 18),
-            },
-            desktopHandoff: {
-                mode: 'expand',
-                expansionRange: '12m',
-                selectedGenreKeys: selectedGenreKeysForHandoff,
-                nextTracks: handoffTracks,
-                note: `Desktop handoff · ${handoffTracks.length} tracks`,
-                updatedAt: Date.now(),
-            },
-        };
 
         setMobileHandoffSaving(true);
         setMobileHandoffStatus(null);
         try {
-            const res = await fetch(api('/api/me/taste-snapshot'), {
+            const res = await fetch(api('/api/taste/handoff'), {
                 method: 'POST',
-                credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ snapshot }),
+                body: JSON.stringify({
+                    mapId,
+                    tracks,
+                    featuresSource,
+                    desktopHandoff: {
+                        mode: 'expand',
+                        expansionRange: '12m',
+                        selectedGenreKeys: selectedGenreKeysForHandoff,
+                        nextTracks: handoffTracks,
+                        note: `Desktop handoff · ${handoffTracks.length} tracks`,
+                        updatedAt: Date.now(),
+                    },
+                }),
             });
             if (!res.ok) {
                 const txt = await res.text();
                 throw new Error(txt || `HTTP ${res.status}`);
             }
-            setMobileHandoffStatus(`모바일에 ${handoffTracks.length}곡을 보냈어요.`);
+            setMobileHandoffStatus(`모바일에 ${tracks.length}곡을 보냈어요.`);
         } catch {
             setMobileHandoffStatus('모바일 연동 저장에 실패했습니다.');
         } finally {
@@ -4340,9 +4077,9 @@ export default function TasteMapPage() {
         }
     }, [
         tracks,
+        mapId,
+        featuresSource,
         mobileHandoffTracks,
-        user?.id,
-        user?.displayName,
         selectedGenreKeysForHandoff,
     ]);
 
@@ -4478,11 +4215,11 @@ export default function TasteMapPage() {
     }, [loading, cacheReady, clusterLoading]);
     const analysisMessage = useMemo(() => {
         if (loading && !cacheReady) return lang === 'en'
-            ? 'Checking your Spotify account status.'
-            : 'Spotify 계정 상태를 확인하고 있어요.';
+            ? 'Preparing your imported track list.'
+            : '가져온 곡 목록을 준비하고 있어요.';
         if (loading) return lang === 'en'
-            ? 'Collecting taste signals from your likes and play history.'
-            : '좋아요/재생 이력을 바탕으로 취향 신호를 수집 중입니다.';
+            ? 'Mapping Last.fm tags into taste signals.'
+            : 'Last.fm 태그를 취향 신호로 변환하는 중입니다.';
         if (clusterLoading) return lang === 'en'
             ? 'Computing clusters and finalizing your taste map.'
             : '클러스터를 계산해 내 취향 지도를 마무리하는 중입니다.';
@@ -4569,7 +4306,7 @@ export default function TasteMapPage() {
         return () => window.clearTimeout(timer);
     }, [recActionMessage]);
 
-    const explorerName = (user?.displayName || 'Spotify User').trim();
+    const explorerName = (user?.displayName || (lang === 'en' ? 'My' : '나의')).trim();
     const explorerNickname = useMemo(() => {
         const base = explorerName.replace(/^@+/, '').trim();
         const first = base.split(/\s+/)[0] || base;
@@ -4592,7 +4329,7 @@ export default function TasteMapPage() {
                     <span className="tm-pill">S P E C T R A</span>
                     <h1 className="tm-title">
                         <span className="tm-title-brand">{explorerNickname}</span>
-                        {lang === 'en' ? "'s Taste Field" : '의 Taste Field'}
+                        {' Taste Field'}
                     </h1>
                     <p className="tm-subtitle">
                         {copy.mappedSubtitle}
@@ -5576,6 +5313,26 @@ export default function TasteMapPage() {
                                 <span className="tm-mobile-sync-title">Spectra Starting Point</span>
                                 <span className="tm-mobile-sync-count">Pins {expandPinTracks.length}</span>
                             </div>
+                            {mapId && (
+                                <div className="tm-mobile-qr">
+                                    {mobileLinkQr && (
+                                        <img src={mobileLinkQr} alt="모바일 연결 QR" className="tm-mobile-qr-img" />
+                                    )}
+                                    <div className="tm-mobile-qr-body">
+                                        <p className="tm-mobile-qr-desc">
+                                            폰 카메라로 QR을 스캔하면 모바일 컴패니언이 열려 이 지도와 실시간 연동됩니다.
+                                        </p>
+                                        <button
+                                            type="button"
+                                            className="tm-mobile-qr-copy"
+                                            onClick={copyMobileLink}
+                                            disabled={!mobileLink}
+                                        >
+                                            {mobileLinkCopied ? '링크 복사됨' : '모바일 링크 복사'}
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
                             {expandPinTracks.length > 0 && (
                                 <div className="tm-mobile-sync-bubbles">
                                     {expandPinTracks.slice(0, 8).map((track) => (
