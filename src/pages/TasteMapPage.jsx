@@ -1471,7 +1471,8 @@ function TasteYearComparePanel({ tracks, profileName, lang = 'ko' }) {
 const PADDING = { top: 48, right: 32, bottom: 56, left: 56 };
 const BUBBLE_BASE_WORLD_SCALE = 5.0;
 const BUBBLE_MAX_COUNT = 2000;
-const BUBBLE_ZOOM_MIN = 0.35;
+// Allow pulling far enough back to see the taste field with generous context.
+const BUBBLE_ZOOM_MIN = 0.1;
 const BUBBLE_ZOOM_MAX = 5.0;
 
 function drawMap(canvas, tracks, assignments, centroids, hoveredIdx, activeTrackIds, xAxis, yAxis, clusterLabels) {
@@ -1654,6 +1655,16 @@ export default function TasteMapPage() {
     const magneticFrameRef = useRef(0);
     const magneticPointerRef = useRef({ x: 0, y: 0 });
     const magneticCursorRef = useRef(null);
+    const bubbleDragRef = useRef({
+        pointerId: null,
+        trackId: null,
+        element: null,
+        startX: 0,
+        startY: 0,
+        moved: false,
+        lastMoveAt: 0,
+    });
+    const bubbleSpringTimersRef = useRef(new Map());
 
     const [tracks, setTracks] = useState([]);
     const [assignments, setAssignments] = useState([]);
@@ -1745,6 +1756,8 @@ export default function TasteMapPage() {
     const cameraRef = useRef(camera);
     const queuedCameraRef = useRef(null);
     const cameraRafRef = useRef(0);
+    const queuedZoomCameraRef = useRef(null);
+    const zoomCameraRafRef = useRef(0);
     const cameraAnimationRafRef = useRef(0);
     const kmeansWorkerRef = useRef(null);
     const bubbleLayoutWorkerRef = useRef(null);
@@ -1766,6 +1779,11 @@ export default function TasteMapPage() {
         if (expandHighlightTimerRef.current) {
             window.clearTimeout(expandHighlightTimerRef.current);
         }
+    }, []);
+
+    useEffect(() => () => {
+        bubbleSpringTimersRef.current.forEach((timerId) => window.clearTimeout(timerId));
+        bubbleSpringTimersRef.current.clear();
     }, []);
 
     useEffect(() => {
@@ -2613,14 +2631,27 @@ export default function TasteMapPage() {
         return Math.min(BUBBLE_ZOOM_MAX, Math.max(BUBBLE_ZOOM_MIN, z));
     }, []);
 
-    useEffect(() => { bubbleZoomRef.current = bubbleZoom; }, [bubbleZoom]);
-    useEffect(() => { cameraRef.current = camera; }, [camera]);
+    useEffect(() => {
+        if (!queuedZoomCameraRef.current) bubbleZoomRef.current = bubbleZoom;
+    }, [bubbleZoom]);
+    useEffect(() => {
+        if (!queuedZoomCameraRef.current && !queuedCameraRef.current) cameraRef.current = camera;
+    }, [camera]);
 
     const scheduleCameraUpdate = useCallback((nextCamera) => {
         if (!nextCamera) return;
+        if (queuedZoomCameraRef.current) {
+            queuedZoomCameraRef.current = {
+                ...queuedZoomCameraRef.current,
+                camera: nextCamera,
+            };
+            cameraRef.current = nextCamera;
+            return;
+        }
         const base = queuedCameraRef.current || cameraRef.current;
         if (Math.abs(base.x - nextCamera.x) < 0.05 && Math.abs(base.y - nextCamera.y) < 0.05) return;
         queuedCameraRef.current = nextCamera;
+        cameraRef.current = nextCamera;
         if (cameraRafRef.current) return;
         cameraRafRef.current = window.requestAnimationFrame(() => {
             cameraRafRef.current = 0;
@@ -2644,7 +2675,12 @@ export default function TasteMapPage() {
             window.cancelAnimationFrame(cameraAnimationRafRef.current);
             cameraAnimationRafRef.current = 0;
         }
+        if (zoomCameraRafRef.current) {
+            window.cancelAnimationFrame(zoomCameraRafRef.current);
+            zoomCameraRafRef.current = 0;
+        }
         queuedCameraRef.current = null;
+        queuedZoomCameraRef.current = null;
     }, []);
 
     const clampCamera = useCallback((x, y, zoomValue) => {
@@ -2652,13 +2688,41 @@ export default function TasteMapPage() {
         const worldH = bubbleFieldSize.h * bubbleWorldScale;
         const viewportW = zoomValue > 0 ? bubbleFieldSize.w / zoomValue : bubbleFieldSize.w;
         const viewportH = zoomValue > 0 ? bubbleFieldSize.h / zoomValue : bubbleFieldSize.h;
-        const maxX = Math.max(0, worldW - viewportW);
-        const maxY = Math.max(0, worldH - viewportH);
+        const clampAxis = (value, worldSize, viewportSize) => {
+            if (viewportSize >= worldSize) return (worldSize - viewportSize) / 2;
+            return Math.min(worldSize - viewportSize, Math.max(0, value));
+        };
         return {
-            x: Math.min(maxX, Math.max(0, x)),
-            y: Math.min(maxY, Math.max(0, y)),
+            x: clampAxis(x, worldW, viewportW),
+            y: clampAxis(y, worldH, viewportH),
         };
     }, [bubbleFieldSize.w, bubbleFieldSize.h, bubbleWorldScale]);
+
+    const scheduleZoomCameraUpdate = useCallback((nextZoom, nextCamera) => {
+        if (!nextCamera) return;
+        const nextViewport = { zoom: nextZoom, camera: nextCamera };
+        queuedZoomCameraRef.current = nextViewport;
+        bubbleZoomRef.current = nextZoom;
+        cameraRef.current = nextCamera;
+
+        if (cameraRafRef.current) {
+            window.cancelAnimationFrame(cameraRafRef.current);
+            cameraRafRef.current = 0;
+        }
+        queuedCameraRef.current = null;
+        if (zoomCameraRafRef.current) return;
+
+        zoomCameraRafRef.current = window.requestAnimationFrame(() => {
+            zoomCameraRafRef.current = 0;
+            const finalViewport = queuedZoomCameraRef.current;
+            queuedZoomCameraRef.current = null;
+            if (!finalViewport) return;
+            bubbleZoomRef.current = finalViewport.zoom;
+            cameraRef.current = finalViewport.camera;
+            setBubbleZoom(finalViewport.zoom);
+            setCamera(finalViewport.camera);
+        });
+    }, []);
 
     const cancelCameraAnimation = useCallback(() => {
         if (cameraAnimationRafRef.current) {
@@ -2675,7 +2739,12 @@ export default function TasteMapPage() {
             window.cancelAnimationFrame(cameraRafRef.current);
             cameraRafRef.current = 0;
         }
+        if (zoomCameraRafRef.current) {
+            window.cancelAnimationFrame(zoomCameraRafRef.current);
+            zoomCameraRafRef.current = 0;
+        }
         queuedCameraRef.current = null;
+        queuedZoomCameraRef.current = null;
 
         const startCamera = { ...cameraRef.current };
         const startZoom = bubbleZoomRef.current;
@@ -2718,6 +2787,7 @@ export default function TasteMapPage() {
     }, [cancelCameraAnimation, clampCamera, clampZoom]);
 
     useEffect(() => {
+        if (queuedZoomCameraRef.current) return;
         setCamera((prev) => {
             const next = clampCamera(prev.x, prev.y, bubbleZoom);
             if (Math.abs(prev.x - next.x) < 0.05 && Math.abs(prev.y - next.y) < 0.05) {
@@ -2741,8 +2811,8 @@ export default function TasteMapPage() {
         const worldH = bubbleFieldSize.h * bubbleWorldScale;
         const viewportW = bubbleFieldSize.w / zoomValue;
         const viewportH = bubbleFieldSize.h / zoomValue;
-        const centerX = Math.max(0, (worldW - viewportW) / 2);
-        const centerY = Math.max(0, (worldH - viewportH) / 2);
+        const centerX = (worldW - viewportW) / 2;
+        const centerY = (worldH - viewportH) / 2;
         setCamera(clampCamera(centerX, centerY, zoomValue));
         bubbleAutoCenteredRef.current = true;
     }, [viewMode, bubbleFieldSize.w, bubbleFieldSize.h, clampCamera, bubbleWorldScale]);
@@ -2902,24 +2972,27 @@ export default function TasteMapPage() {
 
     const setZoomAroundPoint = useCallback((nextZoom, anchorX, anchorY) => {
         cancelCameraAnimation();
-        setBubbleZoom((currentZoom) => {
-            const targetZoom = clampZoom(nextZoom);
-            const rect = bubbleFieldRef.current?.getBoundingClientRect();
-            const localX = rect ? anchorX - rect.left : bubbleFieldSize.w / 2;
-            const localY = rect ? anchorY - rect.top : bubbleFieldSize.h / 2;
-            const safeLocalX = Math.min(Math.max(localX, 0), bubbleFieldSize.w || localX);
-            const safeLocalY = Math.min(Math.max(localY, 0), bubbleFieldSize.h || localY);
+        const queuedViewport = queuedZoomCameraRef.current;
+        const currentZoom = queuedViewport?.zoom || bubbleZoomRef.current;
+        const baseCamera = queuedViewport?.camera || queuedCameraRef.current || cameraRef.current;
+        const targetZoom = clampZoom(nextZoom);
+        const rect = bubbleFieldRef.current?.getBoundingClientRect();
+        const localX = rect ? anchorX - rect.left : bubbleFieldSize.w / 2;
+        const localY = rect ? anchorY - rect.top : bubbleFieldSize.h / 2;
+        const safeLocalX = Math.min(Math.max(localX, 0), bubbleFieldSize.w || localX);
+        const safeLocalY = Math.min(Math.max(localY, 0), bubbleFieldSize.h || localY);
 
-            const baseCamera = queuedCameraRef.current || cameraRef.current;
-            const worldAnchorX = baseCamera.x + safeLocalX / currentZoom;
-            const worldAnchorY = baseCamera.y + safeLocalY / currentZoom;
-            const nextX = worldAnchorX - safeLocalX / targetZoom;
-            const nextY = worldAnchorY - safeLocalY / targetZoom;
-            scheduleCameraUpdate(clampCamera(nextX, nextY, targetZoom));
+        const worldAnchorX = baseCamera.x + safeLocalX / currentZoom;
+        const worldAnchorY = baseCamera.y + safeLocalY / currentZoom;
+        const nextX = worldAnchorX - safeLocalX / targetZoom;
+        const nextY = worldAnchorY - safeLocalY / targetZoom;
+        scheduleZoomCameraUpdate(targetZoom, clampCamera(nextX, nextY, targetZoom));
+    }, [bubbleFieldSize.w, bubbleFieldSize.h, cancelCameraAnimation, clampCamera, clampZoom, scheduleZoomCameraUpdate]);
 
-            return targetZoom;
-        });
-    }, [bubbleFieldSize.w, bubbleFieldSize.h, cancelCameraAnimation, clampCamera, clampZoom, scheduleCameraUpdate]);
+    const zoomAroundPointByFactor = useCallback((factor, anchorX, anchorY) => {
+        const currentZoom = queuedZoomCameraRef.current?.zoom || bubbleZoomRef.current;
+        setZoomAroundPoint(currentZoom * factor, anchorX, anchorY);
+    }, [setZoomAroundPoint]);
 
     // Keep the zoom anchored under the pointer for both mouse wheels and trackpads.
     useEffect(() => {
@@ -2932,12 +3005,11 @@ export default function TasteMapPage() {
             const deltaUnit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? window.innerHeight : 1;
             const normalizedDelta = Math.max(-180, Math.min(180, e.deltaY * deltaUnit));
             const factor = Math.exp(-normalizedDelta * 0.0018);
-            const next = Math.min(BUBBLE_ZOOM_MAX, Math.max(BUBBLE_ZOOM_MIN, bubbleZoomRef.current * factor));
-            setZoomAroundPoint(next, e.clientX, e.clientY);
+            zoomAroundPointByFactor(factor, e.clientX, e.clientY);
         };
         el.addEventListener('wheel', onWheel, { passive: false });
         return () => el.removeEventListener('wheel', onWheel);
-    }, [viewMode, setZoomAroundPoint]);
+    }, [viewMode, zoomAroundPointByFactor]);
 
     const handleBubblePanStart = useCallback((e) => {
         cancelCameraAnimation();
@@ -2950,7 +3022,7 @@ export default function TasteMapPage() {
                 const [p1, p2] = [...pinchRef.current.pointers.values()];
                 pinchRef.current.active = true;
                 pinchRef.current.startDist = Math.hypot(p2.x - p1.x, p2.y - p1.y) || 1;
-                pinchRef.current.startZoom = bubbleZoom;
+                pinchRef.current.startZoom = queuedZoomCameraRef.current?.zoom || bubbleZoomRef.current;
                 pinchRef.current.anchorX = (p1.x + p2.x) * 0.5;
                 pinchRef.current.anchorY = (p1.y + p2.y) * 0.5;
                 panRef.current.dragging = false;
@@ -2958,16 +3030,17 @@ export default function TasteMapPage() {
             }
         }
         const pt = getPoint(e);
+        const activeCamera = queuedZoomCameraRef.current?.camera || queuedCameraRef.current || cameraRef.current;
         panRef.current = {
             dragging: true,
             moved: false,
             startX: pt.x,
             startY: pt.y,
-            camX: camera.x,
-            camY: camera.y,
+            camX: activeCamera.x,
+            camY: activeCamera.y,
             lastMoveAt: panRef.current.lastMoveAt || 0,
         };
-    }, [camera.x, camera.y, bubbleZoom, cancelCameraAnimation]);
+    }, [cancelCameraAnimation]);
 
     const handleBubblePanMove = useCallback((e) => {
         if (e.pointerType === 'touch' && pinchRef.current.pointers.has(e.pointerId)) {
@@ -2991,15 +3064,16 @@ export default function TasteMapPage() {
         }
         if (panRef.current.moved) {
             if (e.cancelable) e.preventDefault();
+            const activeZoom = queuedZoomCameraRef.current?.zoom || bubbleZoomRef.current;
             const next = clampCamera(
-                panRef.current.camX - dx / bubbleZoom,
-                panRef.current.camY - dy / bubbleZoom,
-                bubbleZoom,
+                panRef.current.camX - dx / activeZoom,
+                panRef.current.camY - dy / activeZoom,
+                activeZoom,
             );
             scheduleCameraUpdate(next);
             panRef.current.lastMoveAt = Date.now();
         }
-    }, [clampCamera, bubbleZoom, setZoomAroundPoint, scheduleCameraUpdate]);
+    }, [clampCamera, setZoomAroundPoint, scheduleCameraUpdate]);
 
     const handleBubblePanEnd = useCallback((e) => {
         if (typeof e?.currentTarget?.releasePointerCapture === 'function' && e?.pointerId !== undefined) {
@@ -3182,6 +3256,98 @@ export default function TasteMapPage() {
         }
     }, [getMountedBubbleElement]);
 
+    const handleBubbleDragStart = useCallback((event, trackId) => {
+        if (event.button !== undefined && event.button !== 0) return;
+        const element = event.currentTarget;
+        if (!element || !trackId) return;
+
+        event.stopPropagation();
+        resetBubbleMagnetism();
+
+        const springTimer = bubbleSpringTimersRef.current.get(trackId);
+        if (springTimer) {
+            window.clearTimeout(springTimer);
+            bubbleSpringTimersRef.current.delete(trackId);
+        }
+
+        element.classList.remove('springing');
+        element.classList.add('dragging');
+        element.style.setProperty('--tm-drag-x', '0px');
+        element.style.setProperty('--tm-drag-y', '0px');
+        if (typeof element.setPointerCapture === 'function') {
+            try { element.setPointerCapture(event.pointerId); } catch { /* ignore */ }
+        }
+
+        bubbleDragRef.current = {
+            pointerId: event.pointerId,
+            trackId,
+            element,
+            startX: event.clientX,
+            startY: event.clientY,
+            moved: false,
+            lastMoveAt: bubbleDragRef.current.lastMoveAt || 0,
+        };
+    }, [resetBubbleMagnetism]);
+
+    const handleBubbleDragMove = useCallback((event) => {
+        const drag = bubbleDragRef.current;
+        if (drag.pointerId !== event.pointerId || !drag.element) return;
+
+        event.stopPropagation();
+        const rawX = event.clientX - drag.startX;
+        const rawY = event.clientY - drag.startY;
+        const distance = Math.hypot(rawX, rawY);
+        if (distance > 5) drag.moved = true;
+        if (!drag.moved) return;
+
+        if (event.cancelable) event.preventDefault();
+        const resistedDistance = Math.min(180, distance <= 72 ? distance : 72 + (distance - 72) * 0.38);
+        const ratio = distance > 0 ? resistedDistance / distance : 0;
+        drag.element.style.setProperty('--tm-drag-x', `${(rawX * ratio).toFixed(2)}px`);
+        drag.element.style.setProperty('--tm-drag-y', `${(rawY * ratio).toFixed(2)}px`);
+    }, []);
+
+    const handleBubbleDragEnd = useCallback((event) => {
+        const drag = bubbleDragRef.current;
+        if (drag.pointerId !== event.pointerId || !drag.element) return;
+
+        event.stopPropagation();
+        const { element, trackId, moved } = drag;
+        if (typeof element.releasePointerCapture === 'function') {
+            try { element.releasePointerCapture(event.pointerId); } catch { /* ignore */ }
+        }
+
+        element.classList.remove('dragging');
+        if (moved) {
+            if (event.cancelable) event.preventDefault();
+            element.classList.add('springing');
+            element.style.setProperty('--tm-drag-x', '0px');
+            element.style.setProperty('--tm-drag-y', '0px');
+            drag.lastMoveAt = Date.now();
+
+            const timerId = window.setTimeout(() => {
+                element.classList.remove('springing');
+                element.style.removeProperty('--tm-drag-x');
+                element.style.removeProperty('--tm-drag-y');
+                bubbleSpringTimersRef.current.delete(trackId);
+            }, 720);
+            bubbleSpringTimersRef.current.set(trackId, timerId);
+        } else {
+            element.style.removeProperty('--tm-drag-x');
+            element.style.removeProperty('--tm-drag-y');
+        }
+
+        bubbleDragRef.current = {
+            pointerId: null,
+            trackId: null,
+            element: null,
+            startX: 0,
+            startY: 0,
+            moved: false,
+            lastMoveAt: drag.lastMoveAt,
+        };
+    }, []);
+
     const handleMagneticPointerMove = useCallback((event) => {
         if (!magneticPullEnabled || event.pointerType === 'touch' || panRef.current.moved) {
             resetBubbleMagnetism();
@@ -3249,9 +3415,21 @@ export default function TasteMapPage() {
     }, [visibleBubbleRenderItems, magneticPullEnabled, getMountedBubbleElement, resetBubbleMagnetism]);
 
     const handleInteractiveBubbleMove = useCallback((event) => {
+        if (bubbleDragRef.current.pointerId === event.pointerId) {
+            handleBubbleDragMove(event);
+            return;
+        }
         handleBubblePanMove(event);
         handleMagneticPointerMove(event);
-    }, [handleBubblePanMove, handleMagneticPointerMove]);
+    }, [handleBubbleDragMove, handleBubblePanMove, handleMagneticPointerMove]);
+
+    const handleInteractivePointerEnd = useCallback((event) => {
+        if (bubbleDragRef.current.pointerId === event.pointerId) {
+            handleBubbleDragEnd(event);
+            return;
+        }
+        handleBubblePanEnd(event);
+    }, [handleBubbleDragEnd, handleBubblePanEnd]);
 
     useEffect(() => {
         resetBubbleMagnetism();
@@ -3668,8 +3846,8 @@ export default function TasteMapPage() {
         const rect = bubbleFieldRef.current?.getBoundingClientRect();
         const cx = rect ? rect.left + rect.width / 2 : 0;
         const cy = rect ? rect.top + rect.height / 2 : 0;
-        setZoomAroundPoint(bubbleZoomRef.current * factor, cx, cy);
-    }, [setZoomAroundPoint]);
+        zoomAroundPointByFactor(factor, cx, cy);
+    }, [zoomAroundPointByFactor]);
     const toggleExplore = useCallback(() => {
         const next = !exploreEnabled;
         setExploreEnabled(next);
@@ -3700,10 +3878,22 @@ export default function TasteMapPage() {
         const viewportH = bubbleFieldSize.h / targetZoom;
         const centerX = (minX + maxX) / 2;
         const centerY = (minY + maxY) / 2;
+        const targetCamera = clampCamera(centerX - viewportW / 2, centerY - viewportH / 2, targetZoom);
 
+        if (zoomCameraRafRef.current) {
+            window.cancelAnimationFrame(zoomCameraRafRef.current);
+            zoomCameraRafRef.current = 0;
+        }
+        if (cameraRafRef.current) {
+            window.cancelAnimationFrame(cameraRafRef.current);
+            cameraRafRef.current = 0;
+        }
+        queuedZoomCameraRef.current = null;
+        queuedCameraRef.current = null;
         bubbleZoomRef.current = targetZoom;
+        cameraRef.current = targetCamera;
         setBubbleZoom(targetZoom);
-        setCamera(clampCamera(centerX - viewportW / 2, centerY - viewportH / 2, targetZoom));
+        setCamera(targetCamera);
     }, [bubbleRenderItems, bubbleFieldSize.w, bubbleFieldSize.h, clampCamera, clampZoom]);
     const showFullTasteField = useCallback(() => {
         const hadActiveFilter = selectedCluster !== null || selectedPeriodKey !== null || Boolean(spectraExpandTrackId);
@@ -4010,7 +4200,8 @@ export default function TasteMapPage() {
 
     const handleBubbleClick = useCallback((track) => {
         const justPanned = Date.now() - (panRef.current.lastMoveAt || 0) < 120;
-        if (panRef.current.moved || justPanned) return;
+        const justDragged = Date.now() - (bubbleDragRef.current.lastMoveAt || 0) < 180;
+        if (panRef.current.moved || justPanned || justDragged) return;
         if (isSpectraExpandMode && track.id === spectraExpandTrackId) {
             setExploreEnabled(false);
             setSpectraExpandTrackId(null);
@@ -5346,8 +5537,8 @@ export default function TasteMapPage() {
                                         onClick={handleBubbleLayerClick}
                                         onContextMenu={handleBubbleLayerContextMenu}
                                         onPointerMove={handleInteractiveBubbleMove}
-                                        onPointerUp={handleBubblePanEnd}
-                                        onPointerCancel={handleBubblePanEnd}
+                                        onPointerUp={handleInteractivePointerEnd}
+                                        onPointerCancel={handleInteractivePointerEnd}
                                         onPointerLeave={resetBubbleMagnetism}
                                     >
                                         {visibleBubbleRenderItems.map(({ node, active, clusterFocused, clusterExpandPulsing, xPercent, yPercent, showLabel }) => {
@@ -5362,6 +5553,10 @@ export default function TasteMapPage() {
                                                     key={node.track.id}
                                                     data-bubble-id={node.track.id}
                                                     className={`tm-bubble-item${active ? '' : ' muted'}${showLabel ? ' show-label' : ''}${hovered ? ' hovered' : ''}${detailSelected ? ' detail-selected' : ''}${picked ? ' picked' : ''}${nowPlaying ? ' now-playing' : ''}${clusterFocused ? ' cluster-focus' : ''}${clusterExpandPulsing ? ' cluster-expand-pulse' : ''}${spectraBlur ? ' spectra-blur' : ''}${spectraAnchor ? ' spectra-anchor' : ''}`}
+                                                    onPointerDown={(event) => handleBubbleDragStart(event, node.track.id)}
+                                                    onPointerMove={handleBubbleDragMove}
+                                                    onPointerUp={handleBubbleDragEnd}
+                                                    onPointerCancel={handleBubbleDragEnd}
                                                     style={{
                                                         '--tm-bubble-size': node.style['--tm-bubble-size'],
                                                         '--tm-bubble-color': node.style['--tm-bubble-color'],
