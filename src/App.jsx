@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { TasteDataProvider, useTasteData } from './context/TasteDataContext';
 import { parseTrackList } from './utils/parseTrackList';
 import TasteMapPage from './pages/TasteMapPage';
@@ -475,14 +475,8 @@ function ImportOverlay() {
 
 function AppInner() {
   const { hasTaste } = useTasteData();
-  const location = useLocation();
-  const path = location.pathname;
-  // The mobile companion view loads taste via its own ?map=<id> handoff,
-  // so it should not be gated by the desktop import overlay.
-  const isTasteMapMobilePath = path.startsWith('/taste-map/mobile');
-  const needsImport = !isTasteMapMobilePath;
 
-  if (needsImport && !hasTaste) {
+  if (!hasTaste) {
     return <ImportOverlay />;
   }
 

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useSocket } from '../hooks/useSocket';
+import { useTasteData } from '../context/TasteDataContext';
 import './TasteMapMobilePage.css';
 
 function openExternal(track) {
@@ -115,15 +115,6 @@ function getGenreSymbol(genre) {
   }
 }
 
-function getMobileGenreTagStyle(genreEntry) {
-  const tone = genreEntry?.tone || GENRE_FAMILY_TONES.default;
-  return {
-    '--tmm-region-rgb': tone.rgb,
-    '--tmm-region-text': tone.text,
-    '--tmm-region-color': `rgb(${tone.rgb})`,
-  };
-}
-
 function buildGenreStats(tracks) {
   const map = new Map();
   for (const track of tracks) {
@@ -157,164 +148,45 @@ function getTrackCoverUrl(track) {
     || null;
 }
 
-const FIELD_ANCHORS = [
-  { x: 18, y: 24 },
-  { x: 36, y: 16 },
-  { x: 57, y: 26 },
-  { x: 76, y: 18 },
-  { x: 24, y: 46 },
-  { x: 46, y: 38 },
-  { x: 68, y: 48 },
-  { x: 16, y: 68 },
-  { x: 38, y: 72 },
-  { x: 61, y: 67 },
-  { x: 80, y: 74 },
-  { x: 52, y: 56 },
-];
-
-const ACTIONS = [
-  {
-    id: 'expand',
-    icon: '✦',
-    title: '취향 확장',
-    dockLabel: '확장',
-    subtitle: 'New territories',
-    description: '적게 들었거나 처음 듣는 공간을 가볍게 탐색합니다.',
-  },
-  {
-    id: 'core',
-    icon: '◎',
-    title: '기존 취향 선택',
-    dockLabel: '코어',
-    subtitle: 'Your core taste',
-    description: '익숙한 취향의 대표곡을 빠르게 듣고 취향을 단단히 합니다.',
-  },
-  {
-    id: 'shared',
-    icon: '◌',
-    title: '공유 취향 탐색',
-    dockLabel: '공유',
-    subtitle: 'Shared field',
-    description: '내 취향 카드를 전시하고 텍스트로 간단히 공유합니다.',
-  },
-];
-
-function SpectraSymbol({ symbol = 'headset', className = '' }) {
-  return (
-    <span className={`tmm-symbol tmm-symbol-${symbol}${className ? ` ${className}` : ''}`} aria-hidden>
-      <span className="tmm-symbol-core" />
-    </span>
-  );
+function calcExpandSeedStats(genreEntry) {
+  const list = Array.isArray(genreEntry?.tracks) ? genreEntry.tracks : [];
+  if (!list.length) return { valence: 0.5, energy: 0.5 };
+  const energy = list.reduce((acc, track) => acc + (Number(track?.energy) || 0), 0) / list.length;
+  const valence = list.reduce((acc, track) => acc + (Number(track?.valence) || 0), 0) / list.length;
+  return {
+    valence: Number.isFinite(valence) ? valence.toFixed(2) : '0.50',
+    energy: Number.isFinite(energy) ? energy.toFixed(2) : '0.50',
+  };
 }
 
 export default function TasteMapMobilePage() {
   const navigate = useNavigate();
-  const { socketRef, emitControl } = useSocket();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [profileName, setProfileName] = useState('나');
-  const [tracks, setTracks] = useState([]);
-  const [desktopHandoff, setDesktopHandoff] = useState(null);
-  const [mode, setMode] = useState('expand');
+  const { tracks } = useTasteData();
   const [selectedGenreKey, setSelectedGenreKey] = useState(null);
   const [selectedTrackId, setSelectedTrackId] = useState(null);
   const [expandRecs, setExpandRecs] = useState([]);
   const [expandRecsLoading, setExpandRecsLoading] = useState(false);
   const [expandRecsError, setExpandRecsError] = useState(null);
-  const [listenedTrackIds, setListenedTrackIds] = useState({});
   const [expandDecisions, setExpandDecisions] = useState({});
   const [mapAcceptedTracks, setMapAcceptedTracks] = useState([]);
   const [savingTrackId] = useState(null); // async library save removed; kept for UI parity.
   const [currentExpandIdx, setCurrentExpandIdx] = useState(0);
-  const [expandAnchorIdx, setExpandAnchorIdx] = useState(0);
-  const [copied, setCopied] = useState(false);
-  const [socketConnected, setSocketConnected] = useState(false);
-  const [remoteExpandStatus, setRemoteExpandStatus] = useState(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    const run = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const mapId = new URLSearchParams(window.location.search).get('map');
-        if (!mapId) {
-          throw new Error('연결 정보가 없어요. 데스크톱 화면의 QR을 다시 스캔해 주세요.');
-        }
-        const res = await fetch(api(`/api/taste/handoff/${encodeURIComponent(mapId)}`));
-        if (!res.ok) {
-          const txt = await res.text();
-          throw new Error(res.status === 404
-            ? '연결이 만료되었어요. 데스크톱에서 QR을 다시 띄워 주세요.'
-            : `HTTP ${res.status}: ${txt}`);
-        }
-        const data = await res.json();
-        const usableTracks = Array.isArray(data?.tracks)
-          ? data.tracks.filter((t) => t?.id)
-          : [];
-        if (!cancelled) {
-          setTracks(usableTracks);
-          setDesktopHandoff(data?.desktopHandoff || null);
-          if (data?.profileName) setProfileName(data.profileName);
-        }
-      } catch (e) {
-        if (!cancelled) setError(e?.message || '데이터를 불러오지 못했어요.');
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-    run();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    const id = window.setInterval(() => {
-      setSocketConnected(Boolean(socketRef.current?.connected));
-    }, 800);
-    return () => window.clearInterval(id);
-  }, [socketRef]);
 
   const genreStats = useMemo(() => buildGenreStats(tracks), [tracks]);
-
-  const coreGenres = useMemo(() => genreStats.slice(0, 12), [genreStats]);
   const expandGenres = useMemo(() => {
     if (genreStats.length <= 6) return genreStats.slice(0, 10);
     return genreStats.slice(4).sort((a, b) => a.count - b.count).slice(0, 10);
   }, [genreStats]);
-
-  const activeGenres = mode === 'expand' ? expandGenres : coreGenres;
-
-  useEffect(() => {
-    if (mode === 'shared') return;
-    if (!activeGenres.length) {
-      setSelectedGenreKey(null);
-      return;
-    }
-    if (!selectedGenreKey || !activeGenres.some((g) => g.key === selectedGenreKey)) {
-      setSelectedGenreKey(activeGenres[0].key);
-    }
-  }, [activeGenres, mode, selectedGenreKey]);
+  const activeGenres = expandGenres;
 
   const selectedGenre = useMemo(
     () => activeGenres.find((g) => g.key === selectedGenreKey) || activeGenres[0] || null,
     [activeGenres, selectedGenreKey],
   );
-
-  const desktopHandoffTracks = useMemo(
-    () => (Array.isArray(desktopHandoff?.nextTracks) ? desktopHandoff.nextTracks.filter((track) => track?.id && track?.name) : []),
-    [desktopHandoff],
-  );
-  useEffect(() => {
-    setExpandAnchorIdx(0);
-  }, [desktopHandoff]);
-  const useDesktopTrackSet = desktopHandoffTracks.length > 0;
   const activeTrackPool = useMemo(
     () => {
-      if (useDesktopTrackSet) return desktopHandoffTracks;
       const base = selectedGenre?.tracks || [];
-      if (mode !== 'expand' || !mapAcceptedTracks.length) return base;
+      if (!mapAcceptedTracks.length) return base;
       const merged = [...mapAcceptedTracks, ...base];
       const seen = new Set();
       return merged.filter((track) => {
@@ -323,65 +195,19 @@ export default function TasteMapMobilePage() {
         return true;
       });
     },
-    [useDesktopTrackSet, desktopHandoffTracks, selectedGenre, mode, mapAcceptedTracks],
+    [selectedGenre, mapAcceptedTracks],
   );
-
-  useEffect(() => {
-    const firstTrack = activeTrackPool[0] || null;
-    setSelectedTrackId(firstTrack?.id || null);
-  }, [activeTrackPool]);
 
   const selectedTrack = useMemo(() => {
     if (!activeTrackPool.length) return null;
     return activeTrackPool.find((track) => track.id === selectedTrackId) || activeTrackPool[0];
   }, [activeTrackPool, selectedTrackId]);
-  const expandAnchorTrack = useMemo(
-    () => {
-      if (mode === 'expand' && desktopHandoffTracks.length > 0) {
-        const safeIdx = ((expandAnchorIdx % desktopHandoffTracks.length) + desktopHandoffTracks.length) % desktopHandoffTracks.length;
-        return desktopHandoffTracks[safeIdx] || desktopHandoffTracks[0] || null;
-      }
-      return selectedTrack || activeTrackPool[0] || null;
-    },
-    [mode, desktopHandoffTracks, expandAnchorIdx, selectedTrack, activeTrackPool],
-  );
-  const desktopExpandTarget = expandAnchorTrack || selectedTrack || activeTrackPool[0] || null;
+  const expandAnchorTrack = selectedTrack || activeTrackPool[0] || null;
   const currentExpandTrack = useMemo(() => {
     if (!expandRecs.length) return null;
     const safeIndex = ((currentExpandIdx % expandRecs.length) + expandRecs.length) % expandRecs.length;
     return expandRecs[safeIndex] || null;
   }, [expandRecs, currentExpandIdx]);
-
-  const topGenreLabel = genreStats[0]?.label || '-';
-  const uniqueGenreCount = genreStats.length;
-
-  const moodLabel = useMemo(() => {
-    if (!tracks.length) return 'No signal';
-    const energy = tracks.reduce((acc, t) => acc + (Number(t.energy) || 0), 0) / tracks.length;
-    const valence = tracks.reduce((acc, t) => acc + (Number(t.valence) || 0), 0) / tracks.length;
-    if (energy > 0.68 && valence > 0.58) return 'Bright Pulse';
-    if (energy > 0.62 && valence < 0.45) return 'Dark Momentum';
-    if (energy < 0.45 && valence > 0.55) return 'Warm Drift';
-    return 'Balanced Orbit';
-  }, [tracks]);
-
-  const shareText = useMemo(() => {
-    const top = genreStats.slice(0, 5).map((g) => g.label).join(', ');
-    return [
-      `${profileName}'s SPECTRA taste field`,
-      `Core mood: ${moodLabel}`,
-      `Top regions: ${top || 'no data yet'}`,
-      `Unique genres: ${uniqueGenreCount}`,
-    ].join('\n');
-  }, [genreStats, moodLabel, profileName, uniqueGenreCount]);
-
-  const activeAction = useMemo(
-    () => ACTIONS.find((item) => item.id === mode) || ACTIONS[0],
-    [mode],
-  );
-  const storyGenres = useMemo(() => genreStats.slice(0, 10), [genreStats]);
-  const activeDockIndex = Math.max(0, ACTIONS.findIndex((item) => item.id === mode));
-  const profileInitial = String(profileName || 'S').trim().charAt(0).toUpperCase() || 'S';
 
   const playTrack = (track) => {
     // No Spotify playback — open the track on an external service instead.
@@ -391,24 +217,8 @@ export default function TasteMapMobilePage() {
     openExternal(resolved);
   };
 
-  const calcExpandSeedStats = (genreEntry) => {
-    const list = Array.isArray(genreEntry?.tracks) ? genreEntry.tracks : [];
-    if (!list.length) return { valence: 0.5, energy: 0.5 };
-    const energy = list.reduce((acc, track) => acc + (Number(track?.energy) || 0), 0) / list.length;
-    const valence = list.reduce((acc, track) => acc + (Number(track?.valence) || 0), 0) / list.length;
-    return {
-      valence: Number.isFinite(valence) ? valence.toFixed(2) : '0.50',
-      energy: Number.isFinite(energy) ? energy.toFixed(2) : '0.50',
-    };
-  };
-
   useEffect(() => {
-    if (mode !== 'expand' || !selectedGenre?.key) {
-      setExpandRecs([]);
-      setExpandRecsError(null);
-      setExpandRecsLoading(false);
-      return;
-    }
+    if (!selectedGenre?.key) return undefined;
 
     let cancelled = false;
     const run = async () => {
@@ -416,14 +226,8 @@ export default function TasteMapMobilePage() {
       setExpandRecsError(null);
       try {
         const seed = calcExpandSeedStats(selectedGenre);
-        const seedGenresFromDesktop = Array.isArray(desktopHandoff?.selectedGenreKeys)
-          ? desktopHandoff.selectedGenreKeys.filter(Boolean).slice(0, 3)
-          : [];
-        const seedGenresValue = seedGenresFromDesktop.length
-          ? seedGenresFromDesktop.join(',')
-          : selectedGenre.key;
         const params = new URLSearchParams({
-          seedGenres: seedGenresValue,
+          seedGenres: selectedGenre.key,
           valence: String(seed.valence),
           energy: String(seed.energy),
           limit: '12',
@@ -440,10 +244,12 @@ export default function TasteMapMobilePage() {
         const data = await res.json();
         const candidates = Array.isArray(data?.tracks) ? data.tracks.filter((track) => track?.id && track?.name) : [];
         if (!cancelled) {
+          setCurrentExpandIdx(0);
           setExpandRecs(candidates.slice(0, 12));
         }
       } catch (e) {
         if (!cancelled) {
+          setCurrentExpandIdx(0);
           setExpandRecs([]);
           setExpandRecsError(e?.message || '확장 추천곡을 가져오지 못했어요.');
         }
@@ -456,36 +262,21 @@ export default function TasteMapMobilePage() {
     return () => {
       cancelled = true;
     };
-  }, [mode, selectedGenre?.key, desktopHandoff?.selectedGenreKeys, expandAnchorTrack?.id]);
-
-  useEffect(() => {
-    setCurrentExpandIdx(0);
-  }, [mode, selectedGenre?.key, expandRecs.length]);
+  }, [selectedGenre, expandAnchorTrack?.artists, expandAnchorTrack?.name]);
 
   const handleExpandListen = (track) => {
     playTrack(track);
     setSelectedTrackId(track?.id || null);
-    if (track?.id) {
-      setListenedTrackIds((prev) => ({ ...prev, [track.id]: true }));
-    }
   };
 
   const handleExpandDecision = (track, decision) => {
     if (!track?.id) return;
     if (decision === 'accepted') {
-      // "Accept" adds the track to the shared plan and relays it to the desktop map.
+      // Keep accepted recommendations in this browser session.
       setMapAcceptedTracks((prev) => {
         const seen = new Set(prev.map((item) => item.id));
         if (seen.has(track.id)) return prev;
         return [track, ...prev];
-      });
-      emitControl('taste-map-plan-add', {
-        source: 'taste-map-mobile',
-        track: {
-          id: track.id,
-          name: track.name,
-          artists: track.artists,
-        },
       });
     }
     setExpandDecisions((prev) => ({ ...prev, [track.id]: decision }));
@@ -495,39 +286,10 @@ export default function TasteMapMobilePage() {
     if (!expandRecs.length) return;
     if (currentExpandIdx >= expandRecs.length - 1) {
       setCurrentExpandIdx(0);
-      if (mode === 'expand' && desktopHandoffTracks.length > 1) {
-        setExpandAnchorIdx((prev) => (prev + 1) % desktopHandoffTracks.length);
-      }
       return;
     }
     setCurrentExpandIdx((prev) => prev + 1);
   };
-
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(shareText);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1300);
-    } catch {
-      setCopied(false);
-    }
-  };
-
-  const handleRequestDesktopExpand = (track) => {
-    if (!track?.id) return;
-    emitControl('taste-map-expand', {
-      trackId: track.id,
-      source: 'taste-map-mobile',
-      requestedAt: Date.now(),
-    });
-    setRemoteExpandStatus(`"${track.name}" 기준으로 데스크톱 spectra 확장을 요청했어요.`);
-  };
-
-  useEffect(() => {
-    if (!remoteExpandStatus) return undefined;
-    const id = window.setTimeout(() => setRemoteExpandStatus(null), 2400);
-    return () => window.clearTimeout(id);
-  }, [remoteExpandStatus]);
 
   return (
     <div className="tmm-root tmm-root-compact">
@@ -542,36 +304,7 @@ export default function TasteMapMobilePage() {
         </div>
       </header>
 
-      {loading ? (
-        <section className="tmm-panel tmm-glass tmm-loading-panel">
-          <span className="tmm-loading-pulse" aria-hidden />
-        </section>
-      ) : error ? (
-        <section className="tmm-panel tmm-glass tmm-error-panel">
-          <p className="tmm-error-text">{error}</p>
-          <button
-            type="button"
-            className="tmm-copy-btn tmm-glass-btn"
-            onClick={() => window.location.reload()}
-          >
-            다시 시도
-          </button>
-        </section>
-      ) : (
-        <section className="tmm-panel tmm-glass">
-          <div className="tmm-remote-expand">
-            <button
-              type="button"
-              className="tmm-remote-expand-btn tmm-glass-btn"
-              onClick={() => handleRequestDesktopExpand(desktopExpandTarget)}
-              disabled={!desktopExpandTarget?.id || !socketConnected}
-            >
-              확장
-            </button>
-            <span className={`tmm-remote-expand-dot ${socketConnected ? 'on' : ''}`} aria-hidden />
-            {remoteExpandStatus && <span className="tmm-remote-expand-status">OK</span>}
-          </div>
-
+      <section className="tmm-panel tmm-glass">
           <div className="tmm-compact-genre-row">
             {activeGenres.slice(0, 8).map((genre) => (
               <button
@@ -588,31 +321,7 @@ export default function TasteMapMobilePage() {
           <div className="tmm-expand-flow">
             <div className="tmm-expand-head">
               <strong>{selectedGenre?.label || '확장 공간'}</strong>
-              {desktopHandoffTracks.length > 0 && (
-                <span className="tmm-expand-anchor-meta">
-                  핀 {((expandAnchorIdx % desktopHandoffTracks.length) + desktopHandoffTracks.length) % desktopHandoffTracks.length + 1}/{desktopHandoffTracks.length}
-                  {expandAnchorTrack?.name ? ` · ${expandAnchorTrack.name}` : ''}
-                </span>
-              )}
             </div>
-            {desktopHandoffTracks.length > 0 && (
-              <div className="tmm-expand-anchor-row">
-                {desktopHandoffTracks.slice(0, 8).map((track, idx) => (
-                  <button
-                    key={`anchor-${track.id}`}
-                    type="button"
-                    className={`tmm-expand-anchor-chip ${expandAnchorTrack?.id === track.id ? 'active' : ''}`}
-                    onClick={() => {
-                      setExpandAnchorIdx(idx);
-                      setCurrentExpandIdx(0);
-                    }}
-                    title={track.name}
-                  >
-                    📌 {idx + 1}
-                  </button>
-                ))}
-              </div>
-            )}
             {expandRecsLoading && <p className="tmm-expand-empty">…</p>}
             {expandRecsError && <p className="tmm-expand-empty">×</p>}
             {!expandRecsLoading && !expandRecsError && !currentExpandTrack && (
@@ -667,8 +376,7 @@ export default function TasteMapMobilePage() {
               );
             })()}
           </div>
-        </section>
-      )}
+      </section>
     </div>
   );
 }

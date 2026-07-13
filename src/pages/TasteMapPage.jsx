@@ -1,7 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
-import QRCode from 'qrcode';
 import { useTasteData } from '../context/TasteDataContext';
-import { useSocket } from '../hooks/useSocket';
 import './TasteMapPage.css';
 
 const API_BASE = import.meta?.env?.VITE_API_BASE || '';
@@ -1629,14 +1627,12 @@ function SpectraSymbol({ symbol = 'headset', className = '' }) {
 export default function TasteMapPage() {
     const {
         tracks: importedTracks,
-        featuresSource: importedFeaturesSource,
         stats: importedStats,
         mapId,
         reset,
     } = useTasteData();
     const user = null; // no account model — taste comes from the imported list
     const login = reset; // "re-import" replaces the old "re-login"
-    const { socketRef } = useSocket();
     const canvasRef = useRef(null);
     const containerRef = useRef(null);
     const bubbleFieldRef = useRef(null);
@@ -1665,7 +1661,6 @@ export default function TasteMapPage() {
     const [clusterVectors, setClusterVectors] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [featuresSource, setFeaturesSource] = useState(null); // 'audio' | 'genre' | 'none'
     const [dataStats, setDataStats] = useState(null);
     const source = 'spotify'; // fixed
     const clusterBasis = 'genre'; // fixed
@@ -1721,10 +1716,6 @@ export default function TasteMapPage() {
     const [shareSelectedMap, setShareSelectedMap] = useState({});
     const [expandPinMap, setExpandPinMap] = useState({});
     const [shareMessage, setShareMessage] = useState(null);
-    const [mobileHandoffSaving, setMobileHandoffSaving] = useState(false);
-    const [mobileHandoffStatus, setMobileHandoffStatus] = useState(null);
-    const [mobileLinkQr, setMobileLinkQr] = useState('');
-    const [mobileLinkCopied, setMobileLinkCopied] = useState(false);
     const [showUtilityControls, setShowUtilityControls] = useState(false);
     const [dashboardOpen, setDashboardOpen] = useState(false);
     const [ambientUiVisible, setAmbientUiVisible] = useState(false);
@@ -1757,7 +1748,6 @@ export default function TasteMapPage() {
     const cameraAnimationRafRef = useRef(0);
     const kmeansWorkerRef = useRef(null);
     const bubbleLayoutWorkerRef = useRef(null);
-    const lastAutoHandoffKeyRef = useRef('');
     const copy = TM_I18N[lang] || TM_I18N.ko;
 
     const triggerExpandedClusterHighlight = useCallback((clusterId) => {
@@ -1807,14 +1797,13 @@ export default function TasteMapPage() {
         const usable = (importedTracks || []).filter(
             (t) => t.valence !== null && t.valence !== undefined,
         );
-        setFeaturesSource(importedFeaturesSource || 'none');
         setDataStats(importedStats || {
             fetchedCount: usable.length,
             totalAvailable: usable.length,
         });
         setLoading(false);
         return usable;
-    }, [importedTracks, importedFeaturesSource, importedStats]);
+    }, [importedTracks, importedStats]);
 
     useEffect(() => {
         if (!cacheReady) return;
@@ -2323,46 +2312,6 @@ export default function TasteMapPage() {
 
         return selected.slice(0, BUBBLE_MAX_COUNT);
     }, [bubbleCandidateTracks, assignmentByTrackId, hasTrackFilter, activeTrackIds]);
-    const mobileHandoffTracks = useMemo(() => {
-        if (expandPinTracks.length > 0) {
-            return expandPinTracks.slice(0, 16);
-        }
-        if (shareSelectedIds.length > 0) {
-            return shareSelectedIds
-                .map((id) => trackLookupById.get(id) || shareSelectedMap[id])
-                .filter((track) => track?.id && track?.name)
-                .slice(0, 16);
-        }
-        if (exploreEnabled && exploreRecs.length > 0) {
-            return exploreRecs
-                .map((item) => item?.track)
-                .filter((track) => track?.id && track?.name)
-                .slice(0, 12);
-        }
-        return bubbleTracks
-            .filter((track) => track?.id && track?.name)
-            .slice(0, 12);
-    }, [
-        expandPinTracks,
-        shareSelectedIds,
-        trackLookupById,
-        shareSelectedMap,
-        exploreEnabled,
-        exploreRecs,
-        bubbleTracks,
-    ]);
-    const selectedGenreKeysForHandoff = useMemo(() => {
-        if (expandPinTracks.length > 0) {
-            return buildTopGenresFromTracks(expandPinTracks, 8);
-        }
-        const selected = selectedCluster !== null && clusterById[selectedCluster]
-            ? clusterById[selectedCluster]
-            : clusterStats[0] || null;
-        if (selected?.topGenres?.length) {
-            return selected.topGenres.map((genre) => normalizeGenre(genre)).filter(Boolean).slice(0, 8);
-        }
-        return buildTopGenresFromTracks(bubbleCandidateTracks, 8);
-    }, [expandPinTracks, selectedCluster, clusterById, clusterStats, bubbleCandidateTracks]);
     const knownTrackIds = useMemo(() => new Set(tracks.map((track) => track.id)), [tracks]);
     const spectraExpandTrack = useMemo(
         () => (spectraExpandTrackId ? tracks.find((track) => track.id === spectraExpandTrackId) || null : null),
@@ -4177,49 +4126,6 @@ export default function TasteMapPage() {
     }, [bubbleContextMenu, copy.contextMenuNoCluster, applySpectraExpandByTrackId]);
 
     useEffect(() => {
-        if (!socketRef.current) return undefined;
-
-        const handleRemoteControl = (data) => {
-            if (!data) return;
-            if (data.type === 'taste-map-expand') {
-                const ok = applySpectraExpandByTrackId(data.trackId);
-                if (ok) {
-                    setRecActionMessage('모바일 요청으로 spectra 확장을 적용했어요.');
-                } else {
-                    setRecActionMessage('모바일에서 보낸 곡을 현재 데스크톱 맵에서 찾지 못했습니다.');
-                }
-                return;
-            }
-            if (data.type === 'taste-map-plan-add') {
-                const track = data.track;
-                if (!track?.id) return;
-                setShareSelectedMap((prev) => ({
-                    ...prev,
-                    [track.id]: {
-                        id: track.id,
-                        name: track.name || 'Untitled',
-                        artists: track.artists || '',
-                    },
-                }));
-                setExpandPinMap((prev) => ({
-                    ...prev,
-                    [track.id]: {
-                        id: track.id,
-                        name: track.name || 'Untitled',
-                        artists: track.artists || '',
-                    },
-                }));
-                setRecActionMessage('모바일에서 확장 예정 버블을 데스크톱 큐에 추가했어요.');
-            }
-        };
-
-        socketRef.current.on('control', handleRemoteControl);
-        return () => {
-            socketRef.current?.off('control', handleRemoteControl);
-        };
-    }, [socketRef, applySpectraExpandByTrackId]);
-
-    useEffect(() => {
         if (exploreEnabled) return;
         if (!spectraExpandTrackId) return;
         setSpectraExpandTrackId(null);
@@ -4331,95 +4237,6 @@ export default function TasteMapPage() {
         setShareMode((prev) => !prev);
         setShareMessage(null);
     }, []);
-    // Build the mobile-companion link + QR whenever the map id changes.
-    const mobileLink = useMemo(() => {
-        if (!mapId || typeof window === 'undefined') return '';
-        return `${window.location.origin}/taste-map/mobile?map=${mapId}`;
-    }, [mapId]);
-
-    useEffect(() => {
-        if (!mobileLink) return undefined;
-        let alive = true;
-        QRCode.toDataURL(mobileLink, {
-            margin: 1,
-            width: 240,
-            color: { dark: '#0b1020', light: '#ffffff' },
-        })
-            .then((url) => { if (alive) setMobileLinkQr(url); })
-            .catch(() => { if (alive) setMobileLinkQr(''); });
-        return () => { alive = false; };
-    }, [mobileLink]);
-
-    const copyMobileLink = useCallback(async () => {
-        if (!mobileLink) return;
-        try {
-            await navigator.clipboard.writeText(mobileLink);
-            setMobileLinkCopied(true);
-            window.setTimeout(() => setMobileLinkCopied(false), 1300);
-        } catch {
-            setMobileLinkCopied(false);
-        }
-    }, [mobileLink]);
-
-    const syncDesktopHandoffToMobile = useCallback(async () => {
-        if (!tracks.length || !mapId) {
-            setMobileHandoffStatus(null);
-            return;
-        }
-        const handoffTracks = compactCompareTracks(mobileHandoffTracks, 16);
-
-        setMobileHandoffSaving(true);
-        setMobileHandoffStatus(null);
-        try {
-            const res = await fetch(api('/api/taste/handoff'), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    mapId,
-                    tracks,
-                    featuresSource,
-                    desktopHandoff: {
-                        mode: 'expand',
-                        expansionRange: '12m',
-                        selectedGenreKeys: selectedGenreKeysForHandoff,
-                        nextTracks: handoffTracks,
-                        note: `Desktop handoff · ${handoffTracks.length} tracks`,
-                        updatedAt: Date.now(),
-                    },
-                }),
-            });
-            if (!res.ok) {
-                const txt = await res.text();
-                throw new Error(txt || `HTTP ${res.status}`);
-            }
-            setMobileHandoffStatus(`모바일에 ${tracks.length}곡을 보냈어요.`);
-        } catch {
-            setMobileHandoffStatus('모바일 연동 저장에 실패했습니다.');
-        } finally {
-            setMobileHandoffSaving(false);
-        }
-    }, [
-        tracks,
-        mapId,
-        featuresSource,
-        mobileHandoffTracks,
-        selectedGenreKeysForHandoff,
-    ]);
-
-    useEffect(() => {
-        const handoffTracks = compactCompareTracks(mobileHandoffTracks, 16);
-        if (!tracks.length || !handoffTracks.length) return;
-        const key = JSON.stringify({
-            ids: handoffTracks.map((track) => track.id),
-            genres: selectedGenreKeysForHandoff,
-        });
-        if (lastAutoHandoffKeyRef.current === key) return;
-        lastAutoHandoffKeyRef.current = key;
-        const timer = window.setTimeout(() => {
-            syncDesktopHandoffToMobile();
-        }, 260);
-        return () => window.clearTimeout(timer);
-    }, [tracks, mobileHandoffTracks, selectedGenreKeysForHandoff, syncDesktopHandoffToMobile]);
 
     const handlePresetChange = useCallback((presetKey) => {
         const preset = AXIS_PRESETS.find((item) => item.key === presetKey);
@@ -4671,12 +4488,6 @@ export default function TasteMapPage() {
         if (viewMode !== 'bubble') return true;
         return ambientUiVisible || shareMode || mapFullscreen;
     }, [viewMode, ambientUiVisible, shareMode, mapFullscreen]);
-
-    useEffect(() => {
-        if (!mobileHandoffStatus) return undefined;
-        const timer = window.setTimeout(() => setMobileHandoffStatus(null), 2800);
-        return () => window.clearTimeout(timer);
-    }, [mobileHandoffStatus]);
 
     useEffect(() => {
         if (!recActionMessage) return undefined;
@@ -5936,26 +5747,6 @@ export default function TasteMapPage() {
                                 <span className="tm-mobile-sync-title">Spectra Starting Point</span>
                                 <span className="tm-mobile-sync-count">Pins {expandPinTracks.length}</span>
                             </div>
-                            {mapId && (
-                                <div className="tm-mobile-qr">
-                                    {mobileLinkQr && (
-                                        <img src={mobileLinkQr} alt="모바일 연결 QR" className="tm-mobile-qr-img" />
-                                    )}
-                                    <div className="tm-mobile-qr-body">
-                                        <p className="tm-mobile-qr-desc">
-                                            폰 카메라로 QR을 스캔하면 모바일 컴패니언이 열려 이 지도와 실시간 연동됩니다.
-                                        </p>
-                                        <button
-                                            type="button"
-                                            className="tm-mobile-qr-copy"
-                                            onClick={copyMobileLink}
-                                            disabled={!mobileLink}
-                                        >
-                                            {mobileLinkCopied ? '링크 복사됨' : '모바일 링크 복사'}
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
                             {expandPinTracks.length > 0 && (
                                 <div className="tm-mobile-sync-bubbles">
                                     {expandPinTracks.slice(0, 8).map((track) => (
@@ -5986,13 +5777,10 @@ export default function TasteMapPage() {
                                 </div>
                             )}
                             <div className="tm-mobile-sync-note">
-                                {mobileHandoffSaving
-                                    ? '모바일 동기화 중…'
-                                    : expandPinTracks.length > 0
-                                    ? '핀 목록이 모바일 확장 시퀀스에 자동 반영됩니다.'
+                                {expandPinTracks.length > 0
+                                    ? '핀 목록을 현재 브라우저의 확장 기준으로 유지합니다.'
                                     : '버블에서 📌를 눌러 Spectra starting point를 추가하세요.'}
                             </div>
-                            {mobileHandoffStatus && <div className="tm-mobile-sync-status">{mobileHandoffStatus}</div>}
                         </div>
                     </section>
 

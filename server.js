@@ -1,8 +1,5 @@
 import 'dotenv/config';
 import express from 'express';
-import { createServer } from 'http';
-import { Server } from 'socket.io';
-import cors from 'cors';
 import { existsSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -16,63 +13,19 @@ import {
     isLastfmConfigured,
 } from './src/server/lastfm.js';
 
-const CLIENT_APP_ORIGIN = process.env.CLIENT_APP_ORIGIN || 'http://localhost:5173';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const CLIENT_DIST_DIR = path.join(__dirname, 'dist');
 const CLIENT_INDEX_PATH = path.join(CLIENT_DIST_DIR, 'index.html');
+const isDirectRun = Boolean(process.argv[1]) && path.resolve(process.argv[1]) === __filename;
 
 const ENRICH_MAX_TRACKS = Number(process.env.ENRICH_MAX_TRACKS || 1500);
-const HANDOFF_TTL_MS = Number(process.env.HANDOFF_TTL_MS || 6 * 60 * 60 * 1000);
-const handoffStore = new Map(); // mapId -> { updatedAt, payload }
 
 const isProd = process.env.NODE_ENV === 'production';
 
 const app = express();
 app.set('trust proxy', 1);
 
-// ---------- CORS (same-origin + local network for the mobile companion) ----------
-
-function isLoopbackHost(hostname) {
-    const h = String(hostname || '').toLowerCase();
-    return h === 'localhost' || h === '127.0.0.1' || h === '::1';
-}
-
-function isPrivateIpv4(hostname) {
-    const h = String(hostname || '');
-    if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(h)) return false;
-    const [a, b] = h.split('.').map((n) => Number(n));
-    if ([a, b].some((n) => !Number.isFinite(n) || n < 0 || n > 255)) return false;
-    return a === 10 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168);
-}
-
-function isLocalNetworkHostname(hostname) {
-    const h = String(hostname || '').toLowerCase();
-    return isLoopbackHost(h) || isPrivateIpv4(h) || h.endsWith('.local');
-}
-
-function isAllowedCorsOrigin(origin) {
-    if (!origin) return true;
-    try {
-        const parsed = new URL(String(origin));
-        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false;
-        if (parsed.origin === CLIENT_APP_ORIGIN) return true;
-        return isLocalNetworkHostname(parsed.hostname);
-    } catch {
-        return false;
-    }
-}
-
-app.use(cors({
-    origin: (origin, callback) => {
-        if (isAllowedCorsOrigin(origin)) {
-            callback(null, true);
-            return;
-        }
-        callback(new Error('Not allowed by CORS'));
-    },
-    credentials: true,
-}));
 app.use(express.json({ limit: '8mb' }));
 
 // ---------- Tag → audio-feature estimation ----------
@@ -427,126 +380,20 @@ app.get('/api/discover', async (req, res) => {
     }
 });
 
-// ---------- Mobile companion handoff (taste-by-id) ----------
-//
-// The desktop pushes its enriched taste under a random mapId; the mobile companion
-// (reached via QR / ?map=<id>) reads it back. Replaces the old Spotify-session bridge.
-
-function pruneHandoffStore() {
-    const now = Date.now();
-    for (const [id, entry] of handoffStore.entries()) {
-        if (!entry || entry.updatedAt + HANDOFF_TTL_MS <= now) {
-            handoffStore.delete(id);
-        }
-    }
-}
-
-function isValidMapId(id) {
-    return typeof id === 'string' && /^[A-Za-z0-9_-]{8,64}$/.test(id);
-}
-
-function sanitizeHandoffTrack(t) {
-    if (!t || !t.id) return null;
-    return {
-        id: String(t.id),
-        name: String(t.name || ''),
-        artists: String(t.artists || ''),
-        album: t.album ? String(t.album) : '',
-        coverUrl: t.coverUrl ? String(t.coverUrl) : null,
-        durationMs: Number(t.durationMs) || 0,
-        addedAt: t.addedAt ?? null,
-        popularity: t.popularity ?? null,
-        valence: Number(t.valence),
-        energy: Number(t.energy),
-        danceability: Number(t.danceability),
-        acousticness: Number(t.acousticness),
-        instrumentalness: Number(t.instrumentalness),
-        tempo: t.tempo ?? null,
-        genres: Array.isArray(t.genres) ? t.genres.slice(0, 8).map(String) : [],
-        externalUrl: t.externalUrl ? String(t.externalUrl) : null,
-        featuresSource: t.featuresSource ? String(t.featuresSource) : 'lastfm',
-    };
-}
-
-app.post('/api/taste/handoff', (req, res) => {
-    pruneHandoffStore();
-    const mapId = req.body?.mapId;
-    if (!isValidMapId(mapId)) {
-        return res.status(400).json({ error: 'Invalid mapId.' });
-    }
-    const rawTracks = Array.isArray(req.body?.tracks) ? req.body.tracks : [];
-    const tracks = rawTracks.map(sanitizeHandoffTrack).filter(Boolean).slice(0, ENRICH_MAX_TRACKS);
-    if (tracks.length === 0) {
-        return res.status(400).json({ error: 'No tracks to hand off.' });
-    }
-    const payload = {
-        tracks,
-        featuresSource: req.body?.featuresSource ? String(req.body.featuresSource) : 'lastfm',
-        profileName: req.body?.profileName ? String(req.body.profileName).slice(0, 60) : null,
-        desktopHandoff: req.body?.desktopHandoff && typeof req.body.desktopHandoff === 'object'
-            ? req.body.desktopHandoff
-            : null,
-        updatedAt: Date.now(),
-    };
-    handoffStore.set(mapId, { updatedAt: payload.updatedAt, payload });
-    res.json({ ok: true, mapId, updatedAt: payload.updatedAt });
-});
-
-app.get('/api/taste/handoff/:mapId', (req, res) => {
-    pruneHandoffStore();
-    const { mapId } = req.params;
-    if (!isValidMapId(mapId)) {
-        return res.status(400).json({ error: 'Invalid mapId.' });
-    }
-    const entry = handoffStore.get(mapId);
-    if (!entry) {
-        return res.status(404).json({ error: 'Handoff not found or expired.' });
-    }
-    res.json(entry.payload);
-});
-
-// ---------- Socket.IO relay (mobile companion ↔ desktop, broadcast) ----------
-
-const httpServer = createServer(app);
-const io = new Server(httpServer, {
-    cors: {
-        origin: (origin, callback) => callback(null, isAllowedCorsOrigin(origin)),
-        credentials: true,
-    },
-});
-
-io.on('connection', (socket) => {
-    console.log(`[Socket] Client connected: ${socket.id}`);
-
-    // Relay control messages (e.g. taste-map-expand / taste-map-plan-add)
-    // between the mobile companion view and the desktop Taste Map.
-    socket.on('control', (data) => {
-        socket.broadcast.emit('control', data);
-    });
-
-    socket.on('spectrum', (data) => {
-        socket.broadcast.emit('spectrum', data);
-    });
-
-    socket.on('disconnect', () => {
-        console.log(`[Socket] Client disconnected: ${socket.id}`);
-    });
-});
-
 // ---------- SPA static serving (so /taste-map works when served from :3001) ----------
 
-if (existsSync(CLIENT_INDEX_PATH)) {
+if (isDirectRun && existsSync(CLIENT_INDEX_PATH)) {
     app.use(express.static(CLIENT_DIST_DIR, {
         index: false,
         maxAge: isProd ? '1h' : 0,
     }));
 
-    app.get(/^\/(?!api\/|socket\.io\/).*/, (req, res, next) => {
+    app.get(/^\/(?!api\/).*/, (req, res, next) => {
         if (req.method !== 'GET') return next();
         if (req.path.includes('.')) return next(); // skip asset-like paths
         return res.sendFile(CLIENT_INDEX_PATH);
     });
-} else {
+} else if (isDirectRun) {
     console.warn('[Web] dist/index.html not found. Build client first (`npm run build`) to enable direct route access on :3001.');
 }
 
@@ -554,22 +401,25 @@ const PORT = process.env.PORT || 3001;
 const HOST = process.env.HOST || '0.0.0.0';
 const DISABLE_SERVER = process.env.DISABLE_SERVER === '1';
 
-httpServer.on('error', (err) => {
-    if (err.code === 'EPERM') {
-        console.error(`[Socket] Listen blocked by environment (EPERM) on ${HOST}:${PORT}. Set DISABLE_SERVER=1 to suppress listen in restricted sandboxes.`);
-        return;
-    }
-    throw err;
-});
-
 if (!isLastfmConfigured()) {
     console.warn('[Last.fm] LASTFM_API_KEY not set — /api/taste/enrich and /api/discover will return 503. Add it to .env.');
 }
 
-if (DISABLE_SERVER) {
-    console.warn('[Socket] DISABLE_SERVER=1 — skipping listen() (useful in restricted environments)');
-} else {
-    httpServer.listen(PORT, HOST, () => {
-        console.log(`[Socket] Server listening on ${HOST}:${PORT}`);
-    });
+if (isDirectRun) {
+    if (DISABLE_SERVER) {
+        console.warn('[Server] DISABLE_SERVER=1 — skipping listen() (useful in restricted environments)');
+    } else {
+        const server = app.listen(PORT, HOST, () => {
+            console.log(`[Server] Listening on ${HOST}:${PORT}`);
+        });
+        server.on('error', (err) => {
+            if (err.code === 'EPERM') {
+                console.error(`[Server] Listen blocked by environment (EPERM) on ${HOST}:${PORT}. Set DISABLE_SERVER=1 to suppress listen in restricted sandboxes.`);
+                return;
+            }
+            throw err;
+        });
+    }
 }
+
+export default app;
