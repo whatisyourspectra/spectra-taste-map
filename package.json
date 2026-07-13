@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "SPECTRA Taste Map — a spatial visualization of your Spotify listening taste.",
+  "description": "SPECTRA Taste Map — a spatial visualization of your music taste, built from an imported track list enriched with Last.fm tags.",
   "scripts": {
     "dev": "vite",
     "server": "nodemon server.js",
@@ -14,17 +14,12 @@
   },
   "dependencies": {
     "concurrently": "^9.2.1",
-    "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.0",
-    "express-session": "^1.19.0",
-    "firebase": "^12.10.0",
     "nodemon": "^3.1.14",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.13.1",
-    "socket.io": "^4.8.3",
-    "socket.io-client": "^4.8.3",
     "three": "^0.184.0"
   },
   "devDependencies": {

@@ -1,9 +1,12 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { SpotifyAuthProvider, useSpotifyAuth } from './context/SpotifyAuthContext';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { TasteDataProvider, useTasteData } from './context/TasteDataContext';
+import { parseTrackList } from './utils/parseTrackList';
 import TasteMapPage from './pages/TasteMapPage';
 import TasteMapMobilePage from './pages/TasteMapMobilePage';
 import './LoginOverlay.css';
+
+const TUNE_MY_MUSIC_URL = 'https://www.tunemymusic.com/transfer';
 
 function seeded01(seed) {
   const raw = Math.sin(seed * 127.1 + 311.7) * 43758.5453123;
@@ -242,8 +245,62 @@ function TasteDepthScene() {
   return <div className="login-overlay__three" ref={mountRef} aria-hidden />;
 }
 
-function LoginOverlay() {
-  const { login } = useSpotifyAuth();
+function ImportOverlay() {
+  const { importTracks, status, progress, error } = useTasteData();
+  const [rawText, setRawText] = useState('');
+  const [fileName, setFileName] = useState('');
+  const [parseInfo, setParseInfo] = useState(null); // { count } | null
+  const [dragActive, setDragActive] = useState(false);
+  const fileInputRef = useRef(null);
+  const dragDepthRef = useRef(0);
+
+  const busy = status === 'importing';
+
+  const updateFromText = useCallback((text) => {
+    setRawText(text);
+    const parsed = parseTrackList(text);
+    setParseInfo(parsed.length > 0 ? { count: parsed.length } : null);
+  }, []);
+
+  const handleFile = useCallback((file) => {
+    if (!file) return;
+    setFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = () => updateFromText(String(reader.result || ''));
+    reader.readAsText(file);
+  }, [updateFromText]);
+
+  const handleDragEnter = useCallback((e) => {
+    e.preventDefault();
+    dragDepthRef.current += 1;
+    setDragActive(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e) => {
+    e.preventDefault();
+    dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
+    if (dragDepthRef.current === 0) setDragActive(false);
+  }, []);
+
+  const handleDrop = useCallback((e) => {
+    e.preventDefault();
+    dragDepthRef.current = 0;
+    setDragActive(false);
+    const file = e.dataTransfer?.files?.[0];
+    if (file) handleFile(file);
+  }, [handleFile]);
+
+  const openFilePicker = useCallback(() => {
+    if (!busy) fileInputRef.current?.click();
+  }, [busy]);
+
+  const handleGenerate = useCallback(() => {
+    const parsed = parseTrackList(rawText);
+    if (parsed.length === 0) return;
+    importTracks(parsed);
+  }, [rawText, importTracks]);
+
+  const pct = progress.total > 0 ? Math.round((progress.done / progress.total) * 100) : 0;
 
   return (
     <div className="login-overlay taste">
@@ -293,7 +350,7 @@ function LoginOverlay() {
           />
         ))}
       </div>
-      <div className="login-overlay__taste-layout">
+      <div className="login-overlay__taste-layout import">
         <section className="login-overlay__hero-copy">
           <h1 className="login-overlay__brand">S P E C T R A</h1>
           <h2 className="login-overlay__headline">
@@ -302,59 +359,125 @@ function LoginOverlay() {
             of your music taste.
           </h2>
           <p className="login-overlay__lead">
-            SPECTRA transforms your listening history into a living spatial experience.
-            Discover emotional patterns, hidden clusters, and the evolution of your musical identity.
+            SPECTRA는 당신의 감상 이력을 살아 움직이는 공간 경험으로 바꿉니다.
+            감정의 결, 숨은 군집, 그리고 취향의 흐름을 발견해 보세요.
           </p>
         </section>
         <section className="login-overlay__hero-stage">
-          <div className="login-overlay__portal taste">
-            <span className="login-overlay__portal-core" aria-hidden />
-            <span className="login-overlay__portal-ripple ripple-a" aria-hidden />
-            <span className="login-overlay__portal-ripple ripple-b" aria-hidden />
-            <button
-              onClick={login}
-              className="login-overlay__enter taste"
+          <div className="import-stage">
+            <p className="import-stage__lead">
+              좋아요한 곡 목록을 가져오면 SPECTRA가 감정·장르 패턴을 공간으로 그려줍니다.
+              아래 안내대로 목록을 내보낸 뒤 붙여넣거나 파일을 올려주세요.
+            </p>
+            <ol className="import-guide">
+              <li>
+                <a
+                  className="import-guide__tmm"
+                  href={TUNE_MY_MUSIC_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Tune My Music 열기 ↗
+                </a>
+                <span className="import-guide__hint">새 탭에서 외부 사이트가 열립니다.</span>
+              </li>
+              <li>소스로 <b>Spotify</b>(내 좋아요 / 플레이리스트)를 선택합니다.</li>
+              <li>목적지를 <b>Export to file</b>(CSV)로 골라 내보냅니다.</li>
+              <li>받은 파일을 아래에 올리거나, 목록을 붙여넣습니다.</li>
+            </ol>
+
+            <div
+              className={`import-panel${dragActive ? ' dragging' : ''}`}
+              onDragEnter={handleDragEnter}
+              onDragOver={(e) => e.preventDefault()}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
             >
-              Enter SPECTRA
-            </button>
+              <button
+                type="button"
+                className="import-dropzone"
+                onClick={openFilePicker}
+                disabled={busy}
+              >
+                <span className="import-dropzone__icon" aria-hidden>⤓</span>
+                <span className="import-dropzone__title">
+                  {fileName ? fileName : '파일을 여기로 드래그하거나 클릭해서 선택'}
+                </span>
+                <span className="import-dropzone__hint">
+                  {fileName
+                    ? (parseInfo ? `${parseInfo.count}곡 인식됨 · 다른 파일로 바꾸려면 클릭` : '인식된 곡이 없어요 · 다시 시도')
+                    : 'CSV · TXT 파일 지원'}
+                </span>
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv,.txt,text/csv,text/plain"
+                style={{ display: 'none' }}
+                onChange={(e) => handleFile(e.target.files?.[0])}
+              />
+
+              <div className="import-panel__or"><span>또는 목록 붙여넣기</span></div>
+
+              <textarea
+                className="import-panel__textarea"
+                placeholder={'한 줄에 한 곡씩:\nDaft Punk - Around the World\nTame Impala - The Less I Know the Better'}
+                value={rawText}
+                onChange={(e) => updateFromText(e.target.value)}
+                disabled={busy}
+                spellCheck={false}
+              />
+
+              <button
+                type="button"
+                className="login-overlay__enter taste import-panel__cta"
+                onClick={handleGenerate}
+                disabled={busy || !parseInfo}
+              >
+                {busy ? `분석 중… ${pct}%` : parseInfo ? `${parseInfo.count}곡으로 지도 만들기` : '곡 목록을 입력하세요'}
+              </button>
+              {error && <span className="import-panel__error">{error}</span>}
+
+              {dragActive && (
+                <div className="import-panel__dropveil" aria-hidden>
+                  <span>여기에 파일을 놓으세요</span>
+                </div>
+              )}
+            </div>
+            <span className="login-overlay__subtext">
+              데이터는 태그 분석을 위해 서버로만 전송되며, Spotify 로그인은 필요 없습니다.
+            </span>
           </div>
-          <span className="login-overlay__subtext">Connect with Spotify to generate your personal taste field.</span>
         </section>
       </div>
       <div className="login-overlay__edge-glow" aria-hidden />
+
+      {busy && (
+        <div className="import-analyzing" role="status" aria-live="polite">
+          <div className="import-analyzing__card">
+            <span className="import-analyzing__spinner" aria-hidden />
+            <h3 className="import-analyzing__title">취향을 분석하는 중…</h3>
+            <p className="import-analyzing__sub">
+              Last.fm 태그를 감정·장르 좌표로 변환하고 있어요.
+            </p>
+            <div className="import-analyzing__bar" aria-hidden>
+              <span style={{ width: `${pct}%` }} />
+            </div>
+            <span className="import-analyzing__pct">
+              {progress.done}/{progress.total}곡 · {pct}%
+            </span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 function AppInner() {
-  const { loading, loggedIn } = useSpotifyAuth();
-  const location = useLocation();
-  const path = location.pathname;
-  // The mobile companion view authenticates via its own QR/bridge flow,
-  // so it should not be gated by the desktop login overlay.
-  const isTasteMapMobilePath = path.startsWith('/taste-map/mobile');
-  const needsAuth = !isTasteMapMobilePath;
+  const { hasTaste } = useTasteData();
 
-  if (loading) {
-    return (
-      <div style={{
-        position: 'fixed', inset: 0, background: '#0d0f12',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}>
-        <div style={{
-          width: 28, height: 28,
-          border: '2px solid rgba(167,139,250,0.15)',
-          borderTopColor: '#a78bfa',
-          borderRadius: '50%',
-          animation: 'spin 0.8s linear infinite',
-        }} />
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      </div>
-    );
-  }
-
-  if (needsAuth && !loggedIn) {
-    return <LoginOverlay />;
+  if (!hasTaste) {
+    return <ImportOverlay />;
   }
 
   return (
@@ -390,11 +513,11 @@ function ResponsiveTasteMapRoute() {
 
 function App() {
   return (
-    <SpotifyAuthProvider>
+    <TasteDataProvider>
       <Router>
         <AppInner />
       </Router>
-    </SpotifyAuthProvider>
+    </TasteDataProvider>
   );
 }
 

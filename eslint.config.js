@@ -26,4 +26,12 @@ export default defineConfig([
       'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
     },
   },
+  {
+    // Server-side (Node) files: Express API + Last.fm client + build config.
+    files: ['server.js', 'api/**/*.js', 'src/server/**/*.js', '*.config.js'],
+    languageOptions: {
+      globals: globals.node,
+      sourceType: 'module',
+    },
+  },
 ])

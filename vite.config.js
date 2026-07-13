@@ -12,19 +12,8 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
     proxy: {
-      // Let socket.io-client connect to the current host (5173) and proxy to backend.
-      '/socket.io': {
-        target: proxyTarget,
-        ws: true,
-        changeOrigin: true,
-      },
-      // Spotify API proxy (token + search stay on server, no client secret in browser)
+      // API proxy — Last.fm enrichment / discovery (key stays server-side).
       '/api': {
-        target: proxyTarget,
-        changeOrigin: true,
-      },
-      // Auth endpoints for Spotify login
-      '/auth': {
         target: proxyTarget,
         changeOrigin: true,
       },

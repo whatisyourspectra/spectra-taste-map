@@ -127,7 +127,11 @@ self.onmessage = ({ data }) => {
 
     const clusterPull = count > 1000 ? 0.016 : count > 600 ? 0.022 : count > 300 ? 0.028 : 0.034;
     const cellSize = (sizeMax + sepPadAdjusted) * 2.2;
-    for (let iter = 0; iter < 44; iter++) {
+    // Large imports favor fast, stable placement over imperceptible late-pass
+    // collision refinements. This keeps a multi-thousand-track layout from
+    // monopolizing the worker while preserving the same spatial character.
+    const layoutIterations = count > 1600 ? 22 : count > 900 ? 28 : count > 450 ? 36 : 44;
+    for (let iter = 0; iter < layoutIterations; iter++) {
         const grid = new Map();
         for (let i = 0; i < nodes.length; i++) {
             const gx = Math.floor(nodes[i].x / cellSize);
