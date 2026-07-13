@@ -1,8 +1,16 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useSpotifyAuth } from '../context/SpotifyAuthContext';
 import { useSocket } from '../hooks/useSocket';
 import './TasteMapMobilePage.css';
+
+function openExternal(track) {
+  const query = `${track?.artists || ''} ${track?.name || ''}`.trim();
+  const url = track?.externalUrl
+    || (query ? `https://open.spotify.com/search/${encodeURIComponent(query)}` : null);
+  if (url && typeof window !== 'undefined') {
+    window.open(url, '_blank', 'noopener,noreferrer');
+  }
+}
 
 const API_BASE = import.meta?.env?.VITE_API_BASE || '';
 const api = (path) => `${API_BASE}${path}`;
@@ -201,7 +209,6 @@ function SpectraSymbol({ symbol = 'headset', className = '' }) {
 
 export default function TasteMapMobilePage() {
   const navigate = useNavigate();
-  const { login } = useSpotifyAuth();
   const { socketRef, emitControl } = useSocket();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -217,7 +224,7 @@ export default function TasteMapMobilePage() {
   const [listenedTrackIds, setListenedTrackIds] = useState({});
   const [expandDecisions, setExpandDecisions] = useState({});
   const [mapAcceptedTracks, setMapAcceptedTracks] = useState([]);
-  const [savingTrackId, setSavingTrackId] = useState(null);
+  const [savingTrackId] = useState(null); // async library save removed; kept for UI parity.
   const [currentExpandIdx, setCurrentExpandIdx] = useState(0);
   const [expandAnchorIdx, setExpandAnchorIdx] = useState(0);
   const [copied, setCopied] = useState(false);
@@ -230,34 +237,25 @@ export default function TasteMapMobilePage() {
       setLoading(true);
       setError(null);
       try {
-        const [profileRes, tracksRes, snapshotRes] = await Promise.all([
-          fetch(api('/api/me/profile'), { credentials: 'include' }),
-          fetch(api('/api/me/liked-tracks-features?includeGenres=1'), { credentials: 'include' }),
-          fetch(api('/api/me/taste-snapshot'), { credentials: 'include' }),
-        ]);
-
-        if (!tracksRes.ok) {
-          const txt = await tracksRes.text();
-          throw new Error(`HTTP ${tracksRes.status}: ${txt}`);
+        const mapId = new URLSearchParams(window.location.search).get('map');
+        if (!mapId) {
+          throw new Error('연결 정보가 없어요. 데스크톱 화면의 QR을 다시 스캔해 주세요.');
         }
-
-        const tracksData = await tracksRes.json();
-        const usableTracks = Array.isArray(tracksData?.tracks)
-          ? tracksData.tracks.filter((t) => t?.id)
+        const res = await fetch(api(`/api/taste/handoff/${encodeURIComponent(mapId)}`));
+        if (!res.ok) {
+          const txt = await res.text();
+          throw new Error(res.status === 404
+            ? '연결이 만료되었어요. 데스크톱에서 QR을 다시 띄워 주세요.'
+            : `HTTP ${res.status}: ${txt}`);
+        }
+        const data = await res.json();
+        const usableTracks = Array.isArray(data?.tracks)
+          ? data.tracks.filter((t) => t?.id)
           : [];
-        if (!cancelled) setTracks(usableTracks);
-
-        if (snapshotRes.ok) {
-          const snapshotData = await snapshotRes.json();
-          const handoff = snapshotData?.snapshot?.desktopHandoff || null;
-          if (!cancelled) {
-            setDesktopHandoff(handoff);
-          }
-        }
-
-        if (profileRes.ok) {
-          const profile = await profileRes.json();
-          if (!cancelled && profile?.displayName) setProfileName(profile.displayName);
+        if (!cancelled) {
+          setTracks(usableTracks);
+          setDesktopHandoff(data?.desktopHandoff || null);
+          if (data?.profileName) setProfileName(data.profileName);
         }
       } catch (e) {
         if (!cancelled) setError(e?.message || '데이터를 불러오지 못했어요.');
@@ -385,18 +383,12 @@ export default function TasteMapMobilePage() {
   const activeDockIndex = Math.max(0, ACTIONS.findIndex((item) => item.id === mode));
   const profileInitial = String(profileName || 'S').trim().charAt(0).toUpperCase() || 'S';
 
-  const playTrack = async (trackId) => {
-    if (!trackId) return;
-    try {
-      await fetch(api('/api/me/playback/play-track'), {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ trackId }),
-      });
-    } catch {
-      // ignore playback errors in mobile flow
-    }
+  const playTrack = (track) => {
+    // No Spotify playback — open the track on an external service instead.
+    const resolved = typeof track === 'object'
+      ? track
+      : tracks.find((t) => t.id === track) || expandRecs.find((t) => t.id === track);
+    openExternal(resolved);
   };
 
   const calcExpandSeedStats = (genreEntry) => {
@@ -435,13 +427,12 @@ export default function TasteMapMobilePage() {
           valence: String(seed.valence),
           energy: String(seed.energy),
           limit: '12',
-          strangeness: expandAnchorTrack?.id ? '0.62' : '0.78',
-          market: 'KR',
         });
-        if (expandAnchorTrack?.id) {
-          params.set('seedTracks', expandAnchorTrack.id);
+        if (expandAnchorTrack?.artists && expandAnchorTrack?.name) {
+          const seedArtist = String(expandAnchorTrack.artists).split(',')[0].trim();
+          params.set('seedTracks', `${seedArtist}|${expandAnchorTrack.name}`);
         }
-        const res = await fetch(api(`/api/spotify/digging?${params.toString()}`), { credentials: 'include' });
+        const res = await fetch(api(`/api/discover?${params.toString()}`));
         if (!res.ok) {
           const txt = await res.text();
           throw new Error(txt || `HTTP ${res.status}`);
@@ -471,47 +462,31 @@ export default function TasteMapMobilePage() {
     setCurrentExpandIdx(0);
   }, [mode, selectedGenre?.key, expandRecs.length]);
 
-  const handleExpandListen = async (track) => {
-    await playTrack(track?.id);
+  const handleExpandListen = (track) => {
+    playTrack(track);
     setSelectedTrackId(track?.id || null);
     if (track?.id) {
       setListenedTrackIds((prev) => ({ ...prev, [track.id]: true }));
     }
   };
 
-  const handleExpandDecision = async (track, decision) => {
+  const handleExpandDecision = (track, decision) => {
     if (!track?.id) return;
     if (decision === 'accepted') {
-      setSavingTrackId(track.id);
-      try {
-        const res = await fetch(api('/api/me/library/save'), {
-          method: 'PUT',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ trackId: track.id }),
-        });
-        if (!res.ok) {
-          const txt = await res.text();
-          throw new Error(txt || `HTTP ${res.status}`);
-        }
-        setMapAcceptedTracks((prev) => {
-          const seen = new Set(prev.map((item) => item.id));
-          if (seen.has(track.id)) return prev;
-          return [track, ...prev];
-        });
-        emitControl('taste-map-plan-add', {
-          source: 'taste-map-mobile',
-          track: {
-            id: track.id,
-            name: track.name,
-            artists: track.artists,
-          },
-        });
-      } catch {
-        // keep flow even when save fails
-      } finally {
-        setSavingTrackId(null);
-      }
+      // "Accept" adds the track to the shared plan and relays it to the desktop map.
+      setMapAcceptedTracks((prev) => {
+        const seen = new Set(prev.map((item) => item.id));
+        if (seen.has(track.id)) return prev;
+        return [track, ...prev];
+      });
+      emitControl('taste-map-plan-add', {
+        source: 'taste-map-mobile',
+        track: {
+          id: track.id,
+          name: track.name,
+          artists: track.artists,
+        },
+      });
     }
     setExpandDecisions((prev) => ({ ...prev, [track.id]: decision }));
   };
@@ -573,8 +548,13 @@ export default function TasteMapMobilePage() {
         </section>
       ) : error ? (
         <section className="tmm-panel tmm-glass tmm-error-panel">
-          <button type="button" className="tmm-copy-btn tmm-glass-btn" onClick={login}>
-            다시 연결
+          <p className="tmm-error-text">{error}</p>
+          <button
+            type="button"
+            className="tmm-copy-btn tmm-glass-btn"
+            onClick={() => window.location.reload()}
+          >
+            다시 시도
           </button>
         </section>
       ) : (
