@@ -44,18 +44,6 @@ export function TasteDataProvider({ children }) {
     const [progress, setProgress] = useState({ done: 0, total: 0 });
     const [error, setError] = useState(null);
 
-    const pushHandoff = useCallback(async (id, list, source) => {
-        try {
-            await fetch(api('/api/taste/handoff'), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ mapId: id, tracks: list, featuresSource: source }),
-            });
-        } catch {
-            /* mobile handoff is best-effort */
-        }
-    }, []);
-
     const importTracks = useCallback(async (parsedList) => {
         const list = Array.isArray(parsedList) ? parsedList : [];
         if (list.length === 0) {
@@ -112,9 +100,8 @@ export function TasteDataProvider({ children }) {
         setMapId(id);
         setStatus('ready');
         persist({ tracks: finalTracks, featuresSource: source, stats: nextStats, mapId: id });
-        pushHandoff(id, finalTracks, source);
         return { ok: true, count: finalTracks.length };
-    }, [pushHandoff]);
+    }, []);
 
     const reset = useCallback(() => {
         setTracks([]);
@@ -154,6 +141,8 @@ export function TasteDataProvider({ children }) {
     );
 }
 
+// The provider and its companion hook intentionally share this module.
+// eslint-disable-next-line react-refresh/only-export-components
 export function useTasteData() {
     const ctx = useContext(TasteDataContext);
     if (!ctx) throw new Error('useTasteData must be used within TasteDataProvider');

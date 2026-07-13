@@ -12,13 +12,7 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
     proxy: {
-      // Let socket.io-client connect to the current host (5173) and proxy to backend.
-      '/socket.io': {
-        target: proxyTarget,
-        ws: true,
-        changeOrigin: true,
-      },
-      // API proxy — Last.fm enrichment / discovery / handoff (key stays server-side).
+      // API proxy — Last.fm enrichment / discovery (key stays server-side).
       '/api': {
         target: proxyTarget,
         changeOrigin: true,

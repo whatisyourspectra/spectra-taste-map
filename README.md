@@ -3,8 +3,7 @@
 A spatial visualization of your music taste. You import a list of your liked
 songs (exported from Spotify/Apple/etc. via **Tune My Music**, Exportify, or any
 CSV), SPECTRA enriches each track with **Last.fm** community tags, and turns them
-into an interactive, clustered "taste field" you can explore — plus a mobile
-companion view that syncs back to the desktop map in real time.
+into an interactive, clustered "taste field" you can explore on desktop or mobile.
 
 This repository is the standalone **Taste Map** feature extracted from the
 larger SPECTRA project.
@@ -28,16 +27,13 @@ acousticness / instrumentalness` space the map clusters on.
 - **Responsive** — desktop map (`TasteMapPage`) and a touch-first mobile view
   (`TasteMapMobilePage`), auto-selected by viewport, also reachable directly at
   `/taste-map/mobile`.
-- **Mobile companion + QR** — the desktop shows a QR/link; scanning it opens the
-  companion, which loads the same taste by `mapId` and relays actions
-  (expand / plan-add) back over Socket.IO.
 - **Digging** — discovery via Last.fm `track.getSimilar` / `tag.getTopTracks`.
 - Track clicks open the song on an external service (Spotify/YouTube search).
 
 ## Tech stack
 
 - **Client:** React 19, React Router, Vite, Three.js (import scene), Web Workers
-- **Server:** Node + Express, Socket.IO, Last.fm API (tag enrichment)
+- **Server:** Node + Express, Vercel Functions, Last.fm API (tag enrichment)
 
 ## Prerequisites
 
@@ -57,7 +53,7 @@ set `LASTFM_MOCK=1` (deterministic synthetic tags for demos/verification).
 
 ## Development
 
-Run the Vite client (`:5173`) and the API/Socket server (`:3001`) together:
+Run the Vite client (`:5173`) and the API server (`:3001`) together:
 
 ```bash
 npm run dev:all
@@ -66,8 +62,8 @@ npm run dev:all
 Or run them separately:
 
 ```bash
-npm run server   # Express + Socket.IO on :3001
-npm run dev      # Vite dev client on :5173 (proxies /api, /socket.io → :3001)
+npm run server   # Express API on :3001
+npm run dev      # Vite dev client on :5173 (proxies /api → :3001)
 ```
 
 Open http://127.0.0.1:5173, then import a track list to generate your map.
@@ -82,16 +78,16 @@ npm run server   # serves dist/ and the API from :3001
 ## Project layout
 
 ```
-server.js                     Express API (Last.fm enrich/discover/handoff) + Socket.IO relay
+server.js                     Express API (Last.fm enrich/discover) + local production server
+api/                          Vercel Function entrypoints for the Express API
 src/
   App.jsx                     Routing + import overlay (Three.js scene + Tune My Music guide)
   context/TasteDataContext    Imported + enriched taste (sessionStorage backed)
-  hooks/useSocket.js          Socket.IO client + control/spectrum helpers
   server/lastfm.js            Last.fm client (tags, similar, tag-top; mock mode)
   utils/parseTrackList.js     CSV / "Artist - Title" list parser
   pages/
     TasteMapPage.jsx          Desktop taste map
-    TasteMapMobilePage.jsx    Mobile companion view
+    TasteMapMobilePage.jsx    Touch-first view using the current browser session
   workers/
     kmeansWorker.js           Clustering
     bubbleLayoutWorker.js     Bubble packing / layout
@@ -102,4 +98,6 @@ docs/TASTE_MAP_SPEC_KO.md     Feature spec (Korean)
 
 - `POST /api/taste/enrich` — `{ tracks:[{artist,title}] }` → enriched taste
 - `GET  /api/discover` — Last.fm-backed discovery (valence/energy/seedGenres/seedTracks)
-- `POST /api/taste/handoff` · `GET /api/taste/handoff/:mapId` — mobile companion handoff
+
+On Vercel, set `LASTFM_API_KEY`; the files under `api/` expose both endpoints as
+Vercel Functions while the Vite app remains a static deployment.

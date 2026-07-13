@@ -28,7 +28,7 @@ export default defineConfig([
   },
   {
     // Server-side (Node) files: Express API + Last.fm client + build config.
-    files: ['server.js', 'src/server/**/*.js', '*.config.js'],
+    files: ['server.js', 'api/**/*.js', 'src/server/**/*.js', '*.config.js'],
     languageOptions: {
       globals: globals.node,
       sourceType: 'module',

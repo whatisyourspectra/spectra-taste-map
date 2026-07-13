@@ -1,5 +1,5 @@
 /* ════════════════════════════════════════════════════════════
-   SPECTRA Taste Map — mobile companion, commercial theme
+   SPECTRA Taste Map — responsive mobile view, commercial theme
    Light/dark follows the system theme (prefers-color-scheme)
    ════════════════════════════════════════════════════════════ */
 
@@ -334,43 +334,6 @@
   background: var(--tmm-btn-bg);
 }
 
-.tmm-remote-expand {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-
-.tmm-remote-expand-btn {
-  height: 36px;
-  border-radius: 999px;
-  font-size: 0.82rem;
-  font-weight: 700;
-  min-width: 86px;
-}
-
-.tmm-remote-expand-btn:disabled {
-  opacity: 0.45;
-}
-
-.tmm-remote-expand-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  background: var(--tmm-border-strong);
-}
-
-.tmm-remote-expand-dot.on {
-  background: #14b862;
-}
-
-.tmm-remote-expand-status {
-  font-size: 0.76rem;
-  font-weight: 600;
-  color: #0f9d58;
-}
-
 .tmm-compact-genre-row {
   flex: 0 0 auto;
   display: flex;
@@ -595,46 +558,6 @@
   font-size: 0.92rem;
   font-weight: 700;
   color: var(--tmm-text);
-}
-
-.tmm-expand-anchor-meta {
-  margin-top: 3px;
-  font-size: 0.78rem;
-  color: var(--tmm-text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.tmm-expand-anchor-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  overflow-x: auto;
-  scrollbar-width: none;
-  margin: 0 0 7px;
-  padding-bottom: 2px;
-}
-
-.tmm-expand-anchor-row::-webkit-scrollbar {
-  display: none;
-}
-
-.tmm-expand-anchor-chip {
-  flex: 0 0 auto;
-  height: 30px;
-  border-radius: 999px;
-  border: none;
-  background: var(--tmm-btn-bg);
-  color: var(--tmm-btn-text);
-  font-size: 0.76rem;
-  font-weight: 700;
-  padding: 0 11px;
-}
-
-.tmm-expand-anchor-chip.active {
-  background: var(--tmm-accent);
-  color: #ffffff;
 }
 
 .tmm-expand-empty {
