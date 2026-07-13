@@ -62,22 +62,36 @@ const TM_I18N = {
         recOff: '추천 OFF',
         recFocus: '추천 위치 보기',
         spectraExit: 'spectra 모드 종료',
-        recListen: '듣기',
+        recListen: '외부에서 찾기',
         recAdd: '내 버블 추가',
         recAdded: '추가됨',
         recSaving: '저장 중…',
-        recAddSuccess: '좋아요에 저장됨 · 버블 맵을 갱신했습니다.',
+        recAddSuccess: '내 Taste Field에 추가했어요.',
         recAddFail: '저장 실패',
         contextMenuExpand: '이 곡을 중심으로 spectra 확장',
         contextMenuFocus: '이 곡으로 이동',
-        contextMenuPlay: '지금 재생',
-        contextMenuSaved: '좋아요에 있음',
-        contextMenuSave: '좋아요에 추가',
+        contextMenuPlay: '외부에서 찾기',
+        contextMenuSaved: '필드에 있음',
+        contextMenuSave: '내 필드에 추가',
         contextMenuNoCluster: '클러스터 정보를 찾지 못했습니다.',
+        discoveryLens: '탐색 기준',
+        discoveryTrackBasis: '이 곡을 기준으로 탐색',
+        discoveryGapBasis: '내 취향의 빈 영역 탐색',
+        discoveryTrackDesc: 'Last.fm 유사곡 우선 · 태그 보완 · 현재 축 거리순',
+        discoveryGapDesc: '대표 태그 후보 · 현재 축의 저밀도 영역 우선',
+        discoveryCurrentAxes: '현재 축',
+        discoverySeedTags: '기준 태그',
+        discoveryMyBubble: '내 취향',
+        discoveryRecommendation: '추천',
+        discoveryFocusAnchor: '기준 곡으로 이동',
+        trackExploreAction: '이 곡 기준으로 탐색',
+        trackAddAction: '내 필드에 추가',
+        spotifySearch: 'Spotify에서 찾기',
+        youtubeSearch: 'YouTube에서 찾기',
         shareOn: '공유 ON',
         share: '공유',
         currentBubble: '현재 버블',
-        scrollHint: 'Ctrl + 스크롤로 확대 / 축소',
+        scrollHint: '마우스 휠로 확대 / 축소',
         navigator: 'Navigator',
         yearCompareDesc: '현재 vs 과거의 취향 장르 겹침 비교',
         overlap: '겹침',
@@ -135,22 +149,36 @@ const TM_I18N = {
         recOff: 'Rec OFF',
         recFocus: 'Focus rec area',
         spectraExit: 'Exit spectra mode',
-        recListen: 'Listen',
+        recListen: 'Open externally',
         recAdd: 'Add to bubble',
         recAdded: 'Added',
         recSaving: 'Saving…',
-        recAddSuccess: 'Saved to Liked Songs and refreshed your bubble map.',
+        recAddSuccess: 'Added to your Taste Field.',
         recAddFail: 'Save failed',
         contextMenuExpand: 'Expand spectra around this track',
         contextMenuFocus: 'Focus this track',
-        contextMenuPlay: 'Play now',
-        contextMenuSaved: 'Already in Liked Songs',
-        contextMenuSave: 'Save to Liked Songs',
+        contextMenuPlay: 'Open externally',
+        contextMenuSaved: 'Already in field',
+        contextMenuSave: 'Add to my field',
         contextMenuNoCluster: 'No cluster data for this track.',
+        discoveryLens: 'Discovery basis',
+        discoveryTrackBasis: 'Explore from this track',
+        discoveryGapBasis: 'Explore gaps in your taste',
+        discoveryTrackDesc: 'Last.fm similar tracks · tag fallback · current-axis distance',
+        discoveryGapDesc: 'Leading-tag candidates · sparse regions on the current axes',
+        discoveryCurrentAxes: 'Current axes',
+        discoverySeedTags: 'Seed tags',
+        discoveryMyBubble: 'Your taste',
+        discoveryRecommendation: 'Recommendation',
+        discoveryFocusAnchor: 'Focus seed track',
+        trackExploreAction: 'Explore from this track',
+        trackAddAction: 'Add to my field',
+        spotifySearch: 'Find on Spotify',
+        youtubeSearch: 'Find on YouTube',
         shareOn: 'Share ON',
         share: 'Share',
         currentBubble: 'Current bubble',
-        scrollHint: 'Ctrl + scroll to zoom',
+        scrollHint: 'Use the mouse wheel to zoom',
         navigator: 'Navigator',
         yearCompareDesc: 'Current vs past genre overlap',
         overlap: 'Overlap',
@@ -240,6 +268,13 @@ const AXIS_PRESETS = [
         y: 'valence',
         hint: '어쿠스틱 x 긍정감',
     },
+];
+
+// Map surfaces are registered here so future spatial views can be added
+// without reshaping the shared navigation and floating tool dock.
+const MAP_VIEW_DEFINITIONS = [
+    { id: 'field', label: 'Taste Field', available: true },
+    { id: 'metro', label: 'Metro Map', available: false },
 ];
 
 // ─── Clustering helpers ────────────────────────────────────────────────────────
@@ -1611,7 +1646,6 @@ export default function TasteMapPage() {
     const followedListRef = useRef(null);
     const savedAlbumListRef = useRef(null);
     const timelineRowRef = useRef(null);
-    const timelineInitializedRef = useRef(false);
     const panRef = useRef({ dragging: false, moved: false, startX: 0, startY: 0, camX: 0, camY: 0, lastMoveAt: 0 });
     const pinchRef = useRef({ pointers: new Map(), active: false, startDist: 0, startZoom: 1, anchorX: 0, anchorY: 0 });
     const pendingAxisFocusRef = useRef(false);
@@ -1620,7 +1654,10 @@ export default function TasteMapPage() {
     const timelineMorphTimerRef = useRef(null);
     const formationTimersRef = useRef([]);
     const expandHighlightTimerRef = useRef(null);
-    const spectraAutoCenterPendingRef = useRef(false);
+    const magneticActiveIdsRef = useRef(new Set());
+    const magneticFrameRef = useRef(0);
+    const magneticPointerRef = useRef({ x: 0, y: 0 });
+    const magneticCursorRef = useRef(null);
 
     const [tracks, setTracks] = useState([]);
     const [assignments, setAssignments] = useState([]);
@@ -1676,6 +1713,7 @@ export default function TasteMapPage() {
     const [savedFromRecIds, setSavedFromRecIds] = useState({});
     const [recActionMessage, setRecActionMessage] = useState(null);
     const [bubbleContextMenu, setBubbleContextMenu] = useState(null);
+    const [selectedTrackCard, setSelectedTrackCard] = useState(null);
     const [expandedClusterPulseId, setExpandedClusterPulseId] = useState(null);
     const [spectraExpandTrackId, setSpectraExpandTrackId] = useState(null);
     const [spectraAffinityMap, setSpectraAffinityMap] = useState({});
@@ -1696,6 +1734,11 @@ export default function TasteMapPage() {
     const [activeGenreFamily, setActiveGenreFamily] = useState('');
     const [activeEmotionRegion, setActiveEmotionRegion] = useState('');
     const [deepAnalysisOpen, setDeepAnalysisOpen] = useState(false);
+    const [activeMapView, setActiveMapView] = useState('field');
+    const [magneticPullEnabled, setMagneticPullEnabled] = useState(() => {
+        if (typeof window === 'undefined') return true;
+        return !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    });
     const [lang, setLang] = useState(() => {
         if (typeof window === 'undefined') return 'ko';
         const saved = window.localStorage.getItem(TM_LOCALE_STORAGE_KEY);
@@ -1711,6 +1754,7 @@ export default function TasteMapPage() {
     const cameraRef = useRef(camera);
     const queuedCameraRef = useRef(null);
     const cameraRafRef = useRef(0);
+    const cameraAnimationRafRef = useRef(0);
     const kmeansWorkerRef = useRef(null);
     const bubbleLayoutWorkerRef = useRef(null);
     const lastAutoHandoffKeyRef = useRef('');
@@ -2038,24 +2082,6 @@ export default function TasteMapPage() {
         const stillExists = timelineSummary.periods.some((period) => period.key === selectedPeriodKey);
         if (!stillExists) {
             setSelectedPeriodKey(null);
-        }
-    }, [timelineSummary.periods, selectedPeriodKey]);
-
-    useEffect(() => {
-        if (timelineSummary.periods.length === 0) {
-            timelineInitializedRef.current = false;
-            return;
-        }
-        if (timelineInitializedRef.current) return;
-        if (selectedPeriodKey) {
-            timelineInitializedRef.current = true;
-            return;
-        }
-        const latest = timelineSummary.periods[timelineSummary.periods.length - 1];
-        if (latest?.key) {
-            setSelectedPeriodKey(latest.key);
-            setSelectedCluster(null);
-            timelineInitializedRef.current = true;
         }
     }, [timelineSummary.periods, selectedPeriodKey]);
 
@@ -2514,14 +2540,24 @@ export default function TasteMapPage() {
             })
             .filter(Boolean);
 
+        const layoutTracks = bubbleTracks.map((track) => ({
+            id: track.id,
+            [xAxis]: getTrackFeature(track, xAxis),
+            [yAxis]: getTrackFeature(track, yAxis),
+        }));
+        const bubbleAssignmentEntries = bubbleTracks.map((track) => [
+            track.id,
+            assignmentByTrackId.get(track.id),
+        ]);
+
         worker.postMessage({
-            tracks: bubbleTracks,
+            tracks: layoutTracks,
             fieldW: debouncedFieldSize.w,
             fieldH: debouncedFieldSize.h,
             worldScale: bubbleWorldScale,
             xAxis,
             yAxis,
-            assignmentEntries: [...assignmentByTrackId.entries()],
+            assignmentEntries: bubbleAssignmentEntries,
             playWeightEntries,
             // Spectra expansion save-bias: place newly saved tracks near the expansion seed.
             projected2dEntries,
@@ -2655,6 +2691,10 @@ export default function TasteMapPage() {
             window.cancelAnimationFrame(cameraRafRef.current);
             cameraRafRef.current = 0;
         }
+        if (cameraAnimationRafRef.current) {
+            window.cancelAnimationFrame(cameraAnimationRafRef.current);
+            cameraAnimationRafRef.current = 0;
+        }
         queuedCameraRef.current = null;
     }, []);
 
@@ -2671,8 +2711,72 @@ export default function TasteMapPage() {
         };
     }, [bubbleFieldSize.w, bubbleFieldSize.h, bubbleWorldScale]);
 
+    const cancelCameraAnimation = useCallback(() => {
+        if (cameraAnimationRafRef.current) {
+            window.cancelAnimationFrame(cameraAnimationRafRef.current);
+            cameraAnimationRafRef.current = 0;
+        }
+        bubbleFieldRef.current?.classList.remove('camera-moving');
+    }, []);
+
+    const animateCameraTo = useCallback((targetCamera, targetZoom, duration = 560) => {
+        if (!targetCamera) return;
+        cancelCameraAnimation();
+        if (cameraRafRef.current) {
+            window.cancelAnimationFrame(cameraRafRef.current);
+            cameraRafRef.current = 0;
+        }
+        queuedCameraRef.current = null;
+
+        const startCamera = { ...cameraRef.current };
+        const startZoom = bubbleZoomRef.current;
+        const finalZoom = clampZoom(targetZoom || startZoom);
+        const finalCamera = clampCamera(targetCamera.x, targetCamera.y, finalZoom);
+        const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+        const animationDuration = reduceMotion ? 0 : Math.max(180, duration);
+
+        if (animationDuration === 0) {
+            bubbleZoomRef.current = finalZoom;
+            cameraRef.current = finalCamera;
+            setBubbleZoom(finalZoom);
+            setCamera(finalCamera);
+            return;
+        }
+
+        bubbleFieldRef.current?.classList.add('camera-moving');
+        const startedAt = performance.now();
+        const tick = (now) => {
+            const raw = Math.min(1, Math.max(0, (now - startedAt) / animationDuration));
+            const eased = raw * raw * (3 - 2 * raw);
+            const nextZoom = startZoom + (finalZoom - startZoom) * eased;
+            const nextCamera = clampCamera(
+                startCamera.x + (finalCamera.x - startCamera.x) * eased,
+                startCamera.y + (finalCamera.y - startCamera.y) * eased,
+                nextZoom,
+            );
+            bubbleZoomRef.current = nextZoom;
+            cameraRef.current = nextCamera;
+            setBubbleZoom(nextZoom);
+            setCamera(nextCamera);
+            if (raw < 1) {
+                cameraAnimationRafRef.current = window.requestAnimationFrame(tick);
+            } else {
+                cameraAnimationRafRef.current = 0;
+                bubbleFieldRef.current?.classList.remove('camera-moving');
+            }
+        };
+        cameraAnimationRafRef.current = window.requestAnimationFrame(tick);
+    }, [cancelCameraAnimation, clampCamera, clampZoom]);
+
     useEffect(() => {
-        setCamera((prev) => clampCamera(prev.x, prev.y, bubbleZoom));
+        setCamera((prev) => {
+            const next = clampCamera(prev.x, prev.y, bubbleZoom);
+            if (Math.abs(prev.x - next.x) < 0.05 && Math.abs(prev.y - next.y) < 0.05) {
+                return prev;
+            }
+            cameraRef.current = next;
+            return next;
+        });
     }, [clampCamera, bubbleZoom]);
 
     useEffect(() => {
@@ -2848,6 +2952,7 @@ export default function TasteMapPage() {
     };
 
     const setZoomAroundPoint = useCallback((nextZoom, anchorX, anchorY) => {
+        cancelCameraAnimation();
         setBubbleZoom((currentZoom) => {
             const targetZoom = clampZoom(nextZoom);
             const rect = bubbleFieldRef.current?.getBoundingClientRect();
@@ -2865,21 +2970,19 @@ export default function TasteMapPage() {
 
             return targetZoom;
         });
-    }, [bubbleFieldSize.w, bubbleFieldSize.h, clampCamera, clampZoom, scheduleCameraUpdate]);
+    }, [bubbleFieldSize.w, bubbleFieldSize.h, cancelCameraAnimation, clampCamera, clampZoom, scheduleCameraUpdate]);
 
-    // Non-passive wheel listener so preventDefault() works for Ctrl+scroll zoom
+    // Keep the zoom anchored under the pointer for both mouse wheels and trackpads.
     useEffect(() => {
         const el = bubbleFieldRef.current;
         if (!el || viewMode !== 'bubble') return;
         const onWheel = (e) => {
-            if (!e.ctrlKey && !e.metaKey) {
-                clearTimeout(scrollHintTimerRef.current);
-                setScrollHint(true);
-                scrollHintTimerRef.current = setTimeout(() => setScrollHint(false), 1800);
-                return;
-            }
             e.preventDefault();
-            const factor = Math.sign(e.deltaY) > 0 ? 0.9 : 1.1;
+            clearTimeout(scrollHintTimerRef.current);
+            setScrollHint(false);
+            const deltaUnit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? window.innerHeight : 1;
+            const normalizedDelta = Math.max(-180, Math.min(180, e.deltaY * deltaUnit));
+            const factor = Math.exp(-normalizedDelta * 0.0018);
             const next = Math.min(BUBBLE_ZOOM_MAX, Math.max(BUBBLE_ZOOM_MIN, bubbleZoomRef.current * factor));
             setZoomAroundPoint(next, e.clientX, e.clientY);
         };
@@ -2888,6 +2991,7 @@ export default function TasteMapPage() {
     }, [viewMode, setZoomAroundPoint]);
 
     const handleBubblePanStart = useCallback((e) => {
+        cancelCameraAnimation();
         if (typeof e.currentTarget?.setPointerCapture === 'function' && e.pointerId !== undefined) {
             try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* ignore */ }
         }
@@ -2914,7 +3018,7 @@ export default function TasteMapPage() {
             camY: camera.y,
             lastMoveAt: panRef.current.lastMoveAt || 0,
         };
-    }, [camera.x, camera.y, bubbleZoom]);
+    }, [camera.x, camera.y, bubbleZoom, cancelCameraAnimation]);
 
     const handleBubblePanMove = useCallback((e) => {
         if (e.pointerType === 'touch' && pinchRef.current.pointers.has(e.pointerId)) {
@@ -3008,8 +3112,7 @@ export default function TasteMapPage() {
                 labelWidth: sizePx + 28,
                 labelHeight: 44,
                 priority:
-                    (node.track.id === hoveredBubbleId ? 10000 : 0)
-                    + (active ? 1800 : 0)
+                    (active ? 1800 : 0)
                     + sizePx,
             };
         });
@@ -3019,11 +3122,16 @@ export default function TasteMapPage() {
         const MIN_LABEL_ZOOM = 1.12;
         const maxLabels = bubbleZoom < 1.35 ? 8 : bubbleZoom < 1.8 ? 15 : bubbleZoom < 2.3 ? 24 : 36;
 
-        const sorted = [...items].sort((a, b) => b.priority - a.priority);
+        const labelCandidates = items.filter((item) => (
+            item.xPx >= -180
+            && item.xPx <= bubbleFieldSize.w + 180
+            && item.yPx >= -180
+            && item.yPx <= bubbleFieldSize.h + 180
+        ));
+        const sorted = [...labelCandidates].sort((a, b) => b.priority - a.priority);
         for (const item of sorted) {
-            const forceShow = item.node.track.id === hoveredBubbleId;
-            if (!forceShow && bubbleZoom < MIN_LABEL_ZOOM) continue;
-            if (!forceShow && visibleLabels.size >= maxLabels) continue;
+            if (bubbleZoom < MIN_LABEL_ZOOM) continue;
+            if (visibleLabels.size >= maxLabels) continue;
 
             const box = {
                 left: item.xPx - item.labelWidth / 2,
@@ -3032,7 +3140,7 @@ export default function TasteMapPage() {
                 bottom: item.yPx + item.sizePx / 2 + 5 + item.labelHeight,
             };
             const overlaps = occupied.some((existing) => rectsOverlap(box, existing, 7));
-            if (!overlaps || forceShow) {
+            if (!overlaps) {
                 visibleLabels.add(item.node.track.id);
                 occupied.push(box);
             }
@@ -3054,10 +3162,153 @@ export default function TasteMapPage() {
         assignmentByTrackId,
         hasTrackFilter,
         activeTrackIds,
-        hoveredBubbleId,
         selectedCluster,
         expandedClusterPulseId,
     ]);
+
+    // Only mount bubbles near the viewport. Analytics and clustering still use
+    // the complete import, while the DOM cost stays bounded for huge libraries.
+    const visibleBubbleRenderItems = useMemo(() => {
+        const overscan = 220;
+        const visible = bubbleRenderItems.filter((item) => (
+            item.xPx >= -overscan
+            && item.xPx <= bubbleFieldSize.w + overscan
+            && item.yPx >= -overscan
+            && item.yPx <= bubbleFieldSize.h + overscan
+        ));
+        const maxMounted = bubbleZoom < 0.5 ? 760 : bubbleZoom < 0.85 ? 920 : 1100;
+        if (visible.length <= maxMounted) return visible;
+
+        const selectedId = selectedTrackCard?.track?.id;
+        return visible
+            .map((item) => {
+                const id = item.node.track.id;
+                return {
+                    item,
+                    score: (id === spectraExpandTrackId ? 100000 : 0)
+                        + (id === selectedId ? 90000 : 0)
+                        + (id === hoveredBubbleId ? 80000 : 0)
+                        + (item.active ? 5000 : 0)
+                        + item.sizePx * 10
+                        + hash01(id),
+                };
+            })
+            .sort((a, b) => b.score - a.score)
+            .slice(0, maxMounted)
+            .map((entry) => entry.item);
+    }, [
+        bubbleRenderItems,
+        bubbleFieldSize.w,
+        bubbleFieldSize.h,
+        bubbleZoom,
+        spectraExpandTrackId,
+        selectedTrackCard,
+        hoveredBubbleId,
+    ]);
+
+    const getMountedBubbleElement = useCallback((trackId) => {
+        const field = bubbleFieldRef.current;
+        if (!field || !trackId) return null;
+        const escapedId = typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
+            ? CSS.escape(String(trackId))
+            : String(trackId).replace(/["\\]/g, '\\$&');
+        return field.querySelector(`[data-bubble-id="${escapedId}"]`);
+    }, []);
+
+    const resetBubbleMagnetism = useCallback(() => {
+        if (magneticFrameRef.current) {
+            window.cancelAnimationFrame(magneticFrameRef.current);
+            magneticFrameRef.current = 0;
+        }
+        magneticActiveIdsRef.current.forEach((trackId) => {
+            const element = getMountedBubbleElement(trackId);
+            if (!element) return;
+            element.style.removeProperty('--tm-attract-x');
+            element.style.removeProperty('--tm-attract-y');
+            element.style.removeProperty('--tm-magnetic-strength');
+        });
+        magneticActiveIdsRef.current.clear();
+        if (magneticCursorRef.current) {
+            magneticCursorRef.current.style.removeProperty('--tm-cursor-opacity');
+        }
+    }, [getMountedBubbleElement]);
+
+    const handleMagneticPointerMove = useCallback((event) => {
+        if (!magneticPullEnabled || event.pointerType === 'touch' || panRef.current.moved) {
+            resetBubbleMagnetism();
+            return;
+        }
+
+        const field = bubbleFieldRef.current;
+        if (!field) return;
+        magneticPointerRef.current = { x: event.clientX, y: event.clientY };
+
+        if (magneticFrameRef.current) return;
+        magneticFrameRef.current = window.requestAnimationFrame(() => {
+            magneticFrameRef.current = 0;
+            const rect = field.getBoundingClientRect();
+            const { x: clientX, y: clientY } = magneticPointerRef.current;
+            const localX = clientX - rect.left;
+            const localY = clientY - rect.top;
+            const radius = Math.min(180, Math.max(130, rect.width * 0.13));
+            const nextActiveIds = new Set();
+            const candidates = [];
+
+            visibleBubbleRenderItems.forEach((item) => {
+                const dx = localX - item.xPx;
+                const dy = localY - item.yPx;
+                if (Math.abs(dx) > radius || Math.abs(dy) > radius) return;
+                const distance = Math.hypot(dx, dy);
+                if (distance >= radius) return;
+
+                candidates.push({ item, dx, dy, distance });
+            });
+
+            candidates
+                .sort((a, b) => a.distance - b.distance)
+                .slice(0, 10)
+                .forEach(({ item, dx, dy, distance }) => {
+
+                const element = getMountedBubbleElement(item.node.track.id);
+                if (!element) return;
+                const proximity = 1 - distance / radius;
+                const pull = Math.min(9, distance * 0.08) * proximity * proximity;
+                const normalX = distance > 0 ? dx / distance : 0;
+                const normalY = distance > 0 ? dy / distance : 0;
+
+                element.style.setProperty('--tm-attract-x', `${(normalX * pull).toFixed(2)}px`);
+                element.style.setProperty('--tm-attract-y', `${(normalY * pull).toFixed(2)}px`);
+                element.style.setProperty('--tm-magnetic-strength', (proximity * 0.56).toFixed(3));
+                nextActiveIds.add(item.node.track.id);
+            });
+
+            magneticActiveIdsRef.current.forEach((trackId) => {
+                if (nextActiveIds.has(trackId)) return;
+                const element = getMountedBubbleElement(trackId);
+                if (!element) return;
+                element.style.removeProperty('--tm-attract-x');
+                element.style.removeProperty('--tm-attract-y');
+                element.style.removeProperty('--tm-magnetic-strength');
+            });
+            magneticActiveIdsRef.current = nextActiveIds;
+
+            if (magneticCursorRef.current) {
+                magneticCursorRef.current.style.transform = `translate3d(${localX}px, ${localY}px, 0)`;
+                magneticCursorRef.current.style.setProperty('--tm-cursor-opacity', '1');
+            }
+        });
+    }, [visibleBubbleRenderItems, magneticPullEnabled, getMountedBubbleElement, resetBubbleMagnetism]);
+
+    const handleInteractiveBubbleMove = useCallback((event) => {
+        handleBubblePanMove(event);
+        handleMagneticPointerMove(event);
+    }, [handleBubblePanMove, handleMagneticPointerMove]);
+
+    useEffect(() => {
+        resetBubbleMagnetism();
+    }, [camera.x, camera.y, bubbleZoom, magneticPullEnabled, resetBubbleMagnetism]);
+
+    useEffect(() => () => resetBubbleMagnetism(), [resetBubbleMagnetism]);
 
     // Density heatmap: soft cluster-colored glow accumulated under the bubbles.
     // Drawn at low resolution and blurred via CSS, so per-frame cost stays low.
@@ -3077,7 +3328,7 @@ export default function TasteMapPage() {
 
         ctx.globalCompositeOperation = 'source-over';
         ctx.clearRect(0, 0, cw, ch);
-        if (viewMode !== 'bubble' || bubbleRenderItems.length === 0) return;
+        if (viewMode !== 'bubble' || visibleBubbleRenderItems.length === 0) return;
 
         const sprites = heatmapSpritesRef.current;
         const getSprite = (color) => {
@@ -3103,10 +3354,10 @@ export default function TasteMapPage() {
         };
 
         const bubbleScale = Math.max(1, bubbleZoom / 1.2);
-        const step = Math.max(1, Math.ceil(bubbleRenderItems.length / 1600));
+        const step = Math.max(1, Math.ceil(visibleBubbleRenderItems.length / 360));
         ctx.globalCompositeOperation = 'lighter';
-        for (let i = 0; i < bubbleRenderItems.length; i += step) {
-            const item = bubbleRenderItems[i];
+        for (let i = 0; i < visibleBubbleRenderItems.length; i += step) {
+            const item = visibleBubbleRenderItems[i];
             const radius = (item.sizePx * bubbleScale * 1.6 + 30) * scale;
             if (item.xPx < -radius / scale || item.xPx > w + radius / scale) continue;
             if (item.yPx < -radius / scale || item.yPx > h + radius / scale) continue;
@@ -3119,14 +3370,14 @@ export default function TasteMapPage() {
                 radius * 2,
             );
         }
-    }, [bubbleRenderItems, bubbleFieldSize, viewMode, bubbleZoom]);
+    }, [visibleBubbleRenderItems, bubbleFieldSize, viewMode, bubbleZoom]);
 
     // Cluster "region" name labels, placed at the weighted centroid of each
     // cluster's bubbles — reads like place names on a map.
     const bubbleRegionLabels = useMemo(() => {
-        if (viewMode !== 'bubble' || bubbleRenderItems.length === 0 || clusterStats.length === 0) return [];
+        if (viewMode !== 'bubble' || visibleBubbleRenderItems.length === 0 || clusterStats.length === 0) return [];
         const centroids = new Map();
-        for (const item of bubbleRenderItems) {
+        for (const item of visibleBubbleRenderItems) {
             if (item.clusterId === null || item.clusterId === undefined || item.clusterId < 0) continue;
             let entry = centroids.get(item.clusterId);
             if (!entry) {
@@ -3151,7 +3402,7 @@ export default function TasteMapPage() {
             });
         }
         return labels;
-    }, [viewMode, bubbleRenderItems, clusterStats]);
+    }, [viewMode, visibleBubbleRenderItems, clusterStats]);
 
     useEffect(() => {
         if (!exploreEnabled) {
@@ -3178,8 +3429,10 @@ export default function TasteMapPage() {
                 const requests = exploreSparseAnchors.map(async (anchor) => {
                     const seedTrackId = anchor.seedTrackId || '';
                     const params = new URLSearchParams({
-                        valence: String(clamp01(anchor.x)),
-                        energy: String(clamp01(anchor.y)),
+                        xAxis,
+                        yAxis,
+                        targetX: String(clamp01(anchor.x)),
+                        targetY: String(clamp01(anchor.y)),
                         limit: seedTrackId ? '14' : '8',
                         seedGenres: exploreSeedGenres.join(','),
                     });
@@ -3195,12 +3448,13 @@ export default function TasteMapPage() {
                     if (!res.ok) throw new Error(`HTTP ${res.status}`);
                     const data = await res.json();
                     const tracksOut = Array.isArray(data?.tracks) ? data.tracks : [];
-                    return tracksOut.map((track) => ({
+                    return tracksOut.map((track, sourceRank) => ({
                         track,
                         anchorId: anchor.id,
                         targetX: anchor.x,
                         targetY: anchor.y,
                         seedTrackId: seedTrackId || null,
+                        sourceRank,
                     }));
                 });
 
@@ -3215,6 +3469,13 @@ export default function TasteMapPage() {
                         bucket.set(key, item);
                         return;
                     }
+                    const rankA = Number.isFinite(item?.sourceRank) ? item.sourceRank : Number.POSITIVE_INFINITY;
+                    const rankB = Number.isFinite(existing?.sourceRank) ? existing.sourceRank : Number.POSITIVE_INFINITY;
+                    if (rankA < rankB) {
+                        bucket.set(key, item);
+                        return;
+                    }
+                    if (rankA > rankB) return;
                     const scoreA = Number.isFinite(Number(item?.track?.popularity)) ? Number(item.track.popularity) : -1;
                     const scoreB = Number.isFinite(Number(existing?.track?.popularity)) ? Number(existing.track.popularity) : -1;
                     if (scoreA > scoreB) {
@@ -3232,15 +3493,18 @@ export default function TasteMapPage() {
                     if (knownTrackIds.has(item.track.id)) return;
                     upsertCandidate(dedupNovel, item);
                 });
-                const popularitySorted = [...(dedupNovel.size > 0 ? dedupNovel.values() : dedupAll.values())]
+                const ranked = [...(dedupNovel.size > 0 ? dedupNovel.values() : dedupAll.values())]
                     .sort((a, b) => {
+                        const ra = Number.isFinite(a?.sourceRank) ? a.sourceRank : Number.POSITIVE_INFINITY;
+                        const rb = Number.isFinite(b?.sourceRank) ? b.sourceRank : Number.POSITIVE_INFINITY;
+                        if (ra !== rb) return ra - rb;
                         const pa = Number.isFinite(Number(a?.track?.popularity)) ? Number(a.track.popularity) : -1;
                         const pb = Number.isFinite(Number(b?.track?.popularity)) ? Number(b.track.popularity) : -1;
                         if (pa !== pb) return pb - pa;
                         // Stable tie-break so layout doesn't jump between refreshes.
                         return hash01(a?.track?.id || '') - hash01(b?.track?.id || '');
                     });
-                const merged = popularitySorted.slice(0, spectraExpandTrackId ? 14 : 18);
+                const merged = ranked.slice(0, spectraExpandTrackId ? 14 : 18);
                 if (!cancelled) {
                     setExploreRecs(merged);
                 }
@@ -3266,6 +3530,8 @@ export default function TasteMapPage() {
         exploreSeedGenres,
         knownTrackIds,
         spectraExpandTrackId,
+        xAxis,
+        yAxis,
     ]);
 
     const exploreRenderItems = useMemo(() => {
@@ -3290,8 +3556,12 @@ export default function TasteMapPage() {
             ? bubbleRenderItems.find((item) => item.node.track.id === spectraExpandTrackId) || null
             : null;
         const focusRecMode = Boolean(focusBubble);
-        const activeBubbles = bubbleRenderItems.filter((item) => item.active);
-        const bubbleAnchors = (activeBubbles.length ? activeBubbles : bubbleRenderItems).map((item) => ({
+        const activeBubbles = visibleBubbleRenderItems.filter((item) => item.active);
+        const anchorItems = focusRecMode
+            ? [focusBubble]
+            : (activeBubbles.length ? activeBubbles : visibleBubbleRenderItems);
+        const bubbleAnchors = anchorItems.map((item) => ({
+            trackId: item.node.track.id,
             worldX: item.worldX,
             worldY: item.worldY,
             fx: clamp01(getTrackFeature(item.node.track, xAxis)),
@@ -3400,6 +3670,7 @@ export default function TasteMapPage() {
             return {
                 id: recId,
                 track: item.track,
+                rank: idx + 1,
                 worldX,
                 worldY,
                 inView,
@@ -3407,6 +3678,8 @@ export default function TasteMapPage() {
                 yPercent: rawYPercent,
                 hovered,
                 relatedToFocus: focusRecMode,
+                showGuideLabel: focusRecMode && idx < 8,
+                sourceTrackId: focusRecMode ? spectraExpandTrackId : nearestBubble?.trackId || null,
                 style: {
                     '--tm-rec-size': '52px',
                     '--tm-float-duration': floatDuration,
@@ -3427,6 +3700,7 @@ export default function TasteMapPage() {
         bubbleFieldSize.w,
         bubbleFieldSize.h,
         bubbleRenderItems,
+        visibleBubbleRenderItems,
         exploreRecs,
         bubbleZoom,
         bubbleWorldScale,
@@ -3447,6 +3721,15 @@ export default function TasteMapPage() {
         const cy = rect ? rect.top + rect.height / 2 : 0;
         setZoomAroundPoint(bubbleZoomRef.current * factor, cx, cy);
     }, [setZoomAroundPoint]);
+    const toggleExplore = useCallback(() => {
+        const next = !exploreEnabled;
+        setExploreEnabled(next);
+        if (next) return;
+        setSpectraExpandTrackId(null);
+        if (selectedTrackCard?.source === 'recommendation') {
+            setSelectedTrackCard(null);
+        }
+    }, [exploreEnabled, selectedTrackCard]);
     const focusCurrentBubbles = useCallback(() => {
         if (!bubbleRenderItems.length || !bubbleFieldSize.w || !bubbleFieldSize.h) return;
         const activeItems = bubbleRenderItems.filter((item) => item.active);
@@ -3473,6 +3756,19 @@ export default function TasteMapPage() {
         setBubbleZoom(targetZoom);
         setCamera(clampCamera(centerX - viewportW / 2, centerY - viewportH / 2, targetZoom));
     }, [bubbleRenderItems, bubbleFieldSize.w, bubbleFieldSize.h, clampCamera, clampZoom]);
+    const showFullTasteField = useCallback(() => {
+        const hadActiveFilter = selectedCluster !== null || selectedPeriodKey !== null || Boolean(spectraExpandTrackId);
+        setSelectedCluster(null);
+        setSelectedPeriodKey(null);
+        setSpectraExpandTrackId(null);
+        setActiveGenreFamily('');
+        setActiveEmotionRegion('');
+        if (hadActiveFilter) {
+            pendingAxisFocusRef.current = true;
+        } else {
+            window.requestAnimationFrame(focusCurrentBubbles);
+        }
+    }, [selectedCluster, selectedPeriodKey, spectraExpandTrackId, focusCurrentBubbles]);
     useEffect(() => {
         if (viewMode !== 'bubble') return;
         pendingAxisFocusRef.current = true;
@@ -3502,28 +3798,33 @@ export default function TasteMapPage() {
         );
         const cx = mean.x / exploreRenderItems.length;
         const cy = mean.y / exploreRenderItems.length;
-        setCamera(clampCamera(cx - viewportW / 2, cy - viewportH / 2, bubbleZoom));
-    }, [exploreRenderItems, bubbleFieldSize.w, bubbleFieldSize.h, bubbleZoom, clampCamera]);
+        animateCameraTo(
+            clampCamera(cx - viewportW / 2, cy - viewportH / 2, bubbleZoom),
+            bubbleZoom,
+            520,
+        );
+    }, [exploreRenderItems, bubbleFieldSize.w, bubbleFieldSize.h, bubbleZoom, animateCameraTo, clampCamera]);
 
     const overviewDots = useMemo(() => {
-        if (!bubbleRenderItems.length || !bubbleFieldSize.w || !bubbleFieldSize.h) return [];
-        const worldW = bubbleFieldSize.w * bubbleWorldScale;
-        const worldH = bubbleFieldSize.h * bubbleWorldScale;
-        if (!worldW || !worldH) return [];
+        if (!bubbleNodesResult.length) return [];
         const maxDots = 700;
-        const sampled = bubbleRenderItems.length <= maxDots
-            ? bubbleRenderItems
-            : [...bubbleRenderItems]
-                .sort((a, b) => hash01(a.node.track.id) - hash01(b.node.track.id))
+        const sampled = bubbleNodesResult.length <= maxDots
+            ? bubbleNodesResult
+            : [...bubbleNodesResult]
+                .sort((a, b) => hash01(a.track.id) - hash01(b.track.id))
                 .slice(0, maxDots);
-        return sampled.map((item) => ({
-            id: item.node.track.id,
-            x: clamp01(item.worldX / worldW),
-            y: clamp01(item.worldY / worldH),
-            active: item.active,
-            color: CLUSTER_COLORS[(item.clusterId ?? 0) % CLUSTER_COLORS.length],
-        }));
-    }, [bubbleRenderItems, bubbleFieldSize.w, bubbleFieldSize.h, bubbleWorldScale]);
+        const blend = hasTrackFilter ? 0.26 : 0.18;
+        return sampled.map((node) => {
+            const clusterId = assignmentByTrackId.get(node.track.id);
+            return {
+                id: node.track.id,
+                x: clamp01(node.nX + (node.nRawX - node.nX) * blend),
+                y: clamp01(node.nY + (node.nRawY - node.nY) * blend),
+                active: activeTrackIds.has(node.track.id),
+                color: CLUSTER_COLORS[(clusterId ?? 0) % CLUSTER_COLORS.length],
+            };
+        });
+    }, [bubbleNodesResult, hasTrackFilter, assignmentByTrackId, activeTrackIds]);
 
     const overviewMap = useMemo(() => {
         if (viewMode !== 'bubble') return null;
@@ -3701,19 +4002,29 @@ export default function TasteMapPage() {
         </div>
     );
 
-    // No Spotify playback control — open the track on an external service instead.
-    const playTrack = useCallback((trackId) => {
+    // Playback stays outside the app, but only after an explicit service choice.
+    const openTrackExternal = useCallback((trackOrId, service = 'spotify') => {
+        const trackId = typeof trackOrId === 'object' ? trackOrId?.id : trackOrId;
         if (!trackId) return;
-        const t = tracks.find((x) => x.id === trackId)
+        const t = (typeof trackOrId === 'object' ? trackOrId : null)
+            || tracks.find((x) => x.id === trackId)
             || exploreRecs.find((r) => r.track?.id === trackId)?.track;
         const query = `${t?.artists || ''} ${t?.name || ''}`.trim();
-        const url = t?.externalUrl
-            || (query ? `https://open.spotify.com/search/${encodeURIComponent(query)}` : null);
+        const url = service === 'youtube'
+            ? (query ? `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}` : null)
+            : (t?.externalUrl || (query ? `https://open.spotify.com/search/${encodeURIComponent(query)}` : null));
         if (url && typeof window !== 'undefined') {
             window.open(url, '_blank', 'noopener,noreferrer');
         }
         setNowPlayingTrackId(trackId);
     }, [tracks, exploreRecs]);
+
+    const openTrackCard = useCallback((track, source = 'library') => {
+        if (!track?.id) return;
+        setSelectedTrackCard({ track, source });
+        setBubbleContextMenu(null);
+        setHoveredBubbleId(source === 'library' ? track.id : null);
+    }, []);
 
     // "Save" now folds the discovered track into the local field (no Spotify library).
     const saveTrackToMyBubble = useCallback((track) => {
@@ -3745,34 +4056,45 @@ export default function TasteMapPage() {
         if (nearest === null) return;
 
         const track = tracks[nearest];
-        playTrack(track.id, { enableAutoNear: true });
-    }, [getNearestTrackIndex, tracks, playTrack]);
+        openTrackCard(track, 'library');
+    }, [getNearestTrackIndex, tracks, openTrackCard]);
 
     const handleBubbleClick = useCallback((track) => {
         const justPanned = Date.now() - (panRef.current.lastMoveAt || 0) < 120;
         if (panRef.current.moved || justPanned) return;
-        playTrack(track.id, { enableAutoNear: true });
-    }, [playTrack]);
+        if (isSpectraExpandMode && track.id === spectraExpandTrackId) {
+            setExploreEnabled(false);
+            setSpectraExpandTrackId(null);
+            setExploreRecs([]);
+            setHoveredExploreId(null);
+            setSelectedTrackCard(null);
+            setHoveredBubbleId(null);
+            return;
+        }
+        openTrackCard(track, 'library');
+    }, [openTrackCard, isSpectraExpandMode, spectraExpandTrackId]);
 
-    const focusBubbleTrack = useCallback((trackId, { ensureZoom = 0 } = {}) => {
+    const handleBubbleLayerClick = useCallback((event) => {
+        const bubbleElement = event.target?.closest?.('[data-bubble-id]');
+        if (!bubbleElement) return;
+        const track = trackLookupById.get(bubbleElement.dataset.bubbleId);
+        if (track) handleBubbleClick(track);
+    }, [trackLookupById, handleBubbleClick]);
+
+    const focusBubbleTrack = useCallback((trackId, { ensureZoom = 0, duration = 560 } = {}) => {
         if (!trackId || !bubbleRenderItems.length || !bubbleFieldSize.w || !bubbleFieldSize.h) return false;
         const item = bubbleRenderItems.find((entry) => entry.node.track.id === trackId);
         if (!item) return false;
 
         const currentZoom = bubbleZoomRef.current || bubbleZoom;
         const targetZoom = ensureZoom > 0 ? Math.max(currentZoom, ensureZoom) : currentZoom;
-        if (Math.abs(targetZoom - bubbleZoomRef.current) > 0.001) {
-            bubbleZoomRef.current = targetZoom;
-            setBubbleZoom(targetZoom);
-        }
-
         const viewportW = bubbleFieldSize.w / targetZoom;
         const viewportH = bubbleFieldSize.h / targetZoom;
         const nextX = item.worldX - viewportW / 2;
         const nextY = item.worldY - viewportH / 2;
-        scheduleCameraUpdate(clampCamera(nextX, nextY, targetZoom));
+        animateCameraTo(clampCamera(nextX, nextY, targetZoom), targetZoom, duration);
         return true;
-    }, [bubbleRenderItems, bubbleFieldSize.w, bubbleFieldSize.h, bubbleZoom, scheduleCameraUpdate, clampCamera]);
+    }, [bubbleRenderItems, bubbleFieldSize.w, bubbleFieldSize.h, bubbleZoom, animateCameraTo, clampCamera]);
 
     const openBubbleContextMenu = useCallback((event, track) => {
         event.preventDefault();
@@ -3789,6 +4111,7 @@ export default function TasteMapPage() {
         const clusterId = assignmentByTrackId.get(track.id);
 
         setHoveredBubbleId(track.id);
+        setSelectedTrackCard(null);
         setBubbleContextMenu({
             x,
             y,
@@ -3797,19 +4120,23 @@ export default function TasteMapPage() {
         });
     }, [assignmentByTrackId]);
 
+    const handleBubbleLayerContextMenu = useCallback((event) => {
+        const bubbleElement = event.target?.closest?.('[data-bubble-id]');
+        if (!bubbleElement) return;
+        const track = trackLookupById.get(bubbleElement.dataset.bubbleId);
+        if (track) openBubbleContextMenu(event, track);
+    }, [trackLookupById, openBubbleContextMenu]);
+
     const applySpectraExpandByTrackId = useCallback((trackId) => {
         if (!trackId) return false;
         const clusterId = assignmentByTrackId.get(trackId);
         if (clusterId === null || clusterId === undefined || clusterId < 0) return false;
 
-        setSelectedPeriodKey(null);
-        setSelectedCluster(clusterId);
         setExploreEnabled(true);
         setSpectraExpandTrackId(trackId);
         setHoveredBubbleId(trackId);
-        spectraAutoCenterPendingRef.current = true;
         triggerExpandedClusterHighlight(clusterId);
-        focusBubbleTrack(trackId, { ensureZoom: 1.1 });
+        focusBubbleTrack(trackId, { ensureZoom: 0.9, duration: 620 });
         return true;
     }, [assignmentByTrackId, focusBubbleTrack, triggerExpandedClusterHighlight]);
 
@@ -3905,21 +4232,6 @@ export default function TasteMapPage() {
     }, [spectraExpandTrackId, activeTrackIds]);
 
     useEffect(() => {
-        if (!isSpectraExpandMode || !spectraExpandTrackId) return;
-        if (!spectraAutoCenterPendingRef.current) return;
-        const id = window.requestAnimationFrame(() => {
-            const centered = focusBubbleTrack(spectraExpandTrackId, { ensureZoom: 1.15 });
-            if (centered) spectraAutoCenterPendingRef.current = false;
-        });
-        return () => window.cancelAnimationFrame(id);
-    }, [isSpectraExpandMode, spectraExpandTrackId, bubbleRenderItems, focusBubbleTrack]);
-
-    useEffect(() => {
-        if (isSpectraExpandMode) return;
-        spectraAutoCenterPendingRef.current = false;
-    }, [isSpectraExpandMode]);
-
-    useEffect(() => {
         if (isSpectraExpandMode) return;
         if (Object.keys(spectraAffinityMap).length === 0) return;
         setSpectraAffinityMap({});
@@ -3933,9 +4245,9 @@ export default function TasteMapPage() {
 
     const handleContextPlayTrack = useCallback(() => {
         if (!bubbleContextMenu?.track) return;
-        playTrack(bubbleContextMenu.track.id, { enableAutoNear: true });
+        openTrackExternal(bubbleContextMenu.track, 'spotify');
         setBubbleContextMenu(null);
-    }, [bubbleContextMenu, playTrack]);
+    }, [bubbleContextMenu, openTrackExternal]);
 
     const handleContextSaveTrack = useCallback(() => {
         if (!bubbleContextMenu?.track) return;
@@ -3960,6 +4272,17 @@ export default function TasteMapPage() {
             window.removeEventListener('pointerdown', handlePointerDown);
         };
     }, [bubbleContextMenu]);
+
+    useEffect(() => {
+        if (!selectedTrackCard) return undefined;
+        const handleKeyDown = (event) => {
+            if (event.key !== 'Escape') return;
+            setSelectedTrackCard(null);
+            setHoveredBubbleId(null);
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [selectedTrackCard]);
 
     const toggleShareTrack = useCallback((track) => {
         if (!track?.id) return;
@@ -4189,6 +4512,61 @@ export default function TasteMapPage() {
     const xMeta = FEATURE_META[xAxis];
     const yMeta = FEATURE_META[yAxis];
     const zMeta = FEATURE_META[zAxis];
+    const discoveryAnchorPosition = useMemo(() => {
+        if (!isSpectraExpandMode || !spectraExpandTrackId) return null;
+        const anchor = bubbleRenderItems.find((item) => item.node.track.id === spectraExpandTrackId);
+        if (!anchor) return null;
+        return {
+            xPercent: anchor.xPercent,
+            yPercent: anchor.yPercent,
+            orbitSize: Math.min(620, Math.max(360, 480 * bubbleZoom)),
+        };
+    }, [isSpectraExpandMode, spectraExpandTrackId, bubbleRenderItems, bubbleZoom]);
+    const selectedTrackDetails = useMemo(() => {
+        const track = selectedTrackCard?.track;
+        if (!track?.id) return null;
+        const clusterId = assignmentByTrackId.get(track.id);
+        const cluster = Number.isInteger(clusterId) ? clusterById[clusterId] : null;
+        return {
+            track,
+            source: selectedTrackCard.source,
+            cluster,
+            genres: getTrackGenres(track).slice(0, 4),
+            xValue: Math.round(clamp01(getTrackFeature(track, xAxis)) * 100),
+            yValue: Math.round(clamp01(getTrackFeature(track, yAxis)) * 100),
+            alreadyInField: knownTrackIds.has(track.id) || Boolean(savedFromRecIds[track.id]),
+        };
+    }, [selectedTrackCard, assignmentByTrackId, clusterById, xAxis, yAxis, knownTrackIds, savedFromRecIds]);
+    const selectedTrackCardPosition = useMemo(() => {
+        if (!selectedTrackDetails || !bubbleFieldSize.w || !bubbleFieldSize.h) return null;
+        const trackId = selectedTrackDetails.track.id;
+        const libraryItem = bubbleRenderItems.find((item) => item.node.track.id === trackId);
+        const recItem = exploreRenderItems.find((item) => item.track.id === trackId && item.inView);
+        const item = selectedTrackDetails.source === 'recommendation' ? recItem : libraryItem;
+        if (!item) return null;
+
+        const targetX = clamp01(item.xPercent / 100) * bubbleFieldSize.w;
+        const targetY = clamp01(item.yPercent / 100) * bubbleFieldSize.h;
+        const targetRadius = (item.sizePx || 52) / 2;
+        const cardW = 370;
+        const cardH = 352;
+        const placeRight = targetX < bubbleFieldSize.w * 0.58;
+        const rawLeft = placeRight
+            ? targetX + targetRadius + 24
+            : targetX - cardW - targetRadius - 24;
+        const left = Math.min(
+            Math.max(18, rawLeft),
+            Math.max(18, bubbleFieldSize.w - cardW - 18),
+        );
+        const maxTop = Math.max(90, bubbleFieldSize.h - cardH - 88);
+        const top = Math.min(Math.max(90, targetY - 104), maxTop);
+        return {
+            left,
+            top,
+            side: placeRight ? 'right' : 'left',
+            tailY: Math.min(cardH - 30, Math.max(34, targetY - top)),
+        };
+    }, [selectedTrackDetails, bubbleFieldSize.w, bubbleFieldSize.h, bubbleRenderItems, exploreRenderItems]);
     const followedArtistPreview = useMemo(
         () => (librarySummary?.followedArtists || []),
         [librarySummary],
@@ -4312,10 +4690,10 @@ export default function TasteMapPage() {
         const first = base.split(/\s+/)[0] || base;
         return first.length > 18 ? `${first.slice(0, 18)}…` : first;
     }, [explorerName]);
-    const deepAnalysisLabel = lang === 'en' ? 'Deep Analysis' : 'Deep Analysis';
+    const deepAnalysisLabel = lang === 'en' ? 'Taste Story' : '취향 스토리';
     const deepAnalysisDesc = lang === 'en'
-        ? 'Persona compare and long-form analysis panels'
-        : '페르소나 비교와 심층 분석 패널';
+        ? 'A focused view of how your taste changes over time'
+        : '시간에 따라 달라진 취향을 차분하게 살펴보세요';
     const deepAnalysisToggleLabel = deepAnalysisOpen
         ? (lang === 'en' ? 'Collapse' : '접기')
         : (lang === 'en' ? 'Expand' : '펼쳐보기');
@@ -4334,6 +4712,11 @@ export default function TasteMapPage() {
                     <p className="tm-subtitle">
                         {copy.mappedSubtitle}
                     </p>
+                    <div className="tm-header-live" aria-label="map status">
+                        <span className="tm-live-signal"><span aria-hidden />LIVE FIELD</span>
+                        <span>{tracks.length} {lang === 'en' ? 'memories' : '개의 기억'}</span>
+                        <span>{clusterStats.length} {lang === 'en' ? 'regions' : '개의 영역'}</span>
+                    </div>
                 </div>
                 <div className="tm-header-side">
                     <div className="tm-lang-toggle" role="tablist" aria-label="language toggle">
@@ -4710,19 +5093,114 @@ export default function TasteMapPage() {
                         </div>
                     </section>
 
-                    <section className="tm-axis-panel">
-                        <div className="tm-axis-core">
-                            <div className="tm-axis-mode-label" aria-label="view mode">Bubble Explorer</div>
+                    <section className="tm-axis-panel" aria-label={lang === 'en' ? 'Taste map tools' : '취향 지도 도구'}>
+                        <div className="tm-view-switcher" role="tablist" aria-label={lang === 'en' ? 'Map view' : '맵 보기'}>
+                            {MAP_VIEW_DEFINITIONS.map((definition) => (
+                                <button
+                                    key={definition.id}
+                                    type="button"
+                                    role="tab"
+                                    className={`tm-view-option${activeMapView === definition.id ? ' active' : ''}`}
+                                    aria-selected={activeMapView === definition.id}
+                                    disabled={!definition.available}
+                                    onClick={() => setActiveMapView(definition.id)}
+                                    title={definition.available ? definition.label : (lang === 'en' ? 'Coming in a future map' : '추후 추가될 맵입니다')}
+                                >
+                                    <span className="tm-view-option-mark" aria-hidden />
+                                    <span>{definition.label}</span>
+                                    {!definition.available && <span className="tm-view-soon">SOON</span>}
+                                </button>
+                            ))}
+                        </div>
+
+                        <span className="tm-dock-divider" aria-hidden />
+
+                        <div className="tm-dock-zoom" aria-label={lang === 'en' ? 'Zoom controls' : '확대 축소'}>
+                            <button type="button" onClick={() => handleZoomButton(1 / 1.2)} aria-label="zoom out">−</button>
+                            <button type="button" className="tm-dock-zoom-value" onClick={focusCurrentBubbles} title={copy.currentBubble}>
+                                {Math.round(bubbleZoom * 100)}%
+                            </button>
+                            <button type="button" onClick={() => handleZoomButton(1.2)} aria-label="zoom in">+</button>
+                        </div>
+
+                        <span className="tm-dock-divider" aria-hidden />
+
+                        <div className="tm-dock-actions">
                             <button
-                                className={`tm-utility-toggle${showUtilityControls ? ' active' : ''}`}
+                                type="button"
+                                className={`tm-dock-action${showUtilityControls ? ' active' : ''}`}
                                 onClick={() => setShowUtilityControls((prev) => !prev)}
-                                title={showUtilityControls ? '고급 컨트롤 숨기기' : '고급 컨트롤 보기'}
+                                aria-expanded={showUtilityControls}
                             >
-                                {showUtilityControls ? copy.utilityClose : copy.utilityOpen}
+                                <span aria-hidden>⌁</span>{lang === 'en' ? 'Axes' : '축'}
+                            </button>
+                            <button
+                                type="button"
+                                className={`tm-dock-action${magneticPullEnabled ? ' active' : ''}`}
+                                onClick={() => setMagneticPullEnabled((prev) => !prev)}
+                                aria-pressed={magneticPullEnabled}
+                                title={lang === 'en' ? 'Pull nearby bubbles toward the pointer' : '포인터 주변 버블을 부드럽게 끌어당깁니다'}
+                            >
+                                <span aria-hidden>◎</span>{lang === 'en' ? 'Magnet' : '자석'}
+                            </button>
+                            <button
+                                type="button"
+                                className={`tm-dock-action${exploreEnabled ? ' active' : ''}`}
+                                onClick={toggleExplore}
+                                aria-pressed={exploreEnabled}
+                            >
+                                <span aria-hidden>✦</span>{lang === 'en' ? 'Discover' : '탐색'}
+                            </button>
+                            <button
+                                type="button"
+                                className={`tm-dock-action${dashboardOpen ? ' active' : ''}`}
+                                onClick={() => {
+                                    setDashboardOpen((prev) => !prev);
+                                    setDeepAnalysisOpen(false);
+                                }}
+                                aria-pressed={dashboardOpen}
+                            >
+                                <span aria-hidden>◫</span>{lang === 'en' ? 'Inspect' : '인사이트'}
+                            </button>
+                            <button
+                                type="button"
+                                className={`tm-dock-action${deepAnalysisOpen ? ' active' : ''}`}
+                                onClick={() => {
+                                    setDeepAnalysisOpen((prev) => !prev);
+                                    setDashboardOpen(false);
+                                }}
+                                aria-pressed={deepAnalysisOpen}
+                            >
+                                <span aria-hidden>◌</span>{lang === 'en' ? 'Story' : '스토리'}
+                            </button>
+                            <button
+                                type="button"
+                                className={`tm-dock-action${shareMode ? ' active' : ''}`}
+                                onClick={toggleShareMode}
+                                aria-pressed={shareMode}
+                            >
+                                <span aria-hidden>↗</span>{lang === 'en' ? 'Share' : '공유'}
+                            </button>
+                            <button
+                                type="button"
+                                className="tm-dock-action tm-dock-theme"
+                                onClick={() => setMapTheme((prev) => (prev === 'day' ? 'dark' : 'day'))}
+                                aria-label={mapTheme === 'day' ? 'dark map' : 'light map'}
+                                title={mapTheme === 'day' ? 'Dark field' : 'Light field'}
+                            >
+                                <span aria-hidden>{mapTheme === 'day' ? '●' : '○'}</span>
                             </button>
                         </div>
+
                         {showUtilityControls && (
-                            <>
+                            <div className="tm-axis-popover">
+                                <div className="tm-axis-popover-head">
+                                    <div>
+                                        <strong>{lang === 'en' ? 'Map dimensions' : '맵 차원'}</strong>
+                                        <span>{copy.axisGuide}</span>
+                                    </div>
+                                    <button type="button" onClick={() => setShowUtilityControls(false)} aria-label="close">×</button>
+                                </div>
                                 <div className="tm-preset-row">
                                     <span className="tm-axis-label">{copy.axisPresetLabel}</span>
                                     <div className="tm-preset-chips">
@@ -4739,54 +5217,45 @@ export default function TasteMapPage() {
                                     </div>
                                 </div>
                                 <div className="tm-axis-advanced">
-                                    <div className="tm-axis-ctrl">
+                                    <label className="tm-axis-ctrl">
                                         <span className="tm-axis-label">{copy.axisX}</span>
                                         <select className="tm-axis-select" value={xAxis} onChange={(e) => handleXAxisChange(e.target.value)}>
-                                            {FEATURE_KEYS.map((key) => (
-                                                <option key={key} value={key}>
-                                                    {FEATURE_META[key].label}
-                                                </option>
-                                            ))}
+                                            {FEATURE_KEYS.map((key) => <option key={key} value={key}>{FEATURE_META[key].label}</option>)}
                                         </select>
-                                    </div>
-                                    <div className="tm-axis-ctrl">
+                                    </label>
+                                    <label className="tm-axis-ctrl">
                                         <span className="tm-axis-label">{copy.axisY}</span>
                                         <select className="tm-axis-select" value={yAxis} onChange={(e) => handleYAxisChange(e.target.value)}>
-                                            {FEATURE_KEYS.map((key) => (
-                                                <option key={key} value={key}>
-                                                    {FEATURE_META[key].label}
-                                                </option>
-                                            ))}
+                                            {FEATURE_KEYS.map((key) => <option key={key} value={key}>{FEATURE_META[key].label}</option>)}
                                         </select>
-                                    </div>
+                                    </label>
                                 </div>
-                            </>
-                        )}
-                        <div className="tm-axis-meta">
-                            <span className="tm-axis-note">
-                                {copy.axisGuide}
-                                {' '}
-                                {effectiveClusterBasis === 'genre'
-                                    ? `(Genre ${genreVocab.length}${lang === 'en' ? ` ${copy.genreBasis}` : copy.genreBasis})`
-                                    : `(${copy.audioBasis})`}
-                                {exploreEnabled && !exploreLoading && !exploreError && (
-                                    <> · {copy.exploreCount} {exploreRecs.length}{lang === 'en' ? '' : '곡'} ({copy.inViewCount} {exploreVisibleCount}{lang === 'en' ? '' : '곡'})</>
-                                )}
-                                {exploreLoading && <> · {copy.exploreLoading}</>}
-                                {exploreError && <> · {copy.exploreFailed}</>}
-                            </span>
-                        </div>
-                        {(selectedCluster !== null || selectedPeriodKey !== null) && (
-                            <button
-                                className="tm-clear-filter"
-                                onClick={() => {
-                                    setSelectedCluster(null);
-                                    setSelectedPeriodKey(null);
-                                    setSpectraExpandTrackId(null);
-                                }}
-                            >
-                                {copy.clearFilter}
-                            </button>
+                                <div className="tm-axis-meta">
+                                    <span className="tm-axis-note">
+                                        {effectiveClusterBasis === 'genre'
+                                            ? `Genre · ${genreVocab.length}${lang === 'en' ? ` ${copy.genreBasis}` : copy.genreBasis}`
+                                            : copy.audioBasis}
+                                        {exploreEnabled && !exploreLoading && !exploreError && (
+                                            <> · {copy.inViewCount} {exploreVisibleCount}{lang === 'en' ? '' : '곡'}</>
+                                        )}
+                                        {exploreLoading && <> · {copy.exploreLoading}</>}
+                                        {exploreError && <> · {copy.exploreFailed}</>}
+                                    </span>
+                                    {(selectedCluster !== null || selectedPeriodKey !== null) && (
+                                        <button
+                                            type="button"
+                                            className="tm-clear-filter"
+                                            onClick={() => {
+                                                setSelectedCluster(null);
+                                                setSelectedPeriodKey(null);
+                                                setSpectraExpandTrackId(null);
+                                            }}
+                                        >
+                                            {copy.clearFilter}
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
                         )}
                     </section>
 
@@ -4802,13 +5271,7 @@ export default function TasteMapPage() {
                                 <div className="tm-map-overlay-controls">
                                     <button
                                         className={`tm-explore-toggle tm-explore-toggle--overlay${exploreEnabled ? ' active' : ''}`}
-                                        onClick={() => {
-                                            setExploreEnabled((prev) => {
-                                                const next = !prev;
-                                                if (!next) setSpectraExpandTrackId(null);
-                                                return next;
-                                            });
-                                        }}
+                                        onClick={toggleExplore}
                                         title="빈 영역 탐색 추천곡 표시"
                                     >
                                         {exploreEnabled ? copy.recOn : copy.recOff}
@@ -4851,11 +5314,20 @@ export default function TasteMapPage() {
                                 className="tm-map-tag-strip tm-region-cloud tm-region-cloud-emotion"
                                 data-active-region={activeEmotionRegion || undefined}
                             >
+                                <button
+                                    type="button"
+                                    className={`tm-map-tag-chip tm-map-tag-chip--all tm-inspector-chip tm-region-tag${selectedCluster === null && selectedPeriodKey === null && !spectraExpandTrackId ? ' active' : ''}`}
+                                    onClick={showFullTasteField}
+                                    title={lang === 'en' ? 'Show the full taste field' : '필터를 해제하고 전체 취향 보기'}
+                                >
+                                    <span className="tm-all-chip-mark" aria-hidden>⊙</span>
+                                    <span>{lang === 'en' ? 'All' : '전체'}</span>
+                                </button>
                                 {clusterStats.slice(0, 6).map((cluster) => (
                                     <button
                                         key={`map-chip-${cluster.j}`}
                                         type="button"
-                                        className={`tm-map-tag-chip tm-inspector-chip tm-region-tag tm-region-tag-emotion${selectedClusterData?.j === cluster.j ? ' active' : ''}${activeEmotionRegion === `cluster-${cluster.j}` ? ' is-region-active' : ''}${activeEmotionRegion && activeEmotionRegion !== `cluster-${cluster.j}` ? ' is-region-dim' : ''}`}
+                                        className={`tm-map-tag-chip tm-inspector-chip tm-region-tag tm-region-tag-emotion${selectedCluster === cluster.j ? ' active' : ''}${activeEmotionRegion === `cluster-${cluster.j}` ? ' is-region-active' : ''}${activeEmotionRegion && activeEmotionRegion !== `cluster-${cluster.j}` ? ' is-region-dim' : ''}`}
                                         data-region={`cluster-${cluster.j}`}
                                         style={getEmotionRegionStyle(cluster.color, `cluster-${cluster.j}`)}
                                         onClick={() => {
@@ -4907,6 +5379,61 @@ export default function TasteMapPage() {
                                             </span>
                                         ))}
                                     </div>
+                                    <div
+                                        ref={magneticCursorRef}
+                                        className={`tm-magnetic-cursor${magneticPullEnabled ? ' enabled' : ''}`}
+                                        aria-hidden
+                                    />
+                                    {exploreEnabled && (
+                                        <aside className={`tm-discovery-lens${isSpectraExpandMode ? ' track-seeded' : ''}`}>
+                                            <div className="tm-discovery-lens-eyebrow">
+                                                <span className="tm-discovery-lens-signal" aria-hidden />
+                                                {copy.discoveryLens}
+                                            </div>
+                                            <div className="tm-discovery-lens-title-row">
+                                                {spectraExpandTrack?.coverUrl && (
+                                                    <img src={spectraExpandTrack.coverUrl} alt="" className="tm-discovery-seed-cover" />
+                                                )}
+                                                <div>
+                                                    <strong>
+                                                        {isSpectraExpandMode
+                                                            ? copy.discoveryTrackBasis
+                                                            : copy.discoveryGapBasis}
+                                                    </strong>
+                                                    {isSpectraExpandMode && <span>{spectraExpandTrack.name} · {spectraExpandTrack.artists}</span>}
+                                                </div>
+                                            </div>
+                                            <p>
+                                                {isSpectraExpandMode
+                                                    ? copy.discoveryTrackDesc
+                                                    : copy.discoveryGapDesc}
+                                            </p>
+                                            <dl className="tm-discovery-criteria">
+                                                <div>
+                                                    <dt>{copy.discoveryCurrentAxes}</dt>
+                                                    <dd>{xMeta.label} × {yMeta.label}</dd>
+                                                </div>
+                                                <div>
+                                                    <dt>{copy.discoverySeedTags}</dt>
+                                                    <dd>{exploreSeedGenres.map((genre) => getGenreIdentity(genre).short).join(' · ')}</dd>
+                                                </div>
+                                            </dl>
+                                            <div className="tm-discovery-legend">
+                                                <span><i className="tm-discovery-legend-dot mine" />{copy.discoveryMyBubble}</span>
+                                                <span><i className="tm-discovery-legend-dot rec" />{copy.discoveryRecommendation}</span>
+                                                <b>{exploreLoading ? '…' : exploreVisibleCount}</b>
+                                            </div>
+                                            {isSpectraExpandMode && (
+                                                <button
+                                                    type="button"
+                                                    className="tm-discovery-focus-btn"
+                                                    onClick={() => focusBubbleTrack(spectraExpandTrackId, { ensureZoom: 1.15 })}
+                                                >
+                                                    {copy.discoveryFocusAnchor} <span aria-hidden>↗</span>
+                                                </button>
+                                            )}
+                                        </aside>
+                                    )}
                                     <div className="tm-zoom-hud">
                                         <button className="tm-zoom-btn" onClick={() => handleZoomButton(1.2)} aria-label="zoom in">+</button>
                                         <span className="tm-zoom-value">{Math.round(bubbleZoom * 100)}%</span>
@@ -4977,27 +5504,53 @@ export default function TasteMapPage() {
                                             <div className="tm-overview-note">지금 탐색 중인 영역</div>
                                         </div>
                                     )}
+                                    {discoveryAnchorPosition && (
+                                        <div
+                                            className="tm-discovery-orbit"
+                                            style={{
+                                                left: `${discoveryAnchorPosition.xPercent}%`,
+                                                top: `${discoveryAnchorPosition.yPercent}%`,
+                                                '--tm-discovery-orbit-size': `${discoveryAnchorPosition.orbitSize}px`,
+                                            }}
+                                            aria-hidden
+                                        >
+                                            <span className="tm-discovery-orbit-ring outer" />
+                                            <span className="tm-discovery-orbit-ring inner" />
+                                            <span className="tm-discovery-orbit-axis horizontal" />
+                                            <span className="tm-discovery-orbit-axis vertical" />
+                                        </div>
+                                    )}
                                     <div
-                                        className={`tm-bubble-layer${timelineMorphing ? ' retiming' : ''}${isSpectraExpandMode ? ' spectra-expanding' : ''}`}
+                                        className={`tm-bubble-layer${timelineMorphing ? ' retiming' : ''}${isSpectraExpandMode ? ' spectra-expanding' : ''}${visibleBubbleRenderItems.length > 520 ? ' high-density' : ''}`}
                                         style={{ '--tm-bubble-scale': Math.max(1, bubbleZoom / 1.2) }}
                                         onPointerDown={(event) => {
+                                            if (event.target?.closest?.('.tm-bubble, .tm-bubble-share-select')) return;
                                             if (bubbleContextMenu) setBubbleContextMenu(null);
+                                            if (selectedTrackCard) {
+                                                setSelectedTrackCard(null);
+                                                setHoveredBubbleId(null);
+                                            }
                                             handleBubblePanStart(event);
                                         }}
-                                        onPointerMove={handleBubblePanMove}
+                                        onClick={handleBubbleLayerClick}
+                                        onContextMenu={handleBubbleLayerContextMenu}
+                                        onPointerMove={handleInteractiveBubbleMove}
                                         onPointerUp={handleBubblePanEnd}
                                         onPointerCancel={handleBubblePanEnd}
+                                        onPointerLeave={resetBubbleMagnetism}
                                     >
-                                        {bubbleRenderItems.map(({ node, active, clusterFocused, clusterExpandPulsing, xPercent, yPercent, showLabel }) => {
+                                        {visibleBubbleRenderItems.map(({ node, active, clusterFocused, clusterExpandPulsing, xPercent, yPercent, showLabel }) => {
                                             const hovered = hoveredBubbleId === node.track.id;
                                             const picked = !!shareSelectedMap[node.track.id];
                                             const nowPlaying = nowPlayingTrackId === node.track.id;
+                                            const detailSelected = selectedTrackCard?.track?.id === node.track.id;
                                             const spectraBlur = isSpectraExpandMode && node.track.id !== spectraExpandTrackId;
                                             const spectraAnchor = isSpectraExpandMode && node.track.id === spectraExpandTrackId;
                                             return (
                                                 <div
                                                     key={node.track.id}
-                                                    className={`tm-bubble-item${active ? '' : ' muted'}${showLabel ? ' show-label' : ''}${hovered ? ' hovered' : ''}${picked ? ' picked' : ''}${nowPlaying ? ' now-playing' : ''}${clusterFocused ? ' cluster-focus' : ''}${clusterExpandPulsing ? ' cluster-expand-pulse' : ''}${spectraBlur ? ' spectra-blur' : ''}${spectraAnchor ? ' spectra-anchor' : ''}`}
+                                                    data-bubble-id={node.track.id}
+                                                    className={`tm-bubble-item${active ? '' : ' muted'}${showLabel ? ' show-label' : ''}${hovered ? ' hovered' : ''}${detailSelected ? ' detail-selected' : ''}${picked ? ' picked' : ''}${nowPlaying ? ' now-playing' : ''}${clusterFocused ? ' cluster-focus' : ''}${clusterExpandPulsing ? ' cluster-expand-pulse' : ''}${spectraBlur ? ' spectra-blur' : ''}${spectraAnchor ? ' spectra-anchor' : ''}`}
                                                     style={{
                                                         '--tm-bubble-size': node.style['--tm-bubble-size'],
                                                         '--tm-bubble-color': node.style['--tm-bubble-color'],
@@ -5008,8 +5561,6 @@ export default function TasteMapPage() {
                                                         left: `${xPercent}%`,
                                                         top: `${yPercent}%`,
                                                     }}
-                                                    onPointerEnter={() => setHoveredBubbleId(node.track.id)}
-                                                    onPointerLeave={() => setHoveredBubbleId(null)}
                                                 >
                                                     <div className="tm-bubble-float">
                                                         <button
@@ -5018,13 +5569,6 @@ export default function TasteMapPage() {
                                                                 borderColor: node.style.borderColor,
                                                                 backgroundImage: node.style.backgroundImage,
                                                             }}
-                                                            onPointerDown={(e) => e.stopPropagation()}
-                                                            onPointerUp={(e) => e.stopPropagation()}
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                handleBubbleClick(node.track);
-                                                            }}
-                                                            onContextMenu={(e) => openBubbleContextMenu(e, node.track)}
                                                             title={`${node.track.name} — ${node.track.artists}`}
                                                         >
                                                             <div className="tm-bubble-overlay" />
@@ -5056,7 +5600,7 @@ export default function TasteMapPage() {
                                             rec.inView ? (
                                                 <div
                                                     key={rec.id}
-                                                    className={`tm-rec-bubble-item${rec.hovered ? ' hovered' : ''}${rec.relatedToFocus ? ' spectra-related' : ''}`}
+                                                    className={`tm-rec-bubble-item${rec.hovered ? ' hovered' : ''}${rec.relatedToFocus ? ' spectra-related' : ''}${rec.showGuideLabel ? ' guide-label' : ''}${selectedTrackCard?.track?.id === rec.track.id ? ' detail-selected' : ''}`}
                                                     style={{
                                                         '--tm-rec-size': rec.style['--tm-rec-size'],
                                                         '--tm-float-duration': rec.style['--tm-float-duration'],
@@ -5071,19 +5615,6 @@ export default function TasteMapPage() {
                                                 >
                                                     <div className="tm-bubble-float">
                                                         <div className="tm-rec-actions">
-                                                            <button
-                                                                className="tm-rec-action-btn"
-                                                                onPointerDown={(e) => e.stopPropagation()}
-                                                                onPointerUp={(e) => e.stopPropagation()}
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    playTrack(rec.track.id);
-                                                                }}
-                                                                title={copy.recListen}
-                                                                aria-label={copy.recListen}
-                                                            >
-                                                                ▶
-                                                            </button>
                                                             <button
                                                                 className={`tm-rec-action-btn add${(knownTrackIds.has(rec.track.id) || savedFromRecIds[rec.track.id]) ? ' saved' : ''}`}
                                                                 disabled={Boolean(savingLibraryTrackIds[rec.track.id]) || knownTrackIds.has(rec.track.id) || savedFromRecIds[rec.track.id]}
@@ -5116,11 +5647,11 @@ export default function TasteMapPage() {
                                                             onPointerUp={(e) => e.stopPropagation()}
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
-                                                                playTrack(rec.track.id);
+                                                                openTrackCard(rec.track, 'recommendation');
                                                             }}
                                                             title={`${rec.track.name} — ${rec.track.artists}`}
                                                         >
-                                                            <span className="tm-rec-badge">추천</span>
+                                                            <span className="tm-rec-badge">추천 {rec.rank}</span>
                                                         </button>
                                                         <div className="tm-rec-label">
                                                             <div className="tm-rec-name">{rec.track.name}</div>
@@ -5131,6 +5662,98 @@ export default function TasteMapPage() {
                                             ) : null
                                         ))}
                                     </div>
+                                    {selectedTrackDetails && selectedTrackCardPosition && (
+                                        <aside
+                                            className={`tm-track-detail-card side-${selectedTrackCardPosition.side}`}
+                                            style={{
+                                                left: `${selectedTrackCardPosition.left}px`,
+                                                top: `${selectedTrackCardPosition.top}px`,
+                                                '--tm-detail-tail-y': `${selectedTrackCardPosition.tailY}px`,
+                                            }}
+                                            role="dialog"
+                                            aria-label={`${selectedTrackDetails.track.name} details`}
+                                            onPointerDown={(event) => event.stopPropagation()}
+                                        >
+                                            <button
+                                                type="button"
+                                                className="tm-track-detail-close"
+                                                onClick={() => {
+                                                    setSelectedTrackCard(null);
+                                                    setHoveredBubbleId(null);
+                                                }}
+                                                aria-label={lang === 'en' ? 'Close track details' : '곡 상세 닫기'}
+                                            >
+                                                ×
+                                            </button>
+                                            <div className="tm-track-detail-head">
+                                                <div
+                                                    className={`tm-track-detail-cover${selectedTrackDetails.track.coverUrl ? ' has-image' : ''}`}
+                                                    style={selectedTrackDetails.track.coverUrl
+                                                        ? { backgroundImage: `url(${selectedTrackDetails.track.coverUrl})` }
+                                                        : undefined}
+                                                    aria-hidden
+                                                >
+                                                    {!selectedTrackDetails.track.coverUrl && <span>♪</span>}
+                                                </div>
+                                                <div className="tm-track-detail-heading">
+                                                    <span className={`tm-track-detail-source ${selectedTrackDetails.source}`}>
+                                                        {selectedTrackDetails.source === 'recommendation'
+                                                            ? copy.discoveryRecommendation
+                                                            : copy.discoveryMyBubble}
+                                                    </span>
+                                                    <h3>{selectedTrackDetails.track.name}</h3>
+                                                    <p>{selectedTrackDetails.track.artists}</p>
+                                                </div>
+                                            </div>
+                                            <div className="tm-track-detail-context">
+                                                <span>{selectedTrackDetails.cluster?.label?.name || (lang === 'en' ? 'New territory' : '새로운 영역')}</span>
+                                                <b>{xMeta.short} {selectedTrackDetails.xValue}</b>
+                                                <b>{yMeta.short} {selectedTrackDetails.yValue}</b>
+                                            </div>
+                                            {selectedTrackDetails.genres.length > 0 && (
+                                                <div className="tm-track-detail-tags">
+                                                    {selectedTrackDetails.genres.map((genre) => (
+                                                        <span key={`detail-${selectedTrackDetails.track.id}-${genre}`}>{getGenreIdentity(genre).short}</span>
+                                                    ))}
+                                                </div>
+                                            )}
+                                            <div className="tm-track-detail-primary-actions">
+                                                {selectedTrackDetails.cluster ? (
+                                                    <button
+                                                        type="button"
+                                                        className="tm-track-detail-primary"
+                                                        onClick={() => applySpectraExpandByTrackId(selectedTrackDetails.track.id)}
+                                                    >
+                                                        <span aria-hidden>◎</span>{copy.trackExploreAction}
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                        type="button"
+                                                        className="tm-track-detail-primary"
+                                                        disabled={selectedTrackDetails.alreadyInField}
+                                                        onClick={() => saveTrackToMyBubble(selectedTrackDetails.track)}
+                                                    >
+                                                        <span aria-hidden>{selectedTrackDetails.alreadyInField ? '✓' : '+'}</span>
+                                                        {selectedTrackDetails.alreadyInField ? copy.recAdded : copy.trackAddAction}
+                                                    </button>
+                                                )}
+                                            </div>
+                                            <div className="tm-track-detail-external">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => openTrackExternal(selectedTrackDetails.track, 'spotify')}
+                                                >
+                                                    {copy.spotifySearch}<span aria-hidden>↗</span>
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => openTrackExternal(selectedTrackDetails.track, 'youtube')}
+                                                >
+                                                    {copy.youtubeSearch}<span aria-hidden>↗</span>
+                                                </button>
+                                            </div>
+                                        </aside>
+                                    )}
                                     {bubbleContextMenu && (
                                         <div
                                             className="tm-bubble-context-menu"
@@ -5213,7 +5836,7 @@ export default function TasteMapPage() {
                                     <button
                                         key={`ins-chip-${cluster.j}`}
                                         type="button"
-                                        className={`tm-inspector-chip tm-region-tag tm-region-tag-emotion${selectedClusterData?.j === cluster.j ? ' active' : ''}${activeEmotionRegion === `cluster-${cluster.j}` ? ' is-region-active' : ''}${activeEmotionRegion && activeEmotionRegion !== `cluster-${cluster.j}` ? ' is-region-dim' : ''}`}
+                                        className={`tm-inspector-chip tm-region-tag tm-region-tag-emotion${selectedCluster === cluster.j ? ' active' : ''}${activeEmotionRegion === `cluster-${cluster.j}` ? ' is-region-active' : ''}${activeEmotionRegion && activeEmotionRegion !== `cluster-${cluster.j}` ? ' is-region-dim' : ''}`}
                                         data-region={`cluster-${cluster.j}`}
                                         style={getEmotionRegionStyle(cluster.color, `cluster-${cluster.j}`)}
                                         onClick={() => {
@@ -5289,7 +5912,7 @@ export default function TasteMapPage() {
                                                 className="tm-mini-track"
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    playTrack(track.id, { enableAutoNear: true });
+                                                    openTrackCard(track, 'library');
                                                 }}
                                             >
                                                 {track.coverUrl && <img src={track.coverUrl} alt={track.name} className="tm-mini-cover" />}
@@ -5297,7 +5920,7 @@ export default function TasteMapPage() {
                                                     <div className="tm-mini-name">{track.name}</div>
                                                     <div className="tm-mini-artist">{track.artists}</div>
                                                 </div>
-                                                <span className="tm-mini-play">▶</span>
+                                                <span className="tm-mini-play">›</span>
                                             </div>
                                         ))}
                                     </div>
@@ -5307,7 +5930,7 @@ export default function TasteMapPage() {
                         )}
                     </div>
 
-                    <section className="tm-mobile-sync-footer">
+                    <section className="tm-mobile-sync-footer" aria-hidden="true">
                         <div className="tm-mobile-sync-panel">
                             <div className="tm-mobile-sync-head">
                                 <span className="tm-mobile-sync-title">Spectra Starting Point</span>

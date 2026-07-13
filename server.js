@@ -301,7 +301,9 @@ app.post('/api/taste/enrich', async (req, res) => {
 
 // ---------- GET /api/discover — Last.fm-backed Digging / discovery ----------
 //
-// Query: valence, energy, seedGenres (csv), seedTracks ("artist|title;artist|title"), limit
+// Query: xAxis, yAxis, targetX, targetY, seedGenres (csv),
+// seedTracks ("artist|title;artist|title"), limit.
+// `valence` / `energy` remain accepted as backwards-compatible target aliases.
 
 app.get('/api/discover', async (req, res) => {
     if (!isLastfmConfigured()) {
@@ -309,6 +311,21 @@ app.get('/api/discover', async (req, res) => {
     }
     try {
         const limit = Math.max(1, Math.min(50, Number(req.query.limit) || 16));
+        const featureKeys = new Set([
+            'valence',
+            'energy',
+            'danceability',
+            'acousticness',
+            'instrumentalness',
+        ]);
+        const xAxis = featureKeys.has(String(req.query.xAxis)) ? String(req.query.xAxis) : 'valence';
+        const yAxis = featureKeys.has(String(req.query.yAxis)) ? String(req.query.yAxis) : 'energy';
+        const toTarget = (value, fallback = 0.5) => {
+            const parsed = Number(value);
+            return Number.isFinite(parsed) ? Math.max(0, Math.min(1, parsed)) : fallback;
+        };
+        const targetX = toTarget(req.query.targetX ?? req.query.valence);
+        const targetY = toTarget(req.query.targetY ?? req.query.energy);
         const seedGenres = String(req.query.seedGenres || '')
             .split(',').map((s) => s.trim()).filter(Boolean);
         const seedTracks = String(req.query.seedTracks || '')
@@ -376,6 +393,18 @@ app.get('/api/discover', async (req, res) => {
             };
         });
 
+        // The Last.fm calls above decide the semantic candidate pool. Rank that
+        // pool against the axes the user is actually looking at so the visible
+        // discovery position and the recommendation order stay aligned.
+        enriched.sort((a, b) => {
+            const distanceFor = (track) => {
+                const dx = (Number(track?.[xAxis]) || 0) - targetX;
+                const dy = (Number(track?.[yAxis]) || 0) - targetY;
+                return dx * dx + dy * dy;
+            };
+            return distanceFor(a) - distanceFor(b);
+        });
+
         const outSeen = new Set();
         const tracks = [];
         for (const t of enriched) {
@@ -384,7 +413,14 @@ app.get('/api/discover', async (req, res) => {
             tracks.push(t);
             if (tracks.length >= limit) break;
         }
-        res.json({ tracks, seed: { seedGenres, seedTracks } });
+        res.json({
+            tracks,
+            seed: {
+                seedGenres,
+                seedTracks,
+                axes: { xAxis, yAxis, targetX, targetY },
+            },
+        });
     } catch (e) {
         console.error('[Discover] error:', e.message);
         res.status(502).json({ error: e.message || 'Discovery failed' });
