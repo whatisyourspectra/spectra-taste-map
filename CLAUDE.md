@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-SPECTRA Taste Map — the user imports a list of liked songs (CSV or "Artist - Title" lines, e.g. exported via Tune My Music / Exportify), the server enriches each track with **Last.fm** genre/mood tags, and the app clusters them into a responsive spatial "taste field" visualization.
+SPECTRA Taste Map — the user imports a list of liked songs (CSV or "Artist - Title" lines, e.g. exported via Tune My Music / Exportify), the server combines **Last.fm tags** with **Spotify public-catalog metadata** through Client Credentials, and the app exposes separate Last.fm and Spotify-derived spatial fields.
 
-**Why not Spotify:** Spotify's Web API can't leave Development mode (25-user cap, no production approval) and `audio-features`/`recommendations` are deprecated for new apps. Last.fm needs only a free API key (no approval). Last.fm has no audio features, so tags are mapped into the `[valence, energy, danceability, acousticness, instrumentalness]` space via `tagsToFeatures()` in `server.js` (extends the pre-existing `GENRE_SCORES` with `MOOD_SCORES`).
+**Dual source:** users provide the track list themselves, so the app does not need Spotify OAuth or private user data. Last.fm genre/mood tags drive the original Taste Field. Spotify supplies album covers, links, and artist genres; those genres drive a separate Spotify Field. Both sources are mapped into `[valence, energy, danceability, acousticness, instrumentalness]` because Spotify `audio-features` is unavailable to this Development Mode app.
 
 ## Commands
 
@@ -20,8 +20,8 @@ npm run lint      # eslint . (whole repo)
 ```
 
 - **No test runner is configured.** There is no single-test command. Verify changes with `npm run lint` plus running the app manually.
-- First-time setup: `npm install` → `cp .env.example .env`, then set `LASTFM_API_KEY` (free key from https://www.last.fm/api/account/create). All variables are documented in `.env.example`.
-- **Verify without a key:** set `LASTFM_MOCK=1` in `.env` — `src/server/lastfm.js` returns deterministic synthetic tags so the whole flow works offline.
+- First-time setup: `npm install` → `cp .env.example .env`, then set `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`, and `LASTFM_API_KEY`. All variables are documented in `.env.example`.
+- **Verify without credentials:** set both `SPOTIFY_MOCK=1` and `LASTFM_MOCK=1` in `.env` for deterministic offline data.
 - Production: `npm run build`, then `npm run server` serves both `dist/` and the API from :3001.
 - Key endpoints: `POST /api/taste/enrich`, `GET /api/discover`. Both are also exposed through `api/` as Vercel Functions. There is **no OAuth / login** anymore.
 
@@ -34,7 +34,7 @@ npm run lint      # eslint . (whole repo)
 
 ## Design rules (summary)
 
-- Keep the `LASTFM_API_KEY` on the server only; the client never calls Last.fm directly.
+- Keep `SPOTIFY_CLIENT_SECRET`, app access tokens, and `LASTFM_API_KEY` on the server only; the client consumes server endpoints only.
 - Offload heavy computation to Web Workers; the imported taste is cached in `sessionStorage` (`TasteDataContext`) and re-enriched only on a new import.
 - The client consumes server endpoints only. Track "play" opens an external search link (no in-app playback); "save" folds the track into the local field.
 - Desktop and mobile views use the imported taste cached in the current browser session; there is no cross-device handoff or realtime relay.

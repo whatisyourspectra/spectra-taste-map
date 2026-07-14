@@ -2,42 +2,48 @@
 
 A spatial visualization of your music taste. You import a list of your liked
 songs (exported from Spotify/Apple/etc. via **Tune My Music**, Exportify, or any
-CSV), SPECTRA enriches each track with **Last.fm** community tags, and turns them
-into an interactive, clustered "taste field" you can explore on desktop or mobile.
+CSV), SPECTRA combines **Last.fm community tags** with login-free **Spotify
+catalog metadata**, then turns them into interactive clustered fields you can
+explore on desktop or mobile.
 
 This repository is the standalone **Taste Map** feature extracted from the
 larger SPECTRA project.
 
-## Why Last.fm instead of Spotify?
+## Dual taste fields without user login
 
-Spotify's Web API keeps new apps in *Development mode* (a hard 25-user cap that
-can't be lifted without an approval that is no longer granted for this kind of
-app), and its `audio-features` / `recommendations` endpoints are deprecated for
-new apps. Last.fm only needs a **free API key** (registration, no approval), so
-the app can be shared publicly. Last.fm doesn't expose audio features, so we map
-its genre/mood **tags** into the same `valence / energy / danceability /
-acousticness / instrumentalness` space the map clusters on.
+Visitors import their own list instead of connecting a Spotify account. Last.fm
+supplies the detailed genre/mood tags used by the original **Taste Field**. The
+server also uses Spotify's **Client Credentials** flow to fill album covers and
+links, and to power a separate **Spotify Field** whose coordinates are estimated
+from Spotify artist genres. Spotify `audio-features` remains unavailable to this
+Development Mode app.
 
 ## Features
 
 - **Import taste** — paste an "Artist - Title" list or drop a CSV; the server
-  enriches it via Last.fm tags. No login required.
+  enriches it with Last.fm tags plus Spotify catalog metadata. No login required.
+- **Taste Field** — the original Last.fm tag/mood distribution with Spotify
+  cover matching layered onto every matched track.
+- **Spotify Field** — a separate field estimated from Spotify artist genres.
 - **Taste Map** (`/taste-map`) — enriched tracks are clustered (k-means in a Web
   Worker) into an animated bubble field.
 - **Responsive** — desktop map (`TasteMapPage`) and a touch-first mobile view
   (`TasteMapMobilePage`), auto-selected by viewport, also reachable directly at
   `/taste-map/mobile`.
-- **Digging** — discovery via Last.fm `track.getSimilar` / `tag.getTopTracks`.
+- **Digging** — Last.fm similar/tag discovery in Taste Field and Spotify
+  artist/genre discovery in Spotify Field.
 - Track clicks open the song on an external service (Spotify/YouTube search).
 
 ## Tech stack
 
 - **Client:** React 19, React Router, Vite, Three.js (import scene), Web Workers
-- **Server:** Node + Express, Vercel Functions, Last.fm API (tag enrichment)
+- **Server:** Node + Express, Vercel Functions, Last.fm API + Spotify Web API
 
 ## Prerequisites
 
 - Node 18+
+- A Spotify developer app with Client ID and Client Secret from the
+  [Spotify Developer Dashboard](https://developer.spotify.com/dashboard).
 - A free Last.fm API key from
   [last.fm/api/account/create](https://www.last.fm/api/account/create).
 
@@ -45,11 +51,11 @@ acousticness / instrumentalness` space the map clusters on.
 
 ```bash
 npm install
-cp .env.example .env   # then set LASTFM_API_KEY
+cp .env.example .env   # then set Spotify credentials and LASTFM_API_KEY
 ```
 
-See `.env.example` for every supported variable. To try the app without a key,
-set `LASTFM_MOCK=1` (deterministic synthetic tags for demos/verification).
+See `.env.example` for every supported variable. To try the app without
+credentials, set `SPOTIFY_MOCK=1` and `LASTFM_MOCK=1` for deterministic demos.
 
 ## Development
 
@@ -78,12 +84,13 @@ npm run server   # serves dist/ and the API from :3001
 ## Project layout
 
 ```
-server.js                     Express API (Last.fm enrich/discover) + local production server
+server.js                     Express API (dual-source enrich/discover) + production server
 api/                          Vercel Function entrypoints for the Express API
 src/
   App.jsx                     Routing + import overlay (Three.js scene + Tune My Music guide)
   context/TasteDataContext    Imported + enriched taste (sessionStorage backed)
-  server/lastfm.js            Last.fm client (tags, similar, tag-top; mock mode)
+  server/spotify.js           Spotify catalog client (Client Credentials + cache/mock)
+  server/lastfm.js            Last.fm tag/similar-track client (cache/mock)
   utils/parseTrackList.js     CSV / "Artist - Title" list parser
   pages/
     TasteMapPage.jsx          Desktop taste map
@@ -97,7 +104,8 @@ docs/TASTE_MAP_SPEC_KO.md     Feature spec (Korean)
 ## API endpoints
 
 - `POST /api/taste/enrich` — `{ tracks:[{artist,title}] }` → enriched taste
-- `GET  /api/discover` — Last.fm-backed discovery (valence/energy/seedGenres/seedTracks)
+- `GET  /api/discover` — source-aware discovery (`source=lastfm|spotify`)
 
-On Vercel, set `LASTFM_API_KEY`; the files under `api/` expose both endpoints as
-Vercel Functions while the Vite app remains a static deployment.
+On Vercel, set `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`, and
+`LASTFM_API_KEY`; the files under `api/` expose both endpoints as Vercel
+Functions while the Vite app remains a static deployment.

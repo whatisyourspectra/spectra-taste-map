@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useTasteData } from '../context/TasteDataContext';
 import './TasteMapPage.css';
 
@@ -7,7 +7,7 @@ const api = (path) => `${API_BASE}${path}`;
 const TM_FETCH_CACHE_TTL_MS = 10 * 60 * 1000;
 const TM_CLUSTER_CACHE_TTL_MS = 10 * 60 * 1000;
 const TM_LIBRARY_CACHE_TTL_MS = 10 * 60 * 1000;
-const TM_FETCH_CACHE_PREFIX = 'taste-map-fetch-v5';
+const TM_FETCH_CACHE_PREFIX = 'taste-map-fetch-v7';
 const TM_CLUSTER_CACHE_PREFIX = 'taste-map-cluster-v3';
 const TM_LIBRARY_CACHE_PREFIX = 'taste-map-library-v1';
 const TM_LOCALE_STORAGE_KEY = 'spectra-tastemap-lang-v1';
@@ -17,12 +17,12 @@ const TM_I18N = {
     ko: {
         mappedSubtitle: 'Listening history, mapped in space.',
         explorerLabel: 'EXPLORER',
-        explorerMeta: 'Last.fm tag-mapped taste universe.',
+        explorerMeta: 'Last.fm taste signals · Spotify cover matching.',
         langKo: '한국어',
         langEn: 'English',
         analyzingTitle: '취향 분석 진행 중',
         analyzingStep1: '목록 불러오기',
-        analyzingStep2: 'Last.fm 태그 분석',
+        analyzingStep2: 'Last.fm 태그 · Spotify 커버 매칭',
         analyzingStep3: '내 취향 지도 생성',
         loginRequired: '먼저 곡 목록을 가져와 주세요.',
         loginAction: '목록 가져오기',
@@ -75,8 +75,10 @@ const TM_I18N = {
         discoveryLens: '탐색 기준',
         discoveryTrackBasis: '이 곡을 기준으로 탐색',
         discoveryGapBasis: '내 취향의 빈 영역 탐색',
-        discoveryTrackDesc: 'Last.fm 유사곡 우선 · 태그 보완 · 현재 축 거리순',
-        discoveryGapDesc: '대표 태그 후보 · 현재 축의 저밀도 영역 우선',
+        discoveryTrackDesc: 'Last.fm 유사곡 · 태그 후보 · 현재 축 거리순',
+        discoveryGapDesc: 'Last.fm 대표 태그 후보 · 현재 축의 저밀도 영역 우선',
+        discoverySpotifyTrackDesc: 'Spotify 아티스트·장르 후보 · 현재 축 거리순',
+        discoverySpotifyGapDesc: 'Spotify 대표 장르 후보 · 현재 축의 저밀도 영역 우선',
         discoveryCurrentAxes: '현재 축',
         discoverySeedTags: '기준 태그',
         discoveryMyBubble: '내 취향',
@@ -104,12 +106,12 @@ const TM_I18N = {
     en: {
         mappedSubtitle: 'Listening history, mapped in space.',
         explorerLabel: 'CURRENT EXPLORER',
-        explorerMeta: 'Last.fm tag-mapped taste universe.',
+        explorerMeta: 'Last.fm taste signals · Spotify cover matching.',
         langKo: '한국어',
         langEn: 'English',
         analyzingTitle: 'Analyzing your taste field',
         analyzingStep1: 'Import your list',
-        analyzingStep2: 'Analyze Last.fm tags',
+        analyzingStep2: 'Match Last.fm tags and Spotify covers',
         analyzingStep3: 'Build taste map',
         loginRequired: 'Import a track list first.',
         loginAction: 'Import list',
@@ -162,8 +164,10 @@ const TM_I18N = {
         discoveryLens: 'Discovery basis',
         discoveryTrackBasis: 'Explore from this track',
         discoveryGapBasis: 'Explore gaps in your taste',
-        discoveryTrackDesc: 'Last.fm similar tracks · tag fallback · current-axis distance',
-        discoveryGapDesc: 'Leading-tag candidates · sparse regions on the current axes',
+        discoveryTrackDesc: 'Last.fm similar tracks and tags · current-axis distance',
+        discoveryGapDesc: 'Last.fm leading-tag candidates · sparse regions on the current axes',
+        discoverySpotifyTrackDesc: 'Spotify artist and genre candidates · current-axis distance',
+        discoverySpotifyGapDesc: 'Spotify leading-genre candidates · sparse regions on the current axes',
         discoveryCurrentAxes: 'Current axes',
         discoverySeedTags: 'Seed tags',
         discoveryMyBubble: 'Your taste',
@@ -272,6 +276,7 @@ const AXIS_PRESETS = [
 // without reshaping the shared navigation and floating tool dock.
 const MAP_VIEW_DEFINITIONS = [
     { id: 'field', label: 'Taste Field', available: true },
+    { id: 'spotify', label: 'Spotify Field', available: true },
     { id: 'metro', label: 'Metro Map', available: false },
 ];
 
@@ -1637,13 +1642,19 @@ export default function TasteMapPage() {
     const canvasRef = useRef(null);
     const containerRef = useRef(null);
     const bubbleFieldRef = useRef(null);
+    const bubbleLayerRef = useRef(null);
     const heatmapCanvasRef = useRef(null);
     const heatmapSpritesRef = useRef(new Map());
     const threeFieldRef = useRef(null);
     const followedListRef = useRef(null);
     const savedAlbumListRef = useRef(null);
     const timelineRowRef = useRef(null);
+    const mapTagStripRef = useRef(null);
+    const mapTagDragRef = useRef({ dragging: false, moved: false, pointerId: null, startX: 0, scrollLeft: 0 });
     const panRef = useRef({ dragging: false, moved: false, startX: 0, startY: 0, camX: 0, camY: 0, lastMoveAt: 0 });
+    const panVisualFrameRef = useRef(0);
+    const panVisualOffsetRef = useRef({ x: 0, y: 0 });
+    const pendingPanCommitRef = useRef(false);
     const pinchRef = useRef({ pointers: new Map(), active: false, startDist: 0, startZoom: 1, anchorX: 0, anchorY: 0 });
     const pendingAxisFocusRef = useRef(false);
     const bubbleAutoCenteredRef = useRef(false);
@@ -1666,14 +1677,16 @@ export default function TasteMapPage() {
     });
     const bubbleSpringTimersRef = useRef(new Map());
 
+    const [activeMapView, setActiveMapView] = useState('field');
     const [tracks, setTracks] = useState([]);
+    const [tracksSource, setTracksSource] = useState('lastfm');
     const [assignments, setAssignments] = useState([]);
     const [centroids, setCentroids] = useState([]);
     const [clusterVectors, setClusterVectors] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [dataStats, setDataStats] = useState(null);
-    const source = 'spotify'; // fixed
+    const source = activeMapView === 'spotify' ? 'spotify' : 'lastfm';
     const clusterBasis = 'genre'; // fixed
     const [effectiveClusterBasis, setEffectiveClusterBasis] = useState('genre');
     const [noiseClusterId, setNoiseClusterId] = useState(null);
@@ -1705,6 +1718,7 @@ export default function TasteMapPage() {
     const [bubbleNodesResult, setBubbleNodesResult] = useState([]);
     const [recentPlayMap] = useState(() => new Map()); // Spotify recently-played is gone; stays empty.
     const [analysisProgress, setAnalysisProgress] = useState(0);
+    const analysisProgressRef = useRef(0);
     // Followed artists / saved albums were Spotify-only — these stay empty now.
     const librarySummary = null;
     const libraryLoading = false;
@@ -1736,7 +1750,6 @@ export default function TasteMapPage() {
     const [activeGenreFamily, setActiveGenreFamily] = useState('');
     const [activeEmotionRegion, setActiveEmotionRegion] = useState('');
     const [deepAnalysisOpen, setDeepAnalysisOpen] = useState(false);
-    const [activeMapView, setActiveMapView] = useState('field');
     const [magneticPullEnabled, setMagneticPullEnabled] = useState(() => {
         if (typeof window === 'undefined') return true;
         return !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -1762,6 +1775,59 @@ export default function TasteMapPage() {
     const kmeansWorkerRef = useRef(null);
     const bubbleLayoutWorkerRef = useRef(null);
     const copy = TM_I18N[lang] || TM_I18N.ko;
+
+    const handleMapTagPointerDown = useCallback((event) => {
+        if (event.button !== undefined && event.button !== 0) return;
+        const strip = mapTagStripRef.current;
+        if (!strip) return;
+        mapTagDragRef.current = {
+            dragging: true,
+            moved: false,
+            pointerId: event.pointerId,
+            startX: event.clientX,
+            scrollLeft: strip.scrollLeft,
+        };
+        strip.classList.add('is-dragging');
+        try { strip.setPointerCapture(event.pointerId); } catch { /* ignore */ }
+    }, []);
+
+    const handleMapTagPointerMove = useCallback((event) => {
+        const drag = mapTagDragRef.current;
+        const strip = mapTagStripRef.current;
+        if (!strip || !drag.dragging || drag.pointerId !== event.pointerId) return;
+        const dx = event.clientX - drag.startX;
+        if (!drag.moved && Math.abs(dx) > 4) drag.moved = true;
+        if (!drag.moved) return;
+        strip.scrollLeft = drag.scrollLeft - dx;
+        if (event.cancelable) event.preventDefault();
+    }, []);
+
+    const handleMapTagPointerEnd = useCallback((event) => {
+        const drag = mapTagDragRef.current;
+        const strip = mapTagStripRef.current;
+        if (!drag.dragging || drag.pointerId !== event.pointerId) return;
+        drag.dragging = false;
+        strip?.classList.remove('is-dragging');
+        try { strip?.releasePointerCapture(event.pointerId); } catch { /* ignore */ }
+        window.setTimeout(() => { mapTagDragRef.current.moved = false; }, 0);
+    }, []);
+
+    const handleMapTagClickCapture = useCallback((event) => {
+        if (!mapTagDragRef.current.moved) return;
+        event.preventDefault();
+        event.stopPropagation();
+    }, []);
+
+    const handleMapViewChange = useCallback((nextView) => {
+        if (nextView === activeMapView) return;
+        bubbleAutoCenteredRef.current = false;
+        setSelectedCluster(null);
+        setSelectedPeriodKey(null);
+        setSpectraExpandTrackId(null);
+        setExploreEnabled(false);
+        setExploreRecs([]);
+        setActiveMapView(nextView);
+    }, [activeMapView]);
 
     const triggerExpandedClusterHighlight = useCallback((clusterId) => {
         if (!Number.isInteger(clusterId)) return;
@@ -1808,27 +1874,45 @@ export default function TasteMapPage() {
     // Followed-artists / saved-albums came from Spotify and no longer apply.
     // recentPlayMap stays empty; librarySummary stays null (UI renders empty).
 
-    // ── Taste data (imported list → Last.fm enriched, from TasteDataContext) ──
+    // ── Taste data (Last.fm field + Spotify field, from TasteDataContext) ──
     const fetchTracks = useCallback(async () => {
-        setLoading(true);
-        setError(null);
-        const usable = (importedTracks || []).filter(
+        const mapped = (importedTracks || []).map((track) => {
+            if (activeMapView !== 'spotify') return track;
+            const spotifyFeatures = track?.spotifyFeatures || {};
+            return {
+                ...track,
+                ...spotifyFeatures,
+                genres: Array.isArray(track?.spotifyGenres) ? track.spotifyGenres : [],
+                featuresSource: 'spotify-genres',
+            };
+        });
+        const usable = mapped.filter(
             (t) => t.valence !== null && t.valence !== undefined,
         );
-        setDataStats(importedStats || {
-            fetchedCount: usable.length,
-            totalAvailable: usable.length,
-        });
-        setLoading(false);
-        return usable;
-    }, [importedTracks, importedStats]);
+        return {
+            tracks: usable,
+            source: activeMapView === 'spotify' ? 'spotify' : 'lastfm',
+            stats: importedStats || {
+                fetchedCount: usable.length,
+                totalAvailable: usable.length,
+            },
+        };
+    }, [importedTracks, importedStats, activeMapView]);
 
     useEffect(() => {
         if (!cacheReady) return;
+        let cancelled = false;
+        setLoading(true);
+        setError(null);
         fetchTracks().then((data) => {
-            setTracks(data);
+            if (cancelled) return;
+            setTracks(data.tracks);
+            setTracksSource(data.source);
+            setDataStats(data.stats);
             setSelectedCluster(null);
+            setLoading(false);
         });
+        return () => { cancelled = true; };
     }, [fetchTracks, cacheReady]);
 
     useEffect(() => {
@@ -1838,6 +1922,12 @@ export default function TasteMapPage() {
 
     // ── Run clustering via Web Worker (automatic cluster count) ─────────────
     useEffect(() => {
+        // During a map-tab transition, `source` changes one render before the
+        // mapped track set. Do not launch a worker against the previous field.
+        if (tracksSource !== source) {
+            setClusterLoading(false);
+            return;
+        }
         if (tracks.length < 2) {
             setAssignments([]);
             setCentroids([]);
@@ -1845,6 +1935,7 @@ export default function TasteMapPage() {
             setGenreVocab([]);
             setNoiseClusterId(null);
             setEffectiveClusterBasis('audio');
+            setClusterLoading(false);
             return;
         }
 
@@ -1865,6 +1956,7 @@ export default function TasteMapPage() {
             setGenreVocab(Array.isArray(clusterHit.genreVocab) ? clusterHit.genreVocab : []);
             setNoiseClusterId(Number.isInteger(clusterHit.noiseClusterId) ? clusterHit.noiseClusterId : null);
             setEffectiveClusterBasis(clusterHit.effectiveClusterBasis === 'genre' ? 'genre' : 'audio');
+            setClusterLoading(false);
             return;
         }
 
@@ -1875,6 +1967,7 @@ export default function TasteMapPage() {
         setClusterLoading(true);
 
         worker.onmessage = ({ data }) => {
+            if (kmeansWorkerRef.current !== worker) return;
             setClusterVectors(data.points);
             setAssignments(data.assignments);
             setCentroids(data.centroids);
@@ -1889,13 +1982,23 @@ export default function TasteMapPage() {
                 effectiveClusterBasis: data.effectiveClusterBasis,
             });
             setClusterLoading(false);
+            kmeansWorkerRef.current = null;
             worker.terminate();
         };
-        worker.onerror = () => { setClusterLoading(false); worker.terminate(); };
+        worker.onerror = () => {
+            if (kmeansWorkerRef.current === worker) {
+                kmeansWorkerRef.current = null;
+                setClusterLoading(false);
+            }
+            worker.terminate();
+        };
 
         worker.postMessage({ tracks, clusterBasis });
-        return () => { worker.terminate(); kmeansWorkerRef.current = null; };
-    }, [tracks, clusterBasis, cacheUserId, source]);
+        return () => {
+            worker.terminate();
+            if (kmeansWorkerRef.current === worker) kmeansWorkerRef.current = null;
+        };
+    }, [tracks, tracksSource, clusterBasis, cacheUserId, source]);
 
     const clusterStats = useMemo(() => {
         if (tracks.length === 0 || assignments.length === 0 || centroids.length === 0) return [];
@@ -2679,6 +2782,10 @@ export default function TasteMapPage() {
             window.cancelAnimationFrame(zoomCameraRafRef.current);
             zoomCameraRafRef.current = 0;
         }
+        if (panVisualFrameRef.current) {
+            window.cancelAnimationFrame(panVisualFrameRef.current);
+            panVisualFrameRef.current = 0;
+        }
         queuedCameraRef.current = null;
         queuedZoomCameraRef.current = null;
     }, []);
@@ -2815,7 +2922,7 @@ export default function TasteMapPage() {
         const centerY = (worldH - viewportH) / 2;
         setCamera(clampCamera(centerX, centerY, zoomValue));
         bubbleAutoCenteredRef.current = true;
-    }, [viewMode, bubbleFieldSize.w, bubbleFieldSize.h, clampCamera, bubbleWorldScale]);
+    }, [viewMode, bubbleFieldSize.w, bubbleFieldSize.h, clampCamera, bubbleWorldScale, activeMapView]);
 
     useEffect(() => {
         if (viewMode === 'map') return;
@@ -3011,8 +3118,37 @@ export default function TasteMapPage() {
         return () => el.removeEventListener('wheel', onWheel);
     }, [viewMode, zoomAroundPointByFactor]);
 
+    const clearPanVisual = useCallback(() => {
+        if (panVisualFrameRef.current) {
+            window.cancelAnimationFrame(panVisualFrameRef.current);
+            panVisualFrameRef.current = 0;
+        }
+        panVisualOffsetRef.current = { x: 0, y: 0 };
+        bubbleLayerRef.current?.style.removeProperty('transform');
+        bubbleFieldRef.current?.classList.remove('camera-moving');
+    }, []);
+
+    const queuePanVisual = useCallback((x, y) => {
+        panVisualOffsetRef.current = { x, y };
+        if (panVisualFrameRef.current) return;
+        panVisualFrameRef.current = window.requestAnimationFrame(() => {
+            panVisualFrameRef.current = 0;
+            const offset = panVisualOffsetRef.current;
+            if (!bubbleLayerRef.current) return;
+            bubbleLayerRef.current.style.transform = `translate3d(${offset.x.toFixed(2)}px, ${offset.y.toFixed(2)}px, 0)`;
+        });
+    }, []);
+
+    useLayoutEffect(() => {
+        if (!pendingPanCommitRef.current) return;
+        pendingPanCommitRef.current = false;
+        clearPanVisual();
+    }, [camera.x, camera.y, clearPanVisual]);
+
     const handleBubblePanStart = useCallback((e) => {
         cancelCameraAnimation();
+        clearPanVisual();
+        bubbleFieldRef.current?.classList.add('camera-moving');
         if (typeof e.currentTarget?.setPointerCapture === 'function' && e.pointerId !== undefined) {
             try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* ignore */ }
         }
@@ -3038,9 +3174,10 @@ export default function TasteMapPage() {
             startY: pt.y,
             camX: activeCamera.x,
             camY: activeCamera.y,
+            nextCamera: activeCamera,
             lastMoveAt: panRef.current.lastMoveAt || 0,
         };
-    }, [cancelCameraAnimation]);
+    }, [cancelCameraAnimation, clearPanVisual]);
 
     const handleBubblePanMove = useCallback((e) => {
         if (e.pointerType === 'touch' && pinchRef.current.pointers.has(e.pointerId)) {
@@ -3070,10 +3207,14 @@ export default function TasteMapPage() {
                 panRef.current.camY - dy / activeZoom,
                 activeZoom,
             );
-            scheduleCameraUpdate(next);
+            panRef.current.nextCamera = next;
+            queuePanVisual(
+                (panRef.current.camX - next.x) * activeZoom,
+                (panRef.current.camY - next.y) * activeZoom,
+            );
             panRef.current.lastMoveAt = Date.now();
         }
-    }, [clampCamera, setZoomAroundPoint, scheduleCameraUpdate]);
+    }, [clampCamera, setZoomAroundPoint, queuePanVisual]);
 
     const handleBubblePanEnd = useCallback((e) => {
         if (typeof e?.currentTarget?.releasePointerCapture === 'function' && e?.pointerId !== undefined) {
@@ -3087,12 +3228,23 @@ export default function TasteMapPage() {
         }
         panRef.current.dragging = false;
         const moved = panRef.current.moved;
+        const finalCamera = panRef.current.nextCamera;
         if (moved) {
+            const current = cameraRef.current;
+            if (finalCamera && (Math.abs(current.x - finalCamera.x) >= 0.05 || Math.abs(current.y - finalCamera.y) >= 0.05)) {
+                pendingPanCommitRef.current = true;
+                cameraRef.current = finalCamera;
+                setCamera(finalCamera);
+            } else {
+                clearPanVisual();
+            }
             setTimeout(() => {
                 panRef.current.moved = false;
             }, 0);
+        } else {
+            clearPanVisual();
         }
-    }, []);
+    }, [clearPanVisual]);
 
     const bubbleRenderItems = useMemo(() => {
         if (viewMode !== 'bubble') return [];
@@ -3192,14 +3344,17 @@ export default function TasteMapPage() {
     // Only mount bubbles near the viewport. Analytics and clustering still use
     // the complete import, while the DOM cost stays bounded for huge libraries.
     const visibleBubbleRenderItems = useMemo(() => {
-        const overscan = 220;
+        const spotifyField = activeMapView === 'spotify';
+        const overscan = spotifyField ? 240 : 280;
         const visible = bubbleRenderItems.filter((item) => (
             item.xPx >= -overscan
             && item.xPx <= bubbleFieldSize.w + overscan
             && item.yPx >= -overscan
             && item.yPx <= bubbleFieldSize.h + overscan
         ));
-        const maxMounted = bubbleZoom < 0.5 ? 760 : bubbleZoom < 0.85 ? 920 : 1100;
+        const maxMounted = spotifyField
+            ? (bubbleZoom < 0.5 ? 320 : bubbleZoom < 0.85 ? 420 : 520)
+            : (bubbleZoom < 0.5 ? 760 : bubbleZoom < 0.85 ? 920 : 1100);
         if (visible.length <= maxMounted) return visible;
 
         const selectedId = selectedTrackCard?.track?.id;
@@ -3227,6 +3382,7 @@ export default function TasteMapPage() {
         spectraExpandTrackId,
         selectedTrackCard,
         hoveredBubbleId,
+        activeMapView,
     ]);
 
     const getMountedBubbleElement = useCallback((trackId) => {
@@ -3562,8 +3718,9 @@ export default function TasteMapPage() {
                         targetY: String(clamp01(anchor.y)),
                         limit: seedTrackId ? '14' : '8',
                         seedGenres: exploreSeedGenres.join(','),
+                        source,
                     });
-                    // Resolve the seed track id → "artist|title" for Last.fm getSimilar.
+                    // Resolve the seed track id → "artist|title" for source-aware discovery.
                     if (seedTrackId) {
                         const seedTrack = tracks.find((t) => t.id === seedTrackId);
                         if (seedTrack?.artists && seedTrack?.name) {
@@ -3659,6 +3816,7 @@ export default function TasteMapPage() {
         spectraExpandTrackId,
         xAxis,
         yAxis,
+        source,
     ]);
 
     const exploreRenderItems = useMemo(() => {
@@ -4587,13 +4745,16 @@ export default function TasteMapPage() {
         () => (librarySummary?.topFollowedGenres || []).slice(0, 6),
         [librarySummary],
     );
-    const isAnalyzing = loading || clusterLoading;
+    const hasRenderableMap = tracks.length > 0 && bubbleNodesResult.length > 0;
+    // Background reclustering must not cover a map that is already usable.
+    const isAnalyzing = (loading || clusterLoading) && !hasRenderableMap;
     const analysisTargetProgress = useMemo(() => {
+        if (hasRenderableMap) return 100;
         if (loading) return cacheReady ? 62 : 18;
         if (clusterLoading) return 88;
         if (tracks.length > 0) return 100;
         return 0;
-    }, [loading, cacheReady, clusterLoading, tracks.length]);
+    }, [hasRenderableMap, loading, cacheReady, clusterLoading, tracks.length]);
     const analysisStep = useMemo(() => {
         if (loading) return cacheReady ? 2 : 1;
         if (clusterLoading) return 3;
@@ -4604,8 +4765,8 @@ export default function TasteMapPage() {
             ? 'Preparing your imported track list.'
             : '가져온 곡 목록을 준비하고 있어요.';
         if (loading) return lang === 'en'
-            ? 'Mapping Last.fm tags into taste signals.'
-            : 'Last.fm 태그를 취향 신호로 변환하는 중입니다.';
+            ? 'Preparing Last.fm signals and Spotify cover metadata.'
+            : 'Last.fm 취향 신호와 Spotify 커버 정보를 준비하는 중입니다.';
         if (clusterLoading) return lang === 'en'
             ? 'Computing clusters and finalizing your taste map.'
             : '클러스터를 계산해 내 취향 지도를 마무리하는 중입니다.';
@@ -4649,13 +4810,14 @@ export default function TasteMapPage() {
         let raf = 0;
         const target = analysisTargetProgress;
         const animate = () => {
-            setAnalysisProgress((prev) => {
-                const gap = target - prev;
-                if (Math.abs(gap) < 0.35) return target;
-                const next = prev + gap * 0.12;
-                return Math.max(0, Math.min(100, next));
-            });
-            raf = window.requestAnimationFrame(animate);
+            const current = analysisProgressRef.current;
+            const gap = target - current;
+            const next = Math.abs(gap) < 0.35
+                ? target
+                : Math.max(0, Math.min(100, current + gap * 0.12));
+            analysisProgressRef.current = next;
+            setAnalysisProgress(next);
+            if (next !== target) raf = window.requestAnimationFrame(animate);
         };
         raf = window.requestAnimationFrame(animate);
         return () => window.cancelAnimationFrame(raf);
@@ -5105,7 +5267,7 @@ export default function TasteMapPage() {
                                     className={`tm-view-option${activeMapView === definition.id ? ' active' : ''}`}
                                     aria-selected={activeMapView === definition.id}
                                     disabled={!definition.available}
-                                    onClick={() => setActiveMapView(definition.id)}
+                                    onClick={() => handleMapViewChange(definition.id)}
                                     title={definition.available ? definition.label : (lang === 'en' ? 'Coming in a future map' : '추후 추가될 맵입니다')}
                                 >
                                     <span className="tm-view-option-mark" aria-hidden />
@@ -5315,6 +5477,12 @@ export default function TasteMapPage() {
                             <div
                                 className="tm-map-tag-strip tm-region-cloud tm-region-cloud-emotion"
                                 data-active-region={activeEmotionRegion || undefined}
+                                ref={mapTagStripRef}
+                                onPointerDown={handleMapTagPointerDown}
+                                onPointerMove={handleMapTagPointerMove}
+                                onPointerUp={handleMapTagPointerEnd}
+                                onPointerCancel={handleMapTagPointerEnd}
+                                onClickCapture={handleMapTagClickCapture}
                             >
                                 <button
                                     type="button"
@@ -5407,8 +5575,8 @@ export default function TasteMapPage() {
                                             </div>
                                             <p>
                                                 {isSpectraExpandMode
-                                                    ? copy.discoveryTrackDesc
-                                                    : copy.discoveryGapDesc}
+                                                    ? (activeMapView === 'spotify' ? copy.discoverySpotifyTrackDesc : copy.discoveryTrackDesc)
+                                                    : (activeMapView === 'spotify' ? copy.discoverySpotifyGapDesc : copy.discoveryGapDesc)}
                                             </p>
                                             <dl className="tm-discovery-criteria">
                                                 <div>
@@ -5523,7 +5691,8 @@ export default function TasteMapPage() {
                                         </div>
                                     )}
                                     <div
-                                        className={`tm-bubble-layer${timelineMorphing ? ' retiming' : ''}${isSpectraExpandMode ? ' spectra-expanding' : ''}${visibleBubbleRenderItems.length > 520 ? ' high-density' : ''}`}
+                                        ref={bubbleLayerRef}
+                                        className={`tm-bubble-layer${timelineMorphing ? ' retiming' : ''}${isSpectraExpandMode ? ' spectra-expanding' : ''}${visibleBubbleRenderItems.length > (activeMapView === 'spotify' ? 280 : 520) ? ' high-density' : ''}`}
                                         style={{ '--tm-bubble-scale': Math.max(1, bubbleZoom / 1.2) }}
                                         onPointerDown={(event) => {
                                             if (event.target?.closest?.('.tm-bubble, .tm-bubble-share-select')) return;
