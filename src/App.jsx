@@ -445,7 +445,7 @@ function ImportOverlay() {
               )}
             </div>
             <span className="login-overlay__subtext">
-              데이터는 태그 분석을 위해 서버로만 전송되며, Spotify 로그인은 필요 없습니다.
+              곡 목록은 Last.fm 태그와 Spotify 커버 매칭을 위해 서버로만 전송되며, Spotify 로그인은 필요 없습니다.
             </span>
           </div>
         </section>
@@ -458,7 +458,7 @@ function ImportOverlay() {
             <span className="import-analyzing__spinner" aria-hidden />
             <h3 className="import-analyzing__title">취향을 분석하는 중…</h3>
             <p className="import-analyzing__sub">
-              Last.fm 태그를 감정·장르 좌표로 변환하고 있어요.
+              Last.fm 취향 태그와 Spotify 앨범 커버를 함께 매칭하고 있어요.
             </p>
             <div className="import-analyzing__bar" aria-hidden>
               <span style={{ width: `${pct}%` }} />

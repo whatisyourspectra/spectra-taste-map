@@ -27,7 +27,7 @@ export default defineConfig([
     },
   },
   {
-    // Server-side (Node) files: Express API + Last.fm client + build config.
+    // Server-side (Node) files: Express API + Last.fm/Spotify clients + build config.
     files: ['server.js', 'api/**/*.js', 'src/server/**/*.js', '*.config.js'],
     languageOptions: {
       globals: globals.node,
