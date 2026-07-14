@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "SPECTRA Taste Map — a spatial visualization of your music taste, built from an imported track list enriched with Last.fm tags.",
+  "description": "SPECTRA Taste Map — dual Last.fm and Spotify-derived spatial visualizations with login-free cover matching.",
   "scripts": {
     "dev": "vite",
     "server": "nodemon server.js",

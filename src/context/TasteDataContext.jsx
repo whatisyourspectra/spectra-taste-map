@@ -3,7 +3,7 @@ import React, { createContext, useContext, useState, useCallback, useEffect } fr
 const API_BASE = import.meta?.env?.VITE_API_BASE || '';
 const api = (path) => `${API_BASE}${path}`;
 
-const STORAGE_KEY = 'spectra:taste:v1';
+const STORAGE_KEY = 'spectra:taste:v3';
 const CHUNK_SIZE = 100;
 
 const TasteDataContext = createContext(null);

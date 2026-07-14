@@ -12,7 +12,7 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
     proxy: {
-      // API proxy — Last.fm enrichment / discovery (key stays server-side).
+      // API proxy — Last.fm + Spotify enrichment/discovery (credentials stay server-side).
       '/api': {
         target: proxyTarget,
         changeOrigin: true,
