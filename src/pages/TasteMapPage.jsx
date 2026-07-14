@@ -1,5 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useTasteData } from '../context/TasteDataContext';
+import TasteMapSubwayGenerator from './TasteMapSubwayGenerator';
 import './TasteMapPage.css';
 
 const API_BASE = import.meta?.env?.VITE_API_BASE || '';
@@ -90,6 +91,7 @@ const TM_I18N = {
         youtubeSearch: 'YouTube에서 찾기',
         shareOn: '공유 ON',
         share: '공유',
+        subwayGenerator: '노선도 생성기',
         currentBubble: '현재 버블',
         scrollHint: '마우스 휠로 확대 / 축소',
         navigator: 'Navigator',
@@ -179,6 +181,7 @@ const TM_I18N = {
         youtubeSearch: 'Find on YouTube',
         shareOn: 'Share ON',
         share: 'Share',
+        subwayGenerator: 'Subway Generator',
         currentBubble: 'Current bubble',
         scrollHint: 'Use the mouse wheel to zoom',
         navigator: 'Navigator',
@@ -1743,6 +1746,7 @@ export default function TasteMapPage() {
     const [shareMessage, setShareMessage] = useState(null);
     const [showUtilityControls, setShowUtilityControls] = useState(false);
     const [dashboardOpen, setDashboardOpen] = useState(false);
+    const [subwayGeneratorOpen, setSubwayGeneratorOpen] = useState(false);
     const [ambientUiVisible, setAmbientUiVisible] = useState(false);
     const [timelineMorphing, setTimelineMorphing] = useState(false);
     const [formationPhase, setFormationPhase] = useState('idle'); // idle | dark | seed | organize | labels | settled
@@ -5456,6 +5460,14 @@ export default function TasteMapPage() {
                                     >
                                         {shareMode ? copy.shareOn : copy.share}
                                     </button>
+                                    <button
+                                        className={`tm-dashboard-toggle${subwayGeneratorOpen ? ' active' : ''}`}
+                                        onClick={() => setSubwayGeneratorOpen(true)}
+                                        title="지하철 노선도 생성기 열기"
+                                        disabled={tracks.length < 4}
+                                    >
+                                        {copy.subwayGenerator}
+                                    </button>
                                 </div>
                                 <button
                                     className={`tm-dashboard-toggle${dashboardOpen ? ' active' : ''}`}
@@ -6299,6 +6311,18 @@ export default function TasteMapPage() {
 
                 </>
             )}
+
+            <TasteMapSubwayGenerator
+                open={subwayGeneratorOpen}
+                onClose={() => setSubwayGeneratorOpen(false)}
+                tracks={tracks}
+                activeTrackIds={activeTrackIds}
+                assignmentByTrackId={assignmentByTrackId}
+                clusterById={clusterById}
+                xAxis={xAxis}
+                yAxis={yAxis}
+                lang={lang}
+            />
 
             {/* Hover tooltip */}
             {viewMode === 'map' && hoveredTrack && (
