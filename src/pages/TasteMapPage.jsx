@@ -553,66 +553,6 @@ function getEmotionRegionStyle(color, regionKey) {
     };
 }
 
-function parseRgbString(rgbText) {
-    const parts = String(rgbText || '')
-        .split(',')
-        .map((v) => Number(v.trim()))
-        .filter((n) => Number.isFinite(n));
-    if (parts.length < 3) return [182, 206, 248];
-    return parts.slice(0, 3).map((n) => Math.max(0, Math.min(255, Math.round(n))));
-}
-
-function hexToRgbArray(hex) {
-    const value = String(hex || '').replace('#', '').trim();
-    if (value.length === 3) {
-        const r = parseInt(value[0] + value[0], 16);
-        const g = parseInt(value[1] + value[1], 16);
-        const b = parseInt(value[2] + value[2], 16);
-        if ([r, g, b].every(Number.isFinite)) return [r, g, b];
-        return null;
-    }
-    if (value.length === 6) {
-        const r = parseInt(value.slice(0, 2), 16);
-        const g = parseInt(value.slice(2, 4), 16);
-        const b = parseInt(value.slice(4, 6), 16);
-        if ([r, g, b].every(Number.isFinite)) return [r, g, b];
-        return null;
-    }
-    return null;
-}
-
-function mixRgb(items) {
-    if (!items.length) return [182, 206, 248];
-    const sum = items.reduce((acc, item) => acc + item.weight, 0) || 1;
-    const mixed = [0, 0, 0];
-    items.forEach((item) => {
-        const ratio = item.weight / sum;
-        mixed[0] += item.rgb[0] * ratio;
-        mixed[1] += item.rgb[1] * ratio;
-        mixed[2] += item.rgb[2] * ratio;
-    });
-    return mixed.map((n) => Math.max(0, Math.min(255, Math.round(n))));
-}
-
-function buildTimelineCardPalette(topGenreEntries, dominantColor) {
-    const genres = Array.isArray(topGenreEntries) ? topGenreEntries : [];
-    const a = genres[0] ? parseRgbString(getGenreIdentity(genres[0].genre).tone.rgb) : [132, 158, 212];
-    const b = genres[1] ? parseRgbString(getGenreIdentity(genres[1].genre).tone.rgb) : a;
-    const c = genres[2] ? parseRgbString(getGenreIdentity(genres[2].genre).tone.rgb) : b;
-    const mixed = mixRgb(genres.map((item) => ({
-        rgb: parseRgbString(getGenreIdentity(item.genre).tone.rgb),
-        weight: item.share || item.count || 1,
-    })));
-    const dominant = hexToRgbArray(dominantColor) || mixed;
-    return {
-        a: `${a[0]}, ${a[1]}, ${a[2]}`,
-        b: `${b[0]}, ${b[1]}, ${b[2]}`,
-        c: `${c[0]}, ${c[1]}, ${c[2]}`,
-        mixed: `${mixed[0]}, ${mixed[1]}, ${mixed[2]}`,
-        dominant: `${dominant[0]}, ${dominant[1]}, ${dominant[2]}`,
-    };
-}
-
 function formatDateLabel(raw) {
     if (!raw) return '-';
     const d = new Date(raw);
@@ -633,26 +573,6 @@ function getTrackTimeMs(track) {
     if (!raw) return null;
     const ts = Date.parse(raw);
     return Number.isFinite(ts) ? ts : null;
-}
-
-function getTimeBucket(ts, granularity) {
-    const d = new Date(ts);
-    const year = d.getFullYear();
-    const month = d.getMonth(); // 0-11
-    if (granularity === 'quarter') {
-        const q = Math.floor(month / 3) + 1;
-        return {
-            key: `${year}-Q${q}`,
-            label: `${year} Q${q}`,
-            startTs: Date.UTC(year, (q - 1) * 3, 1),
-        };
-    }
-    const monthNum = month + 1;
-    return {
-        key: `${year}-${String(monthNum).padStart(2, '0')}`,
-        label: `${year}.${String(monthNum).padStart(2, '0')}`,
-        startTs: Date.UTC(year, month, 1),
-    };
 }
 
 function getGenreClusterLabel(topGenres) {
@@ -1481,7 +1401,12 @@ const BUBBLE_BASE_WORLD_SCALE = 5.0;
 const BUBBLE_MAX_COUNT = 2000;
 // Allow pulling far enough back to see the taste field with generous context.
 const BUBBLE_ZOOM_MIN = 0.1;
-const BUBBLE_ZOOM_MAX = 5.0;
+const BUBBLE_ZOOM_MAX = 10.0;
+
+function getBubbleVisualScale(zoom) {
+    const normalizedZoom = Math.max(BUBBLE_ZOOM_MIN, Number(zoom) || 1);
+    return Math.min(1.3, Math.max(0.86, Math.pow(normalizedZoom / 1.2, 0.18)));
+}
 
 function drawMap(canvas, tracks, assignments, centroids, hoveredIdx, activeTrackIds, xAxis, yAxis, clusterLabels) {
     const ctx = canvas.getContext('2d');
@@ -1651,7 +1576,6 @@ export default function TasteMapPage() {
     const threeFieldRef = useRef(null);
     const followedListRef = useRef(null);
     const savedAlbumListRef = useRef(null);
-    const timelineRowRef = useRef(null);
     const mapTagStripRef = useRef(null);
     const mapTagDragRef = useRef({ dragging: false, moved: false, pointerId: null, startX: 0, scrollLeft: 0 });
     const panRef = useRef({ dragging: false, moved: false, startX: 0, startY: 0, camX: 0, camY: 0, lastMoveAt: 0 });
@@ -1660,9 +1584,9 @@ export default function TasteMapPage() {
     const pendingPanCommitRef = useRef(false);
     const pinchRef = useRef({ pointers: new Map(), active: false, startDist: 0, startZoom: 1, anchorX: 0, anchorY: 0 });
     const pendingAxisFocusRef = useRef(false);
+    const pendingBubbleFocusRef = useRef(null);
     const bubbleAutoCenteredRef = useRef(false);
     const ambientUiTimerRef = useRef(null);
-    const timelineMorphTimerRef = useRef(null);
     const formationTimersRef = useRef([]);
     const expandHighlightTimerRef = useRef(null);
     const magneticActiveIdsRef = useRef(new Set());
@@ -1699,8 +1623,6 @@ export default function TasteMapPage() {
     const [zAxis, setZAxis] = useState('danceability');
     const [axisPreset, setAxisPreset] = useState('mood');
     const [genreVocab, setGenreVocab] = useState([]);
-    const [timelineGranularity, setTimelineGranularity] = useState('month'); // 'month' | 'quarter'
-    const [timelineRange, setTimelineRange] = useState('12m'); // '6m' | '12m' | '24m' | 'all'
     const [cacheUserId, setCacheUserId] = useState('guest');
     const [cacheReady, setCacheReady] = useState(false);
 
@@ -1708,7 +1630,6 @@ export default function TasteMapPage() {
     const [hoveredTrack, setHoveredTrack] = useState(null);
     const [hoveredPos, setHoveredPos] = useState({ x: 0, y: 0 });
     const [selectedCluster, setSelectedCluster] = useState(null);
-    const [selectedPeriodKey, setSelectedPeriodKey] = useState(null);
     const [canvasSize, setCanvasSize] = useState({ w: 800, h: 520 });
     const [bubbleFieldSize, setBubbleFieldSize] = useState({ w: 0, h: 0 });
     const [threeFieldSize, setThreeFieldSize] = useState({ w: 0, h: 0 });
@@ -1748,7 +1669,6 @@ export default function TasteMapPage() {
     const [dashboardOpen, setDashboardOpen] = useState(false);
     const [subwayGeneratorOpen, setSubwayGeneratorOpen] = useState(false);
     const [ambientUiVisible, setAmbientUiVisible] = useState(false);
-    const [timelineMorphing, setTimelineMorphing] = useState(false);
     const [formationPhase, setFormationPhase] = useState('idle'); // idle | dark | seed | organize | labels | settled
     const [formationPlayed, setFormationPlayed] = useState(false);
     const [activeGenreFamily, setActiveGenreFamily] = useState('');
@@ -1791,8 +1711,6 @@ export default function TasteMapPage() {
             startX: event.clientX,
             scrollLeft: strip.scrollLeft,
         };
-        strip.classList.add('is-dragging');
-        try { strip.setPointerCapture(event.pointerId); } catch { /* ignore */ }
     }, []);
 
     const handleMapTagPointerMove = useCallback((event) => {
@@ -1800,7 +1718,11 @@ export default function TasteMapPage() {
         const strip = mapTagStripRef.current;
         if (!strip || !drag.dragging || drag.pointerId !== event.pointerId) return;
         const dx = event.clientX - drag.startX;
-        if (!drag.moved && Math.abs(dx) > 4) drag.moved = true;
+        if (!drag.moved && Math.abs(dx) > 4) {
+            drag.moved = true;
+            strip.classList.add('is-dragging');
+            try { strip.setPointerCapture(event.pointerId); } catch { /* ignore */ }
+        }
         if (!drag.moved) return;
         strip.scrollLeft = drag.scrollLeft - dx;
         if (event.cancelable) event.preventDefault();
@@ -1830,7 +1752,6 @@ export default function TasteMapPage() {
         if (nextView === activeMapView) return;
         bubbleAutoCenteredRef.current = false;
         setSelectedCluster(null);
-        setSelectedPeriodKey(null);
         setSpectraExpandTrackId(null);
         setExploreEnabled(false);
         setExploreRecs([]);
@@ -2077,181 +1998,6 @@ export default function TasteMapPage() {
         return map;
     }, [clusterStats]);
 
-    const timelineSummary = useMemo(() => {
-        if (tracks.length === 0 || assignments.length !== tracks.length) {
-            return { hasDate: false, periods: [], datedCount: 0, visibleCount: 0 };
-        }
-
-        const datedRows = tracks
-            .map((track, idx) => ({
-                track,
-                clusterId: assignments[idx],
-                ts: getTrackTimeMs(track),
-            }))
-            .filter((row) => Number.isFinite(row.ts));
-
-        if (datedRows.length === 0) {
-            return { hasDate: false, periods: [], datedCount: 0, visibleCount: 0 };
-        }
-
-        const now = new Date();
-        const rangeMonths = timelineRange === 'all' ? null : Number(timelineRange.replace('m', '')) || 12;
-        let cutoffTs = null;
-        if (rangeMonths) {
-            const cutoff = new Date(now);
-            cutoff.setHours(0, 0, 0, 0);
-            cutoff.setMonth(cutoff.getMonth() - rangeMonths);
-            cutoffTs = cutoff.getTime();
-        }
-
-        const visibleRows = cutoffTs
-            ? datedRows.filter((row) => row.ts >= cutoffTs)
-            : datedRows;
-
-        if (visibleRows.length === 0) {
-            return { hasDate: true, periods: [], datedCount: datedRows.length, visibleCount: 0 };
-        }
-
-        const bucketMap = new Map();
-        visibleRows.forEach((row) => {
-            const bucket = getTimeBucket(row.ts, timelineGranularity);
-            if (!bucketMap.has(bucket.key)) {
-                bucketMap.set(bucket.key, {
-                    key: bucket.key,
-                    label: bucket.label,
-                    startTs: bucket.startTs,
-                    total: 0,
-                    trackIds: [],
-                    clusterCounts: new Map(),
-                    genreCounts: new Map(),
-                });
-            }
-            const item = bucketMap.get(bucket.key);
-            item.total += 1;
-            item.trackIds.push(row.track.id);
-            if (Number.isInteger(row.clusterId)) {
-                item.clusterCounts.set(row.clusterId, (item.clusterCounts.get(row.clusterId) || 0) + 1);
-            }
-            getTrackGenres(row.track).forEach((genre) => {
-                item.genreCounts.set(genre, (item.genreCounts.get(genre) || 0) + 1);
-            });
-        });
-
-        const periods = [...bucketMap.values()]
-            .sort((a, b) => a.startTs - b.startTs)
-            .map((bucket) => {
-                const dominant = [...bucket.clusterCounts.entries()].sort((a, b) => b[1] - a[1])[0] || null;
-                const dominantClusterId = dominant ? dominant[0] : null;
-                const dominantCount = dominant ? dominant[1] : 0;
-                const dominantCluster = dominantClusterId !== null ? clusterById[dominantClusterId] : null;
-                const topGenres = [...bucket.genreCounts.entries()]
-                    .sort((a, b) => b[1] - a[1])
-                    .slice(0, 2)
-                    .map(([genre]) => genre);
-                const topGenreEntries = [...bucket.genreCounts.entries()]
-                    .sort((a, b) => b[1] - a[1])
-                    .slice(0, 3)
-                    .map(([genre, count]) => ({
-                        genre,
-                        count,
-                        share: bucket.total > 0 ? Math.round((count / bucket.total) * 100) : 0,
-                    }));
-                const topClusters = [...bucket.clusterCounts.entries()]
-                    .sort((a, b) => b[1] - a[1])
-                    .slice(0, 3)
-                    .map(([clusterId, count]) => {
-                        const cluster = clusterById[clusterId];
-                        const share = bucket.total > 0 ? Math.round((count / bucket.total) * 100) : 0;
-                        return {
-                            clusterId,
-                            count,
-                            share,
-                            color: cluster?.color || CLUSTER_COLORS[clusterId % CLUSTER_COLORS.length] || '#6b7280',
-                            label: cluster?.label || { name: `Cluster ${clusterId + 1}`, symbol: 'headset' },
-                        };
-                    });
-
-                return {
-                    key: bucket.key,
-                    label: bucket.label,
-                    total: bucket.total,
-                    trackIds: bucket.trackIds,
-                    dominantClusterId,
-                    dominantShare: bucket.total > 0 ? Math.round((dominantCount / bucket.total) * 100) : 0,
-                    dominantLabel: dominantCluster?.label || null,
-                    dominantColor: dominantCluster?.color || '#6b7280',
-                    cardPalette: buildTimelineCardPalette(topGenreEntries, dominantCluster?.color || '#6b7280'),
-                    topClusters,
-                    topGenres,
-                    topGenreEntries,
-                };
-            });
-
-        return {
-            hasDate: true,
-            periods,
-            datedCount: datedRows.length,
-            visibleCount: visibleRows.length,
-        };
-    }, [tracks, assignments, timelineRange, timelineGranularity, clusterById]);
-
-    useEffect(() => {
-        if (!selectedPeriodKey) return;
-        const stillExists = timelineSummary.periods.some((period) => period.key === selectedPeriodKey);
-        if (!stillExists) {
-            setSelectedPeriodKey(null);
-        }
-    }, [timelineSummary.periods, selectedPeriodKey]);
-
-    const scrollTimelineCardIntoView = useCallback((periodKey, behavior = 'smooth') => {
-        if (!periodKey) return;
-        const row = timelineRowRef.current;
-        if (!row) return;
-        const card = row.querySelector(`[data-period-key="${periodKey}"]`);
-        if (!card) return;
-        card.scrollIntoView({
-            behavior,
-            inline: 'center',
-            block: 'nearest',
-        });
-    }, []);
-
-    useEffect(() => {
-        if (!selectedPeriodKey) return;
-        const id = window.requestAnimationFrame(() => {
-            scrollTimelineCardIntoView(selectedPeriodKey, 'smooth');
-        });
-        return () => window.cancelAnimationFrame(id);
-    }, [selectedPeriodKey, scrollTimelineCardIntoView]);
-
-    const handleTimelinePeriodSelect = useCallback((periodKey) => {
-        setSelectedPeriodKey((prev) => (prev === periodKey ? null : periodKey));
-        setSelectedCluster(null);
-    }, []);
-
-    const selectedPeriodIndex = useMemo(() => {
-        if (!selectedPeriodKey) return -1;
-        return timelineSummary.periods.findIndex((period) => period.key === selectedPeriodKey);
-    }, [timelineSummary.periods, selectedPeriodKey]);
-
-    const canTimelineStepPrev = selectedPeriodIndex > 0 || (selectedPeriodIndex === -1 && timelineSummary.periods.length > 0);
-    const canTimelineStepNext = selectedPeriodIndex >= 0 && selectedPeriodIndex < timelineSummary.periods.length - 1;
-
-    const handleTimelineStep = useCallback((direction) => {
-        if (!timelineSummary.periods.length) return;
-        let nextIdx = -1;
-        if (selectedPeriodIndex === -1) {
-            nextIdx = direction < 0 ? timelineSummary.periods.length - 1 : 0;
-        } else {
-            nextIdx = selectedPeriodIndex + direction;
-        }
-        if (nextIdx < 0 || nextIdx >= timelineSummary.periods.length) return;
-        const nextKey = timelineSummary.periods[nextIdx]?.key;
-        if (!nextKey) return;
-        setSelectedPeriodKey(nextKey);
-        setSelectedCluster(null);
-    }, [timelineSummary.periods, selectedPeriodIndex]);
-
     const revealAmbientUi = useCallback((duration = 2200) => {
         setAmbientUiVisible(true);
         if (ambientUiTimerRef.current) {
@@ -2277,24 +2023,6 @@ export default function TasteMapPage() {
         }
         revealAmbientUi(1800);
     }, [viewMode, revealAmbientUi]);
-
-    useEffect(() => {
-        if (viewMode !== 'bubble' || !selectedPeriodKey) return;
-        if (timelineMorphTimerRef.current) {
-            window.clearTimeout(timelineMorphTimerRef.current);
-        }
-        setTimelineMorphing(true);
-        timelineMorphTimerRef.current = window.setTimeout(() => {
-            setTimelineMorphing(false);
-            timelineMorphTimerRef.current = null;
-        }, 780);
-        return () => {
-            if (timelineMorphTimerRef.current) {
-                window.clearTimeout(timelineMorphTimerRef.current);
-                timelineMorphTimerRef.current = null;
-            }
-        };
-    }, [selectedPeriodKey, viewMode]);
 
     useEffect(() => {
         if (viewMode !== 'bubble') return;
@@ -2339,24 +2067,16 @@ export default function TasteMapPage() {
         return map;
     }, [tracks, assignments]);
 
-    const selectedPeriodTrackIds = useMemo(() => {
-        if (!selectedPeriodKey) return null;
-        const period = timelineSummary.periods.find((item) => item.key === selectedPeriodKey);
-        if (!period) return null;
-        return new Set(period.trackIds);
-    }, [timelineSummary.periods, selectedPeriodKey]);
-
     const activeTrackIds = useMemo(() => {
         const set = new Set();
         tracks.forEach((track, idx) => {
             if (selectedCluster !== null && assignments[idx] !== selectedCluster) return;
-            if (selectedPeriodTrackIds && !selectedPeriodTrackIds.has(track.id)) return;
             set.add(track.id);
         });
         return set;
-    }, [tracks, assignments, selectedCluster, selectedPeriodTrackIds]);
+    }, [tracks, assignments, selectedCluster]);
 
-    const hasTrackFilter = selectedCluster !== null || !!selectedPeriodTrackIds;
+    const hasTrackFilter = selectedCluster !== null;
 
     const bubbleCandidateTracks = useMemo(() => {
         if (!hasTrackFilter) return tracks;
@@ -3352,17 +3072,14 @@ export default function TasteMapPage() {
     // Only mount bubbles near the viewport. Analytics and clustering still use
     // the complete import, while the DOM cost stays bounded for huge libraries.
     const visibleBubbleRenderItems = useMemo(() => {
-        const spotifyField = activeMapView === 'spotify';
-        const overscan = spotifyField ? 240 : 280;
+        const overscan = 240;
         const visible = bubbleRenderItems.filter((item) => (
             item.xPx >= -overscan
             && item.xPx <= bubbleFieldSize.w + overscan
             && item.yPx >= -overscan
             && item.yPx <= bubbleFieldSize.h + overscan
         ));
-        const maxMounted = spotifyField
-            ? (bubbleZoom < 0.5 ? 320 : bubbleZoom < 0.85 ? 420 : 520)
-            : (bubbleZoom < 0.5 ? 760 : bubbleZoom < 0.85 ? 920 : 1100);
+        const maxMounted = bubbleZoom < 0.5 ? 320 : bubbleZoom < 0.85 ? 420 : 520;
         if (visible.length <= maxMounted) return visible;
 
         const selectedId = selectedTrackCard?.track?.id;
@@ -3390,7 +3107,6 @@ export default function TasteMapPage() {
         spectraExpandTrackId,
         selectedTrackCard,
         hoveredBubbleId,
-        activeMapView,
     ]);
 
     const getMountedBubbleElement = useCallback((trackId) => {
@@ -3644,7 +3360,7 @@ export default function TasteMapPage() {
             return sprite;
         };
 
-        const bubbleScale = Math.max(1, bubbleZoom / 1.2);
+        const bubbleScale = getBubbleVisualScale(bubbleZoom);
         const step = Math.max(1, Math.ceil(visibleBubbleRenderItems.length / 360));
         ctx.globalCompositeOperation = 'lighter';
         for (let i = 0; i < visibleBubbleRenderItems.length; i += step) {
@@ -4023,7 +3739,7 @@ export default function TasteMapPage() {
             setSelectedTrackCard(null);
         }
     }, [exploreEnabled, selectedTrackCard]);
-    const focusCurrentBubbles = useCallback(() => {
+    const focusCurrentBubbles = useCallback((options = {}) => {
         if (!bubbleRenderItems.length || !bubbleFieldSize.w || !bubbleFieldSize.h) return;
         const activeItems = bubbleRenderItems.filter((item) => item.active);
         const targets = activeItems.length ? activeItems : bubbleRenderItems;
@@ -4046,6 +3762,11 @@ export default function TasteMapPage() {
         const centerY = (minY + maxY) / 2;
         const targetCamera = clampCamera(centerX - viewportW / 2, centerY - viewportH / 2, targetZoom);
 
+        if (options?.smooth === true) {
+            animateCameraTo(targetCamera, targetZoom, 560);
+            return;
+        }
+
         if (zoomCameraRafRef.current) {
             window.cancelAnimationFrame(zoomCameraRafRef.current);
             zoomCameraRafRef.current = 0;
@@ -4060,20 +3781,55 @@ export default function TasteMapPage() {
         cameraRef.current = targetCamera;
         setBubbleZoom(targetZoom);
         setCamera(targetCamera);
-    }, [bubbleRenderItems, bubbleFieldSize.w, bubbleFieldSize.h, clampCamera, clampZoom]);
+    }, [bubbleRenderItems, bubbleFieldSize.w, bubbleFieldSize.h, clampCamera, clampZoom, animateCameraTo]);
     const showFullTasteField = useCallback(() => {
-        const hadActiveFilter = selectedCluster !== null || selectedPeriodKey !== null || Boolean(spectraExpandTrackId);
+        const hadActiveFilter = selectedCluster !== null || Boolean(spectraExpandTrackId);
+        if (hadActiveFilter) {
+            pendingBubbleFocusRef.current = { mode: 'all' };
+        }
         setSelectedCluster(null);
-        setSelectedPeriodKey(null);
         setSpectraExpandTrackId(null);
         setActiveGenreFamily('');
         setActiveEmotionRegion('');
-        if (hadActiveFilter) {
-            pendingAxisFocusRef.current = true;
-        } else {
-            window.requestAnimationFrame(focusCurrentBubbles);
+        if (!hadActiveFilter) {
+            window.requestAnimationFrame(() => focusCurrentBubbles({ smooth: true }));
         }
-    }, [selectedCluster, selectedPeriodKey, spectraExpandTrackId, focusCurrentBubbles]);
+    }, [selectedCluster, spectraExpandTrackId, focusCurrentBubbles]);
+    const handleClusterSelect = useCallback((clusterId) => {
+        const nextCluster = selectedCluster === clusterId ? null : clusterId;
+        pendingBubbleFocusRef.current = nextCluster === null
+            ? { mode: 'all' }
+            : { mode: 'cluster', clusterId: nextCluster };
+        setSpectraExpandTrackId(null);
+        setSelectedCluster(nextCluster);
+    }, [selectedCluster]);
+
+    useEffect(() => {
+        const pending = pendingBubbleFocusRef.current;
+        if (!pending || viewMode !== 'bubble' || bubbleTracks.length === 0 || bubbleRenderItems.length === 0) return;
+
+        const currentTrackIds = new Set(bubbleTracks.map((track) => track.id));
+        const layoutIsCurrent = bubbleNodesResult.length === currentTrackIds.size
+            && bubbleNodesResult.every((node) => currentTrackIds.has(node.track.id));
+        if (!layoutIsCurrent) return;
+        if (
+            pending.mode === 'cluster'
+            && bubbleRenderItems.some((item) => item.clusterId !== pending.clusterId)
+        ) return;
+
+        const id = window.requestAnimationFrame(() => {
+            if (pendingBubbleFocusRef.current !== pending) return;
+            pendingBubbleFocusRef.current = null;
+            focusCurrentBubbles({ smooth: true });
+        });
+        return () => window.cancelAnimationFrame(id);
+    }, [
+        viewMode,
+        bubbleTracks,
+        bubbleNodesResult,
+        bubbleRenderItems,
+        focusCurrentBubbles,
+    ]);
     useEffect(() => {
         if (viewMode !== 'bubble') return;
         pendingAxisFocusRef.current = true;
@@ -4621,30 +4377,6 @@ export default function TasteMapPage() {
         if ((goingUp && !atTop) || (goingDown && !atBottom)) {
             if (event.cancelable) event.preventDefault();
             list.scrollTop += event.deltaY;
-        }
-    }, []);
-
-    const handleTimelineRowWheel = useCallback((event) => {
-        const row = timelineRowRef.current;
-        if (!row) return;
-
-        const canScrollX = row.scrollWidth > row.clientWidth + 1;
-        if (!canScrollX) return;
-
-        const primaryDelta = Math.abs(event.deltaX) > Math.abs(event.deltaY)
-            ? event.deltaX
-            : event.deltaY;
-
-        if (primaryDelta === 0) return;
-
-        const atLeft = row.scrollLeft <= 0;
-        const atRight = row.scrollLeft + row.clientWidth >= row.scrollWidth - 1;
-        const goingLeft = primaryDelta < 0;
-        const goingRight = primaryDelta > 0;
-
-        if ((goingLeft && !atLeft) || (goingRight && !atRight)) {
-            if (event.cancelable) event.preventDefault();
-            row.scrollLeft += primaryDelta;
         }
     }, []);
 
@@ -5413,15 +5145,11 @@ export default function TasteMapPage() {
                                         {exploreLoading && <> · {copy.exploreLoading}</>}
                                         {exploreError && <> · {copy.exploreFailed}</>}
                                     </span>
-                                    {(selectedCluster !== null || selectedPeriodKey !== null) && (
+                                    {selectedCluster !== null && (
                                         <button
                                             type="button"
                                             className="tm-clear-filter"
-                                            onClick={() => {
-                                                setSelectedCluster(null);
-                                                setSelectedPeriodKey(null);
-                                                setSpectraExpandTrackId(null);
-                                            }}
+                                            onClick={showFullTasteField}
                                         >
                                             {copy.clearFilter}
                                         </button>
@@ -5502,7 +5230,7 @@ export default function TasteMapPage() {
                             >
                                 <button
                                     type="button"
-                                    className={`tm-map-tag-chip tm-map-tag-chip--all tm-inspector-chip tm-region-tag${selectedCluster === null && selectedPeriodKey === null && !spectraExpandTrackId ? ' active' : ''}`}
+                                    className={`tm-map-tag-chip tm-map-tag-chip--all tm-inspector-chip tm-region-tag${selectedCluster === null && !spectraExpandTrackId ? ' active' : ''}`}
                                     onClick={showFullTasteField}
                                     title={lang === 'en' ? 'Show the full taste field' : '필터를 해제하고 전체 취향 보기'}
                                 >
@@ -5516,9 +5244,7 @@ export default function TasteMapPage() {
                                         className={`tm-map-tag-chip tm-inspector-chip tm-region-tag tm-region-tag-emotion${selectedCluster === cluster.j ? ' active' : ''}${activeEmotionRegion === `cluster-${cluster.j}` ? ' is-region-active' : ''}${activeEmotionRegion && activeEmotionRegion !== `cluster-${cluster.j}` ? ' is-region-dim' : ''}`}
                                         data-region={`cluster-${cluster.j}`}
                                         style={getEmotionRegionStyle(cluster.color, `cluster-${cluster.j}`)}
-                                        onClick={() => {
-                                            setSelectedCluster((prev) => (prev === cluster.j ? null : cluster.j));
-                                        }}
+                                        onClick={() => handleClusterSelect(cluster.j)}
                                         onMouseEnter={() => handleEmotionRegionEnter(`cluster-${cluster.j}`)}
                                         onMouseLeave={(event) => {
                                             clearEmotionRegionFocus();
@@ -5708,8 +5434,8 @@ export default function TasteMapPage() {
                                     )}
                                     <div
                                         ref={bubbleLayerRef}
-                                        className={`tm-bubble-layer${timelineMorphing ? ' retiming' : ''}${isSpectraExpandMode ? ' spectra-expanding' : ''}${visibleBubbleRenderItems.length > (activeMapView === 'spotify' ? 280 : 520) ? ' high-density' : ''}`}
-                                        style={{ '--tm-bubble-scale': Math.max(1, bubbleZoom / 1.2) }}
+                                        className={`tm-bubble-layer${isSpectraExpandMode ? ' spectra-expanding' : ''}${visibleBubbleRenderItems.length > 280 ? ' high-density' : ''}`}
+                                        style={{ '--tm-bubble-scale': getBubbleVisualScale(bubbleZoom) }}
                                         onPointerDown={(event) => {
                                             if (event.target?.closest?.('.tm-bubble, .tm-bubble-share-select')) return;
                                             if (bubbleContextMenu) setBubbleContextMenu(null);
@@ -6030,9 +5756,7 @@ export default function TasteMapPage() {
                                         className={`tm-inspector-chip tm-region-tag tm-region-tag-emotion${selectedCluster === cluster.j ? ' active' : ''}${activeEmotionRegion === `cluster-${cluster.j}` ? ' is-region-active' : ''}${activeEmotionRegion && activeEmotionRegion !== `cluster-${cluster.j}` ? ' is-region-dim' : ''}`}
                                         data-region={`cluster-${cluster.j}`}
                                         style={getEmotionRegionStyle(cluster.color, `cluster-${cluster.j}`)}
-                                        onClick={() => {
-                                            setSelectedCluster((prev) => (prev === cluster.j ? null : cluster.j));
-                                        }}
+                                        onClick={() => handleClusterSelect(cluster.j)}
                                         onMouseEnter={() => handleEmotionRegionEnter(`cluster-${cluster.j}`)}
                                         onMouseLeave={(event) => {
                                             clearEmotionRegionFocus();
@@ -6163,155 +5887,6 @@ export default function TasteMapPage() {
                             </div>
                         </div>
                     </section>
-
-                    {dashboardOpen && (
-                    <section className="tm-timeline-panel">
-                        <div className="tm-timeline-head">
-                            <div>
-                                <h3 className="tm-timeline-title">Time Story</h3>
-                            </div>
-                            <div className="tm-timeline-controls">
-                                <div className="tm-time-nav">
-                                    <button
-                                        className="tm-time-nav-btn"
-                                        onClick={() => handleTimelineStep(-1)}
-                                        disabled={!canTimelineStepPrev}
-                                        title="이전 기간"
-                                    >
-                                        ← 이전
-                                    </button>
-                                    <button
-                                        className="tm-time-nav-btn"
-                                        onClick={() => handleTimelineStep(1)}
-                                        disabled={!canTimelineStepNext}
-                                        title="다음 기간"
-                                    >
-                                        다음 →
-                                    </button>
-                                </div>
-                                <div className="tm-time-seg">
-                                    <button
-                                        className={`tm-time-btn${timelineGranularity === 'month' ? ' active' : ''}`}
-                                        onClick={() => setTimelineGranularity('month')}
-                                    >
-                                        월별
-                                    </button>
-                                    <button
-                                        className={`tm-time-btn${timelineGranularity === 'quarter' ? ' active' : ''}`}
-                                        onClick={() => setTimelineGranularity('quarter')}
-                                    >
-                                        분기별
-                                    </button>
-                                </div>
-                                <div className="tm-time-seg">
-                                    {[
-                                        { key: '6m', label: '6M' },
-                                        { key: '12m', label: '12M' },
-                                        { key: '24m', label: '24M' },
-                                        { key: 'all', label: 'ALL' },
-                                    ].map((item) => (
-                                        <button
-                                            key={item.key}
-                                            className={`tm-time-btn${timelineRange === item.key ? ' active' : ''}`}
-                                            onClick={() => setTimelineRange(item.key)}
-                                        >
-                                            {item.label}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-
-                        {!timelineSummary.hasDate && (
-                            <div className="tm-timeline-empty">
-                                날짜 데이터가 부족합니다.
-                            </div>
-                        )}
-
-                        {timelineSummary.hasDate && timelineSummary.periods.length === 0 && (
-                            <div className="tm-timeline-empty">
-                                선택한 기간 데이터가 없습니다.
-                            </div>
-                        )}
-
-                        {timelineSummary.hasDate && timelineSummary.periods.length > 0 && (
-                            <>
-                                <div
-                                    ref={timelineRowRef}
-                                    className="tm-timeline-row"
-                                    onWheel={handleTimelineRowWheel}
-                                >
-                                    {timelineSummary.periods.map((period) => {
-                                        const selected = selectedPeriodKey === period.key;
-                                        return (
-                                            <button
-                                                key={period.key}
-                                                data-period-key={period.key}
-                                                className={`tm-time-card${selected ? ' selected' : ''}`}
-                                                onClick={() => handleTimelinePeriodSelect(period.key)}
-                                                style={{
-                                                    '--time-color': period.dominantColor,
-                                                    '--tm-time-rgb-a': period.cardPalette?.a || '132, 158, 212',
-                                                    '--tm-time-rgb-b': period.cardPalette?.b || '132, 158, 212',
-                                                    '--tm-time-rgb-c': period.cardPalette?.c || '132, 158, 212',
-                                                    '--tm-time-rgb-mixed': period.cardPalette?.mixed || '132, 158, 212',
-                                                    '--tm-time-rgb-dominant': period.cardPalette?.dominant || '132, 158, 212',
-                                                }}
-                                                title={period.dominantLabel ? `${period.dominantLabel.name} ${period.dominantShare}%` : '클러스터 데이터 없음'}
-                                            >
-                                                <div className="tm-time-card-head">
-                                                    <span className="tm-time-period">{period.label}</span>
-                                                    <span className="tm-time-count">{period.total}곡</span>
-                                                </div>
-                                                <div className="tm-time-dominant">
-                                                    {period.dominantLabel ? (
-                                                        <>
-                                                            <SpectraSymbol symbol={period.dominantLabel.symbol || 'headset'} className="tm-symbol-inline" />
-                                                            <span>{period.dominantLabel.name}</span>
-                                                            <span className="tm-time-cluster-share">{period.dominantShare}%</span>
-                                                        </>
-                                                    ) : (
-                                                        <span>클러스터 없음</span>
-                                                    )}
-                                                </div>
-                                                <div
-                                                    className="tm-time-genres tm-region-cloud tm-region-cloud-genre"
-                                                    data-active-family={activeGenreFamily || undefined}
-                                                >
-                                                    {period.topGenres.length > 0
-                                                        ? period.topGenres.map((genre) => {
-                                                            const identity = getGenreIdentity(genre);
-                                                            return (
-                                                                <span
-                                                                    key={`${period.key}-${genre}`}
-                                                                    className={`tm-time-genre tm-genre-token tm-region-tag tm-region-tag-genre${activeGenreFamily === identity.family ? ' is-family-active' : ''}${activeGenreFamily && activeGenreFamily !== identity.family ? ' is-family-dim' : ''}`}
-                                                                    data-family={identity.family}
-                                                                    style={getGenreChipStyle(genre)}
-                                                                    title={identity.display}
-                                                                    onMouseEnter={() => handleGenreRegionEnter(genre)}
-                                                                    onMouseLeave={(event) => {
-                                                                        clearGenreRegionFocus();
-                                                                        resetRegionLight(event);
-                                                                    }}
-                                                                    onMouseMove={handleRegionLightMove}
-                                                                    onFocus={() => handleGenreRegionEnter(genre)}
-                                                                    onBlur={clearGenreRegionFocus}
-                                                                >
-                                                                    <SpectraSymbol symbol={getGenreSymbol(genre)} className="tm-symbol-chip" />
-                                                                    {identity.short}
-                                                                </span>
-                                                            );
-                                                        })
-                                                        : <span className="tm-time-genre-empty">장르 데이터 없음</span>}
-                                                </div>
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            </>
-                        )}
-                    </section>
-                    )}
 
                 </>
             )}
