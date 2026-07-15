@@ -278,8 +278,9 @@ const AXIS_PRESETS = [
 // Map surfaces are registered here so future spatial views can be added
 // without reshaping the shared navigation and floating tool dock.
 const MAP_VIEW_DEFINITIONS = [
-    { id: 'field', label: 'Taste Field', available: true },
+    { id: 'field', label: 'Taste Field', available: true, showInNavigation: false },
     { id: 'spotify', label: 'Spotify Field', available: true },
+    { id: 'constellation', label: 'Constellation', available: true },
     { id: 'metro', label: 'Metro Map', available: true },
 ];
 
@@ -399,6 +400,143 @@ function sampleTracksForBubbleView(list, maxCount) {
     if (list.length <= maxCount) return list;
     const shuffled = [...list].sort((a, b) => hash01(a.id) - hash01(b.id));
     return shuffled.slice(0, maxCount);
+}
+
+// Build a sparse, stable graph from the Taste Field layout. Kruskal's
+// algorithm runs over a local-neighbour candidate set, keeping the graph
+// connected inside each taste cluster without turning dense libraries into a
+// fully connected web.
+function buildConstellationTopology(nodes) {
+    if (nodes.length < 2) return [];
+
+    const groups = new Map();
+    nodes.forEach((node) => {
+        const clusterId = Number.isInteger(node.clusterId) ? node.clusterId : -1;
+        if (!groups.has(clusterId)) groups.set(clusterId, []);
+        groups.get(clusterId).push(node);
+    });
+
+    const topology = [];
+    groups.forEach((group, clusterId) => {
+        if (group.length < 2) return;
+
+        const sorted = [...group].sort((a, b) => (
+            a.nX - b.nX || a.nY - b.nY || String(a.id).localeCompare(String(b.id))
+        ));
+        const candidates = [];
+        const candidateKeys = new Set();
+        const neighbourWindow = Math.min(16, sorted.length - 1);
+
+        for (let i = 0; i < sorted.length; i++) {
+            for (let j = i + 1; j <= Math.min(sorted.length - 1, i + neighbourWindow); j++) {
+                const a = sorted[i];
+                const b = sorted[j];
+                const key = `${a.id}::${b.id}`;
+                if (candidateKeys.has(key)) continue;
+                candidateKeys.add(key);
+                candidates.push({
+                    from: a.id,
+                    to: b.id,
+                    distance: Math.hypot(a.nX - b.nX, a.nY - b.nY),
+                    color: a.color,
+                    clusterId,
+                });
+            }
+        }
+
+        candidates.sort((a, b) => (
+            a.distance - b.distance
+            || hash01(`${a.from}:${a.to}`) - hash01(`${b.from}:${b.to}`)
+        ));
+
+        const parent = new Map(sorted.map((node) => [node.id, node.id]));
+        const rank = new Map(sorted.map((node) => [node.id, 0]));
+        const degree = new Map(sorted.map((node) => [node.id, 0]));
+        const selectedKeys = new Set();
+
+        const find = (id) => {
+            let root = id;
+            while (parent.get(root) !== root) root = parent.get(root);
+            let cursor = id;
+            while (parent.get(cursor) !== cursor) {
+                const next = parent.get(cursor);
+                parent.set(cursor, root);
+                cursor = next;
+            }
+            return root;
+        };
+
+        const union = (a, b) => {
+            const rootA = find(a);
+            const rootB = find(b);
+            if (rootA === rootB) return false;
+            const rankA = rank.get(rootA) || 0;
+            const rankB = rank.get(rootB) || 0;
+            if (rankA < rankB) parent.set(rootA, rootB);
+            else if (rankA > rankB) parent.set(rootB, rootA);
+            else {
+                parent.set(rootB, rootA);
+                rank.set(rootA, rankA + 1);
+            }
+            return true;
+        };
+
+        for (const edge of candidates) {
+            if (!union(edge.from, edge.to)) continue;
+            topology.push(edge);
+            selectedKeys.add(`${edge.from}::${edge.to}`);
+            degree.set(edge.from, (degree.get(edge.from) || 0) + 1);
+            degree.set(edge.to, (degree.get(edge.to) || 0) + 1);
+            if (selectedKeys.size >= sorted.length - 1) break;
+        }
+
+        // A few short cross-links make the clusters read as constellations,
+        // while the degree cap preserves open negative space.
+        const extraLimit = Math.min(36, Math.floor(sorted.length * 0.1));
+        let extras = 0;
+        for (const edge of candidates) {
+            if (extras >= extraLimit) break;
+            if (selectedKeys.has(`${edge.from}::${edge.to}`)) continue;
+            if (edge.distance > 0.12) break;
+            if ((degree.get(edge.from) || 0) >= 3 || (degree.get(edge.to) || 0) >= 3) continue;
+            if (hash01(`${edge.from}:${edge.to}:extra`) > 0.32) continue;
+            topology.push({ ...edge, secondary: true });
+            degree.set(edge.from, (degree.get(edge.from) || 0) + 1);
+            degree.set(edge.to, (degree.get(edge.to) || 0) + 1);
+            extras += 1;
+        }
+    });
+
+    // A cluster can occasionally contain a single outlier. Give those points
+    // one faint bridge to their nearest neighbour so every star participates
+    // in the graph.
+    const connectedIds = new Set(topology.flatMap((edge) => [edge.from, edge.to]));
+    nodes.forEach((node) => {
+        if (connectedIds.has(node.id)) return;
+        let nearest = null;
+        let nearestDistance = Infinity;
+        nodes.forEach((candidate) => {
+            if (candidate.id === node.id) return;
+            const distance = Math.hypot(node.nX - candidate.nX, node.nY - candidate.nY);
+            if (distance >= nearestDistance) return;
+            nearest = candidate;
+            nearestDistance = distance;
+        });
+        if (!nearest) return;
+        topology.push({
+            from: node.id,
+            to: nearest.id,
+            distance: nearestDistance,
+            color: node.color,
+            clusterId: node.clusterId,
+            secondary: true,
+            bridge: true,
+        });
+        connectedIds.add(node.id);
+        connectedIds.add(nearest.id);
+    });
+
+    return topology;
 }
 
 function normalizeGenre(genre) {
@@ -1402,6 +1540,7 @@ const BUBBLE_MAX_COUNT = 2000;
 // Allow pulling far enough back to see the taste field with generous context.
 const BUBBLE_ZOOM_MIN = 0.1;
 const BUBBLE_ZOOM_MAX = 10.0;
+const CONSTELLATION_COVER_ZOOM = 1.12;
 
 function getBubbleVisualScale(zoom) {
     const normalizedZoom = Math.max(BUBBLE_ZOOM_MIN, Number(zoom) || 1);
@@ -1584,7 +1723,7 @@ export default function TasteMapPage() {
     const pendingPanCommitRef = useRef(false);
     const pinchRef = useRef({ pointers: new Map(), active: false, startDist: 0, startZoom: 1, anchorX: 0, anchorY: 0 });
     const pendingAxisFocusRef = useRef(false);
-    const pendingBubbleFocusRef = useRef(null);
+    const pendingBubbleFocusRef = useRef({ mode: 'all', source: 'spotify' });
     const bubbleAutoCenteredRef = useRef(false);
     const ambientUiTimerRef = useRef(null);
     const formationTimersRef = useRef([]);
@@ -1604,7 +1743,7 @@ export default function TasteMapPage() {
     });
     const bubbleSpringTimersRef = useRef(new Map());
 
-    const [activeMapView, setActiveMapView] = useState('field');
+    const [activeMapView, setActiveMapView] = useState('spotify');
     const [tracks, setTracks] = useState([]);
     const [tracksSource, setTracksSource] = useState('lastfm');
     const [assignments, setAssignments] = useState([]);
@@ -1751,8 +1890,13 @@ export default function TasteMapPage() {
         }
         if (nextView === activeMapView) return;
         bubbleAutoCenteredRef.current = false;
+        pendingBubbleFocusRef.current = nextView === 'spotify'
+            ? { mode: 'all', source: 'spotify' }
+            : null;
         setSelectedCluster(null);
         setSpectraExpandTrackId(null);
+        setActiveGenreFamily('');
+        setActiveEmotionRegion('');
         setExploreEnabled(false);
         setExploreRecs([]);
         setActiveMapView(nextView);
@@ -3109,6 +3253,46 @@ export default function TasteMapPage() {
         hoveredBubbleId,
     ]);
 
+    const isConstellationView = activeMapView === 'constellation';
+    const constellationCoverZoomed = isConstellationView && bubbleZoom >= CONSTELLATION_COVER_ZOOM;
+    const constellationTopology = useMemo(
+        () => buildConstellationTopology(bubbleNodesResult),
+        [bubbleNodesResult],
+    );
+    const constellationEdges = useMemo(() => {
+        if (!isConstellationView || constellationTopology.length === 0) return [];
+        const pointById = new Map(bubbleRenderItems.map((item) => [item.node.track.id, item]));
+        const overscan = 160;
+        return constellationTopology.map((edge) => {
+            const from = pointById.get(edge.from);
+            const to = pointById.get(edge.to);
+            if (!from || !to) return null;
+            const outsideViewport = (
+                Math.max(from.xPx, to.xPx) < -overscan
+                || Math.min(from.xPx, to.xPx) > bubbleFieldSize.w + overscan
+                || Math.max(from.yPx, to.yPx) < -overscan
+                || Math.min(from.yPx, to.yPx) > bubbleFieldSize.h + overscan
+            );
+            if (outsideViewport) return null;
+            return {
+                ...edge,
+                fromItem: from,
+                toItem: to,
+                active: from.active && to.active,
+                focused: selectedCluster !== null && edge.clusterId === selectedCluster,
+                selected: selectedTrackCard?.track?.id === edge.from || selectedTrackCard?.track?.id === edge.to,
+            };
+        }).filter(Boolean);
+    }, [
+        isConstellationView,
+        constellationTopology,
+        bubbleRenderItems,
+        bubbleFieldSize.w,
+        bubbleFieldSize.h,
+        selectedCluster,
+        selectedTrackCard,
+    ]);
+
     const getMountedBubbleElement = useCallback((trackId) => {
         const field = bubbleFieldRef.current;
         if (!field || !trackId) return null;
@@ -3812,6 +3996,11 @@ export default function TasteMapPage() {
         const layoutIsCurrent = bubbleNodesResult.length === currentTrackIds.size
             && bubbleNodesResult.every((node) => currentTrackIds.has(node.track.id));
         if (!layoutIsCurrent) return;
+        if (pending.source && tracksSource !== pending.source) return;
+        if (
+            pending.source === 'spotify'
+            && bubbleNodesResult.some((node) => node.track.featuresSource !== 'spotify-genres')
+        ) return;
         if (
             pending.mode === 'cluster'
             && bubbleRenderItems.some((item) => item.clusterId !== pending.clusterId)
@@ -3829,6 +4018,7 @@ export default function TasteMapPage() {
         bubbleNodesResult,
         bubbleRenderItems,
         focusCurrentBubbles,
+        tracksSource,
     ]);
     useEffect(() => {
         if (viewMode !== 'bubble') return;
@@ -4999,11 +5189,12 @@ export default function TasteMapPage() {
 
                     <section className="tm-axis-panel" aria-label={lang === 'en' ? 'Taste map tools' : '취향 지도 도구'}>
                         <div className="tm-view-switcher" role="tablist" aria-label={lang === 'en' ? 'Map view' : '맵 보기'}>
-                            {MAP_VIEW_DEFINITIONS.map((definition) => (
+                            {MAP_VIEW_DEFINITIONS.filter((definition) => definition.showInNavigation !== false).map((definition) => (
                                 <button
                                     key={definition.id}
                                     type="button"
                                     role="tab"
+                                    data-map-view={definition.id}
                                     className={`tm-view-option${(definition.id === 'metro' ? subwayGeneratorOpen : activeMapView === definition.id) ? ' active' : ''}`}
                                     aria-selected={definition.id === 'metro' ? subwayGeneratorOpen : activeMapView === definition.id}
                                     disabled={!definition.available}
@@ -5261,10 +5452,12 @@ export default function TasteMapPage() {
                             </div>
                             </div>
                             <div
-                                className={`tm-bubble-wrap tm-form-phase-${formationPhase}`}
+                                className={`tm-bubble-wrap tm-form-phase-${formationPhase}${isConstellationView ? ' tm-constellation-view' : ''}`}
                                 ref={bubbleFieldRef}
                                 style={{
-                                    background: mapTheme === 'day' ? '#ffffff' : '#12161d',
+                                    background: isConstellationView
+                                        ? (mapTheme === 'day' ? '#f5f7fb' : '#070a12')
+                                        : (mapTheme === 'day' ? '#ffffff' : '#12161d'),
                                 }}
                             >
                                     <canvas
@@ -5434,10 +5627,11 @@ export default function TasteMapPage() {
                                     )}
                                     <div
                                         ref={bubbleLayerRef}
-                                        className={`tm-bubble-layer${isSpectraExpandMode ? ' spectra-expanding' : ''}${visibleBubbleRenderItems.length > 280 ? ' high-density' : ''}`}
+                                        className={`tm-bubble-layer${isConstellationView ? ' tm-constellation-layer' : ''}${isSpectraExpandMode ? ' spectra-expanding' : ''}${visibleBubbleRenderItems.length > 280 ? ' high-density' : ''}`}
                                         style={{ '--tm-bubble-scale': getBubbleVisualScale(bubbleZoom) }}
                                         onPointerDown={(event) => {
-                                            if (event.target?.closest?.('.tm-bubble, .tm-bubble-share-select')) return;
+                                            if (!isConstellationView && event.target?.closest?.('.tm-bubble, .tm-bubble-share-select')) return;
+                                            if (event.target?.closest?.('.tm-bubble-share-select')) return;
                                             if (bubbleContextMenu) setBubbleContextMenu(null);
                                             if (selectedTrackCard) {
                                                 setSelectedTrackCard(null);
@@ -5447,11 +5641,37 @@ export default function TasteMapPage() {
                                         }}
                                         onClick={handleBubbleLayerClick}
                                         onContextMenu={handleBubbleLayerContextMenu}
-                                        onPointerMove={handleInteractiveBubbleMove}
+                                        onPointerMove={isConstellationView ? handleBubblePanMove : handleInteractiveBubbleMove}
                                         onPointerUp={handleInteractivePointerEnd}
                                         onPointerCancel={handleInteractivePointerEnd}
                                         onPointerLeave={resetBubbleMagnetism}
                                     >
+                                        {isConstellationView && (
+                                            <svg
+                                                className="tm-constellation-lines"
+                                                viewBox={`0 0 ${Math.max(1, bubbleFieldSize.w)} ${Math.max(1, bubbleFieldSize.h)}`}
+                                                preserveAspectRatio="none"
+                                                aria-hidden
+                                            >
+                                                {constellationEdges.map((edge) => (
+                                                    <line
+                                                        key={`${edge.from}--${edge.to}`}
+                                                        data-from={edge.from}
+                                                        data-to={edge.to}
+                                                        className={`${edge.secondary ? 'secondary' : 'primary'}${edge.active ? ' is-active' : ' is-muted'}${edge.focused ? ' is-focused' : ''}${edge.selected ? ' is-selected' : ''}`}
+                                                        x1={edge.fromItem.xPx}
+                                                        y1={edge.fromItem.yPx}
+                                                        x2={edge.toItem.xPx}
+                                                        y2={edge.toItem.yPx}
+                                                        pathLength="1"
+                                                        style={{
+                                                            '--tm-constellation-color': edge.color,
+                                                            '--tm-edge-delay': `${Math.round(hash01(`${edge.from}:${edge.to}`) * 420)}ms`,
+                                                        }}
+                                                    />
+                                                ))}
+                                            </svg>
+                                        )}
                                         {visibleBubbleRenderItems.map(({ node, active, clusterFocused, clusterExpandPulsing, xPercent, yPercent, showLabel }) => {
                                             const hovered = hoveredBubbleId === node.track.id;
                                             const picked = !!shareSelectedMap[node.track.id];
@@ -5463,11 +5683,11 @@ export default function TasteMapPage() {
                                                 <div
                                                     key={node.track.id}
                                                     data-bubble-id={node.track.id}
-                                                    className={`tm-bubble-item${active ? '' : ' muted'}${showLabel ? ' show-label' : ''}${hovered ? ' hovered' : ''}${detailSelected ? ' detail-selected' : ''}${picked ? ' picked' : ''}${nowPlaying ? ' now-playing' : ''}${clusterFocused ? ' cluster-focus' : ''}${clusterExpandPulsing ? ' cluster-expand-pulse' : ''}${spectraBlur ? ' spectra-blur' : ''}${spectraAnchor ? ' spectra-anchor' : ''}`}
-                                                    onPointerDown={(event) => handleBubbleDragStart(event, node.track.id)}
-                                                    onPointerMove={handleBubbleDragMove}
-                                                    onPointerUp={handleBubbleDragEnd}
-                                                    onPointerCancel={handleBubbleDragEnd}
+                                                    className={`tm-bubble-item${isConstellationView ? ' tm-constellation-item' : ''}${constellationCoverZoomed ? ' is-cover-zoom' : ''}${active ? '' : ' muted'}${showLabel ? ' show-label' : ''}${hovered ? ' hovered' : ''}${detailSelected ? ' detail-selected' : ''}${picked ? ' picked' : ''}${nowPlaying ? ' now-playing' : ''}${clusterFocused ? ' cluster-focus' : ''}${clusterExpandPulsing ? ' cluster-expand-pulse' : ''}${spectraBlur ? ' spectra-blur' : ''}${spectraAnchor ? ' spectra-anchor' : ''}`}
+                                                    onPointerDown={isConstellationView ? undefined : (event) => handleBubbleDragStart(event, node.track.id)}
+                                                    onPointerMove={isConstellationView ? undefined : handleBubbleDragMove}
+                                                    onPointerUp={isConstellationView ? undefined : handleBubbleDragEnd}
+                                                    onPointerCancel={isConstellationView ? undefined : handleBubbleDragEnd}
                                                     style={{
                                                         '--tm-bubble-size': node.style['--tm-bubble-size'],
                                                         '--tm-bubble-color': node.style['--tm-bubble-color'],
@@ -5475,20 +5695,30 @@ export default function TasteMapPage() {
                                                         '--tm-drift-x': node.style['--tm-drift-x'],
                                                         '--tm-drift-y': node.style['--tm-drift-y'],
                                                         '--tm-float-delay': node.style['--tm-float-delay'],
+                                                        '--tm-constellation-point-size': `${Math.round(Math.max(7, Math.min(13, 5 + node.size * 0.07)))}px`,
                                                         left: `${xPercent}%`,
                                                         top: `${yPercent}%`,
                                                     }}
                                                 >
                                                     <div className="tm-bubble-float">
                                                         <button
-                                                            className="tm-bubble"
-                                                            style={{
+                                                            className={`tm-bubble${isConstellationView ? ' tm-constellation-point' : ''}`}
+                                                            style={isConstellationView ? {
+                                                                backgroundColor: node.style['--tm-bubble-color'],
+                                                            } : {
                                                                 borderColor: node.style.borderColor,
                                                                 backgroundImage: node.style.backgroundImage,
                                                             }}
                                                             title={`${node.track.name} — ${node.track.artists}`}
                                                         >
-                                                            <div className="tm-bubble-overlay" />
+                                                            {!isConstellationView && <div className="tm-bubble-overlay" />}
+                                                            {isConstellationView && node.track.coverUrl && (
+                                                                <span
+                                                                    className="tm-constellation-cover"
+                                                                    style={{ backgroundImage: node.style.backgroundImage }}
+                                                                    aria-hidden
+                                                                />
+                                                            )}
                                                         </button>
                                                         {shareMode && (
                                                             <button
@@ -5735,7 +5965,9 @@ export default function TasteMapPage() {
                                     )}
                             </div>
                             <div className="tm-track-count">
-                                {bubbleCoverage || `${bubbleTracks.length}곡 버블 탐색`} · drag / zoom
+                                {isConstellationView
+                                    ? `${bubbleTracks.length}개의 별 · connect / drag / zoom`
+                                    : `${bubbleCoverage || `${bubbleTracks.length}곡 버블 탐색`} · drag / zoom`}
                             </div>
                             {recActionMessage && (
                                 <div className="tm-rec-action-msg">{recActionMessage}</div>
@@ -5894,7 +6126,7 @@ export default function TasteMapPage() {
             <TasteMapSubwayGenerator
                 open={subwayGeneratorOpen}
                 onClose={() => setSubwayGeneratorOpen(false)}
-                baseMapView={activeMapView}
+                baseMapView={activeMapView === 'spotify' ? 'spotify' : 'field'}
                 onNavigateView={(nextView) => {
                     setSubwayGeneratorOpen(false);
                     handleMapViewChange(nextView);
