@@ -280,7 +280,7 @@ const AXIS_PRESETS = [
 const MAP_VIEW_DEFINITIONS = [
     { id: 'field', label: 'Taste Field', available: true },
     { id: 'spotify', label: 'Spotify Field', available: true },
-    { id: 'metro', label: 'Metro Map', available: false },
+    { id: 'metro', label: 'Metro Map', available: true },
 ];
 
 // ─── Clustering helpers ────────────────────────────────────────────────────────
@@ -1823,6 +1823,10 @@ export default function TasteMapPage() {
     }, []);
 
     const handleMapViewChange = useCallback((nextView) => {
+        if (nextView === 'metro') {
+            setSubwayGeneratorOpen(true);
+            return;
+        }
         if (nextView === activeMapView) return;
         bubbleAutoCenteredRef.current = false;
         setSelectedCluster(null);
@@ -5268,8 +5272,8 @@ export default function TasteMapPage() {
                                     key={definition.id}
                                     type="button"
                                     role="tab"
-                                    className={`tm-view-option${activeMapView === definition.id ? ' active' : ''}`}
-                                    aria-selected={activeMapView === definition.id}
+                                    className={`tm-view-option${(definition.id === 'metro' ? subwayGeneratorOpen : activeMapView === definition.id) ? ' active' : ''}`}
+                                    aria-selected={definition.id === 'metro' ? subwayGeneratorOpen : activeMapView === definition.id}
                                     disabled={!definition.available}
                                     onClick={() => handleMapViewChange(definition.id)}
                                     title={definition.available ? definition.label : (lang === 'en' ? 'Coming in a future map' : '추후 추가될 맵입니다')}
@@ -5464,7 +5468,7 @@ export default function TasteMapPage() {
                                         className={`tm-dashboard-toggle${subwayGeneratorOpen ? ' active' : ''}`}
                                         onClick={() => setSubwayGeneratorOpen(true)}
                                         title="지하철 노선도 생성기 열기"
-                                        disabled={tracks.length < 4}
+                                        disabled={tracks.length < 20}
                                     >
                                         {copy.subwayGenerator}
                                     </button>
@@ -6315,6 +6319,11 @@ export default function TasteMapPage() {
             <TasteMapSubwayGenerator
                 open={subwayGeneratorOpen}
                 onClose={() => setSubwayGeneratorOpen(false)}
+                baseMapView={activeMapView}
+                onNavigateView={(nextView) => {
+                    setSubwayGeneratorOpen(false);
+                    handleMapViewChange(nextView);
+                }}
                 tracks={tracks}
                 activeTrackIds={activeTrackIds}
                 assignmentByTrackId={assignmentByTrackId}

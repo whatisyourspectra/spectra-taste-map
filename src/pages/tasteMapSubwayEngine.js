@@ -7,6 +7,17 @@ const SUBWAY_GRID = 36;
 const SUBWAY_ROUTE_EXTENT = 432;
 const SUBWAY_LANE_SWAY = 64;
 const SUBWAY_CORE_PADDING = 54;
+const SUBWAY_STATION_TARGET_TRACKS = 25;
+const SUBWAY_STATION_MIN_TRACKS = 20;
+const SUBWAY_STATION_MAX_TRACKS = 30;
+const SUBWAY_CLUSTER_ITERATIONS = 6;
+const SUBWAY_FEATURE_KEYS = [
+    'valence',
+    'energy',
+    'danceability',
+    'acousticness',
+    'instrumentalness',
+];
 
 const LINE_PALETTE = [
     '#4da3ff',
@@ -100,6 +111,154 @@ function resolveTrackGenres(track, cluster) {
     const clusterGenres = uniq((cluster?.topGenres || []).map(normalizeGenre)).slice(0, 5);
     if (clusterGenres.length) return clusterGenres;
     return [];
+}
+
+function getTrackFeatureVector(track) {
+    return SUBWAY_FEATURE_KEYS.map((key) => clamp01(track?.[key], key === 'instrumentalness' ? 0 : 0.5));
+}
+
+function getStationGroupCount(trackCount) {
+    if (trackCount <= SUBWAY_STATION_MAX_TRACKS) return 1;
+
+    const minimumGroups = Math.ceil(trackCount / SUBWAY_STATION_MAX_TRACKS);
+    const maximumGroups = Math.floor(trackCount / SUBWAY_STATION_MIN_TRACKS);
+    const targetGroups = Math.max(1, Math.round(trackCount / SUBWAY_STATION_TARGET_TRACKS));
+
+    if (minimumGroups <= maximumGroups) {
+        return clampRange(targetGroups, minimumGroups, maximumGroups);
+    }
+    return targetGroups;
+}
+
+function getBalancedGroupSizes(trackCount, groupCount) {
+    const baseSize = Math.floor(trackCount / groupCount);
+    const remainder = trackCount % groupCount;
+    return Array.from({ length: groupCount }, (_, index) => baseSize + (index < remainder ? 1 : 0));
+}
+
+function createGroupCentroid(members) {
+    const safeMembers = members.length ? members : [];
+    const divisor = Math.max(1, safeMembers.length);
+    const features = SUBWAY_FEATURE_KEYS.map((_, featureIndex) => (
+        safeMembers.reduce((sum, member) => sum + member.features[featureIndex], 0) / divisor
+    ));
+    const genreWeights = new Map();
+    const clusterWeights = new Map();
+
+    safeMembers.forEach((member) => {
+        member.genres.slice(0, 6).forEach((genre) => {
+            genreWeights.set(genre, (genreWeights.get(genre) || 0) + (1 / divisor));
+        });
+        if (member.clusterId !== undefined && member.clusterId !== null) {
+            clusterWeights.set(member.clusterId, (clusterWeights.get(member.clusterId) || 0) + (1 / divisor));
+        }
+    });
+
+    return { features, genreWeights, clusterWeights };
+}
+
+function getGroupDistance(item, centroid) {
+    const featureDistance = Math.sqrt(item.features.reduce((sum, value, index) => {
+        const delta = value - centroid.features[index];
+        return sum + (delta * delta);
+    }, 0) / item.features.length);
+
+    const itemGenreSet = new Set(item.genres.slice(0, 6));
+    const centroidGenres = [...centroid.genreWeights.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10);
+    let genreIntersection = 0;
+    let genreUnion = itemGenreSet.size;
+    centroidGenres.forEach(([genre, weight]) => {
+        if (itemGenreSet.has(genre)) {
+            genreIntersection += Math.min(1, weight);
+            genreUnion += Math.max(1, weight) - 1;
+        } else {
+            genreUnion += weight;
+        }
+    });
+    const genreDistance = genreUnion > 0 ? 1 - (genreIntersection / genreUnion) : 0.5;
+    const clusterDistance = item.clusterId !== undefined && item.clusterId !== null
+        ? 1 - (centroid.clusterWeights.get(item.clusterId) || 0)
+        : 0.5;
+
+    return (featureDistance * 0.58) + (genreDistance * 0.36) + (clusterDistance * 0.06);
+}
+
+function chooseInitialCentroids(items, groupCount) {
+    const first = [...items].sort((a, b) => (
+        b.popularity - a.popularity || hashText(a.id) - hashText(b.id)
+    ))[0];
+    const seeds = [first];
+
+    while (seeds.length < groupCount) {
+        let nextSeed = null;
+        let nextDistance = -1;
+        items.forEach((item) => {
+            if (seeds.includes(item)) return;
+            const nearestDistance = Math.min(...seeds.map((seed) => (
+                getGroupDistance(item, createGroupCentroid([seed]))
+            )));
+            if (nearestDistance > nextDistance) {
+                nextDistance = nearestDistance;
+                nextSeed = item;
+            }
+        });
+        if (!nextSeed) break;
+        seeds.push(nextSeed);
+    }
+
+    return seeds.map((seed) => createGroupCentroid([seed]));
+}
+
+function assignTracksToBalancedGroups(items, centroids, targetSizes) {
+    const groups = centroids.map(() => []);
+    const rankedItems = items.map((item) => {
+        const distances = centroids
+            .map((centroid, index) => ({ index, distance: getGroupDistance(item, centroid) }))
+            .sort((a, b) => a.distance - b.distance);
+        const confidence = (distances[1]?.distance ?? 1) - distances[0].distance;
+        return { item, distances, confidence };
+    }).sort((a, b) => b.confidence - a.confidence || hashText(a.item.id) - hashText(b.item.id));
+
+    rankedItems.forEach(({ item, distances }) => {
+        const destination = distances.find(({ index }) => groups[index].length < targetSizes[index]);
+        if (destination) groups[destination.index].push(item);
+    });
+
+    return groups;
+}
+
+function groupTracksIntoStations(items) {
+    const groupCount = getStationGroupCount(items.length);
+    const targetSizes = getBalancedGroupSizes(items.length, groupCount);
+    let centroids = chooseInitialCentroids(items, groupCount);
+    let groups = [];
+
+    for (let iteration = 0; iteration < SUBWAY_CLUSTER_ITERATIONS; iteration += 1) {
+        groups = assignTracksToBalancedGroups(items, centroids, targetSizes);
+        centroids = groups.map((members) => createGroupCentroid(members));
+    }
+
+    return groups;
+}
+
+function getMoodLabel(features) {
+    const [valence, energy, , acousticness, instrumentalness] = features;
+    if (instrumentalness >= 0.62) return 'Atmospheric';
+    if (energy >= 0.7 && valence >= 0.58) return 'Upbeat';
+    if (energy >= 0.7 && valence < 0.45) return 'Intense';
+    if (energy <= 0.35 && acousticness >= 0.55) return 'Acoustic';
+    if (energy <= 0.38) return 'Chill';
+    if (valence <= 0.35) return 'Moody';
+    if (valence >= 0.7) return 'Bright';
+    return 'Flow';
+}
+
+function buildStationName(genres, features) {
+    const primaryGenre = titleizeGenre(genres[0] || 'Mixed');
+    const secondaryGenre = genres[1] ? titleizeGenre(genres[1]) : getMoodLabel(features);
+    return `${primaryGenre} · ${secondaryGenre}`;
 }
 
 function buildPathData(points) {
@@ -329,9 +488,9 @@ export function buildTasteMapSubwaySystem({
         .filter((track) => track?.id && track?.name)
         .filter((track) => !activeTrackIds || activeTrackIds.has(track.id));
 
-    if (scopedTracks.length < 4) return null;
+    if (scopedTracks.length < SUBWAY_STATION_MIN_TRACKS) return null;
 
-    const rawStations = scopedTracks.map((track) => {
+    const trackItems = scopedTracks.map((track) => {
         const clusterId = assignmentByTrackId?.get(track.id);
         const cluster = clusterId !== undefined && clusterId !== null ? clusterById?.[clusterId] : null;
         const genres = resolveTrackGenres(track, cluster);
@@ -342,14 +501,15 @@ export function buildTasteMapSubwaySystem({
             clusterId,
             genres,
             popularity: Number(track.popularity) || 0,
+            features: getTrackFeatureVector(track),
             rawX: clamp01(track?.[xAxis], 0.5),
             rawY: clamp01(track?.[yAxis], 0.5),
         };
     });
 
     const genreCount = new Map();
-    rawStations.forEach((station) => {
-        station.genres.forEach((genre) => {
+    trackItems.forEach((item) => {
+        item.genres.forEach((genre) => {
             genreCount.set(genre, (genreCount.get(genre) || 0) + 1);
         });
     });
@@ -362,31 +522,87 @@ export function buildTasteMapSubwaySystem({
     if (!lineKeys.length) return null;
 
     const lineKeySet = new Set(lineKeys);
-    const stations = rawStations
-        .map((station) => {
-            const lineMembership = station.genres.filter((genre) => lineKeySet.has(genre));
-            if (!lineMembership.length) return null;
-            const popularityRatio = station.popularity / 100;
+    const stations = groupTracksIntoStations(trackItems)
+        .map((members, stationIndex) => {
+            const centroid = createGroupCentroid(members);
+            const groupGenreCount = new Map();
+            members.forEach((member) => {
+                member.genres.forEach((genre) => {
+                    groupGenreCount.set(genre, (groupGenreCount.get(genre) || 0) + 1);
+                });
+            });
+            const genres = [...groupGenreCount.entries()]
+                .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+                .map(([genre]) => genre)
+                .slice(0, 6);
+            const minimumLineSupport = Math.max(2, Math.ceil(members.length * 0.16));
+            let lineMembership = [...groupGenreCount.entries()]
+                .filter(([genre, count]) => lineKeySet.has(genre) && count >= minimumLineSupport)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 3)
+                .map(([genre]) => genre);
+            if (!lineMembership.length) {
+                const fallbackLine = genres.find((genre) => lineKeySet.has(genre));
+                lineMembership = [fallbackLine || lineKeys[0]];
+            }
+
+            const representativeItems = [...members]
+                .sort((a, b) => (
+                    getGroupDistance(a, centroid) - getGroupDistance(b, centroid)
+                    || b.popularity - a.popularity
+                ));
+            const coverItem = representativeItems.find((item) => item.track.coverUrl) || representativeItems[0];
+            const representativeTracks = representativeItems.slice(0, 6).map((item) => ({
+                id: item.id,
+                name: item.track.name,
+                artists: item.track.artists || '',
+                coverUrl: item.track.coverUrl || null,
+            }));
+            const averagePopularity = Math.round(
+                members.reduce((sum, member) => sum + member.popularity, 0) / members.length,
+            );
+            const rawX = members.reduce((sum, member) => sum + member.rawX, 0) / members.length;
+            const rawY = members.reduce((sum, member) => sum + member.rawY, 0) / members.length;
+            const popularityRatio = averagePopularity / 100;
+            const stationName = buildStationName(genres, centroid.features);
+            const stationId = `station-${stationIndex}-${hashText(members.map((member) => member.id).sort().join('|')).toString(36)}`;
+            const artistSummary = uniq(representativeItems.map((item) => item.track.artists || '')).slice(0, 3).join(' · ');
+
             return {
-                id: station.id,
-                trackName: station.track.name,
-                artists: station.track.artists || '',
-                coverUrl: station.track.coverUrl || null,
-                popularity: station.popularity,
-                rawX: station.rawX,
-                rawY: station.rawY,
-                genres: station.genres,
+                id: stationId,
+                trackName: stationName,
+                artists: artistSummary,
+                coverUrl: coverItem?.track.coverUrl || null,
+                popularity: averagePopularity,
+                rawX,
+                rawY,
+                genres,
+                tracks: members.map((member) => member.track),
+                trackCount: members.length,
+                representativeTracks,
                 lineKeys: lineMembership,
                 primaryLineKey: lineMembership[0],
                 lineCount: lineMembership.length,
                 isInterchange: lineMembership.length > 1,
-                bubbleSize: 4.5 + popularityRatio * 4.5,
-                interchangeScore: (lineMembership.length * 28) + (station.popularity * 0.7),
+                bubbleSize: 6 + popularityRatio * 3 + Math.min(2, members.length / SUBWAY_STATION_TARGET_TRACKS),
+                interchangeScore: (lineMembership.length * 28) + (averagePopularity * 0.5) + members.length,
             };
         })
         .filter(Boolean);
 
     if (!stations.length) return null;
+
+    const stationNameTotals = new Map();
+    stations.forEach((station) => {
+        stationNameTotals.set(station.trackName, (stationNameTotals.get(station.trackName) || 0) + 1);
+    });
+    const stationNameSequence = new Map();
+    stations.forEach((station) => {
+        if ((stationNameTotals.get(station.trackName) || 0) < 2) return;
+        const sequence = (stationNameSequence.get(station.trackName) || 0) + 1;
+        stationNameSequence.set(station.trackName, sequence);
+        station.trackName = `${station.trackName} ${sequence}`;
+    });
 
     const stationById = new Map(stations.map((station) => [station.id, station]));
 
@@ -749,7 +965,7 @@ export function createTasteMapSubwaySvg({
     const labelMarkup = labelStations.map((station) => `
         <g transform="translate(${getSvgCardLayout({ x: station.mapX, y: station.mapY }, system, { width: 230, height: 38, offset: station.isInterchange ? 18 : 14 }).x.toFixed(1)} ${getSvgCardLayout({ x: station.mapX, y: station.mapY }, system, { width: 230, height: 38, offset: station.isInterchange ? 18 : 14 }).y.toFixed(1)})">
             <rect width="230" height="38" rx="14" fill="rgba(8, 18, 31, 0.88)" stroke="rgba(184, 205, 230, 0.12)" />
-            <text x="14" y="24" fill="${theme.shell}" font-size="16" font-family="Pretendard, system-ui, sans-serif" font-weight="700">${escapeXml(truncateSvgText(station.trackName, 26))}</text>
+            <text x="14" y="24" fill="${theme.shell}" font-size="16" font-family="Pretendard, system-ui, sans-serif" font-weight="700">${escapeXml(truncateSvgText(`${station.trackName} · ${station.trackCount}`, 26))}</text>
         </g>
     `).join('');
 

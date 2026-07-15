@@ -11,8 +11,8 @@ import {
 const COPY = {
     ko: {
         launcher: '노선도 생성기',
-        title: 'Taste Map 지하철 노선도 생성기',
-        subtitle: '현재 맵의 곡과 장르를 역과 노선으로 다시 번역합니다.',
+        title: 'My Metro Map',
+        subtitle: '장르와 분위기가 비슷한 20~30곡을 하나의 역으로 묶어 노선도를 만듭니다.',
         close: '닫기',
         variantSubway: 'Subway',
         variantConstellation: 'Constellation',
@@ -40,7 +40,9 @@ const COPY = {
         zoomSlider: '배율 조절',
         transferTo: '환승',
         genres: '장르',
-        popularity: '인기도',
+        popularity: '평균 인기도',
+        includedTracks: '포함 곡',
+        representativeTracks: '대표곡',
         belongsTo: '속한 노선',
         summaryTracks: '곡',
         modeSummary: '요약',
@@ -49,8 +51,8 @@ const COPY = {
     },
     en: {
         launcher: 'Subway Generator',
-        title: 'Taste Map Subway Generator',
-        subtitle: 'Recompose your current taste map into stations and genre lines.',
+        title: 'My Metro Map',
+        subtitle: 'Group 20–30 tracks with similar genres and moods into each station.',
         close: 'Close',
         variantSubway: 'Subway',
         variantConstellation: 'Constellation',
@@ -78,7 +80,9 @@ const COPY = {
         zoomSlider: 'Zoom Slider',
         transferTo: 'Transfer',
         genres: 'Genres',
-        popularity: 'Popularity',
+        popularity: 'Avg. popularity',
+        includedTracks: 'Tracks',
+        representativeTracks: 'Representative tracks',
         belongsTo: 'Lines',
         summaryTracks: 'tracks',
         modeSummary: 'Summary',
@@ -267,26 +271,26 @@ function buildSummaryBadges(view, system, {
     const stationById = new Map(system.stations.map((station) => [station.id, station]));
     const badges = [];
     const occupied = [];
-    const minSegmentSize = hasLineSelection ? 5 : 6;
+    const minSegmentSize = 3;
 
     view.lines.forEach((line) => {
         const stations = line.stationIds
             .map((stationId) => stationById.get(stationId))
             .filter(Boolean);
-        if (stations.length < 8) return;
+        if (stations.length < 4) return;
 
         const averageGap = getAverageStationGap(stations);
         const effectiveGap = averageGap * Math.max(zoom, 0.72);
         let chunkSize = 0;
 
         if (!hasLineSelection) {
-            if (effectiveGap < 14) chunkSize = 12;
-            else if (effectiveGap < 18) chunkSize = 10;
-            else if (effectiveGap < 24) chunkSize = 8;
-            else if (effectiveGap < 30) chunkSize = 6;
-        } else if (zoom < 1.08) {
-            if (effectiveGap < 20) chunkSize = 8;
-            else if (effectiveGap < 28) chunkSize = 6;
+            if (zoom < 0.9) chunkSize = effectiveGap < 32 ? 5 : 4;
+            else if (zoom < 1.36) chunkSize = 4;
+            else if (zoom < 2.6) chunkSize = 3;
+        } else if (zoom < 1.18) {
+            chunkSize = 4;
+        } else if (zoom < 2.1) {
+            chunkSize = 3;
         }
 
         if (!chunkSize) return;
@@ -311,7 +315,10 @@ function buildSummaryBadges(view, system, {
                     color: line.color,
                     x: anchor.mapX,
                     y: anchor.mapY,
-                    label: formatSummaryLabel(group.length, copy),
+                    label: formatSummaryLabel(
+                        group.reduce((sum, station) => sum + (station.trackCount || 0), 0),
+                        copy,
+                    ),
                     stationIds: group.map((station) => station.id),
                 });
             }
@@ -365,7 +372,7 @@ function buildStationVisibility(view, {
             return;
         }
 
-        const sampleCount = hasLineSelection ? 5 : 3;
+        const sampleCount = 2;
         const sampleIds = new Set(pickEvenlySpacedIds(stationIds, sampleCount));
         sampleIds.forEach((stationId) => priorityStationIds.add(stationId));
         stationIds.forEach((stationId) => {
@@ -374,6 +381,35 @@ function buildStationVisibility(view, {
             hiddenStationIds.add(stationId);
         });
     });
+
+    const anchorStationIds = new Set([pinnedStationId].filter(Boolean));
+    view.stations.forEach((station) => {
+        if (station.isInterchange) anchorStationIds.add(station.id);
+    });
+    view.lines.forEach((line) => {
+        const stationIds = line.stationIds.filter(Boolean);
+        if (stationIds[0]) anchorStationIds.add(stationIds[0]);
+        if (stationIds[stationIds.length - 1]) anchorStationIds.add(stationIds[stationIds.length - 1]);
+    });
+
+    if (detailMode === 'summary') {
+        view.stations.forEach((station) => {
+            if (anchorStationIds.has(station.id)) return;
+            visibleStationIds.delete(station.id);
+            hiddenStationIds.add(station.id);
+        });
+    } else if (detailMode === 'hybrid') {
+        const hybridStationIds = new Set(anchorStationIds);
+        view.lines.forEach((line) => {
+            const desiredCount = Math.max(3, Math.ceil(line.stationIds.length * 0.55));
+            pickEvenlySpacedIds(line.stationIds, desiredCount).forEach((stationId) => hybridStationIds.add(stationId));
+        });
+        view.stations.forEach((station) => {
+            if (hybridStationIds.has(station.id)) return;
+            visibleStationIds.delete(station.id);
+            hiddenStationIds.add(station.id);
+        });
+    }
 
     return { visibleStationIds, hiddenStationIds, priorityStationIds };
 }
@@ -397,8 +433,10 @@ function SubwayPreviewSvg({
     pinnedStationId,
     onStationSelect,
     onLineFocus,
-    isFullscreen,
-    onToggleFullscreen,
+    baseMapView,
+    onNavigateView,
+    inspectorOpen,
+    onToggleInspector,
     copy,
 }) {
     const MIN_ZOOM = 0.28;
@@ -548,10 +586,14 @@ function SubwayPreviewSvg({
     }, [hasLineSelection, fitToVisible, interchangesOnly, resetViewport]);
 
     const viewSize = system.width / zoom;
-    const viewBox = useMemo(() => {
-        const safeCenter = clampCenter(center, zoom);
-        return `${safeCenter.x - viewSize / 2} ${safeCenter.y - viewSize / 2} ${viewSize} ${viewSize}`;
-    }, [center, clampCenter, viewSize, zoom]);
+    const safeCenter = useMemo(() => clampCenter(center, zoom), [center, clampCenter, zoom]);
+    const viewBox = useMemo(
+        () => `${safeCenter.x - viewSize / 2} ${safeCenter.y - viewSize / 2} ${viewSize} ${viewSize}`,
+        [safeCenter, viewSize],
+    );
+    const navigatorViewSize = Math.min(system.width, viewSize);
+    const navigatorViewX = clampValue(safeCenter.x - navigatorViewSize / 2, 0, system.width - navigatorViewSize);
+    const navigatorViewY = clampValue(safeCenter.y - navigatorViewSize / 2, 0, system.height - navigatorViewSize);
 
     return (
         <div className="tm-subway-preview-canvas">
@@ -562,23 +604,27 @@ function SubwayPreviewSvg({
                     <span>{detailMode === 'summary' ? copy.modeSummary : detailMode === 'hybrid' ? copy.modeHybrid : copy.modeDetail}</span>
                 </div>
                 <div className="tm-subway-viewport-actions">
-                    <button type="button" className="tm-subway-viewport-btn" onClick={fitToVisible}>{copy.fitView}</button>
-                    <button type="button" className="tm-subway-viewport-btn icon" onClick={() => applyZoom(zoom * 1.2)} aria-label={copy.zoomIn}>+</button>
-                    <button type="button" className="tm-subway-viewport-btn icon" onClick={() => applyZoom(zoom / 1.2)} aria-label={copy.zoomOut}>-</button>
-                    <label className="tm-subway-zoom-slider" aria-label={copy.zoomSlider}>
-                        <input
-                            type="range"
-                            min={MIN_ZOOM}
-                            max={MAX_ZOOM}
-                            step="0.01"
-                            value={zoom}
-                            onChange={(event) => applyZoom(Number(event.target.value))}
-                        />
-                    </label>
-                    <button type="button" className="tm-subway-viewport-btn" onClick={resetViewport}>{copy.resetView}</button>
-                    <button type="button" className={`tm-subway-viewport-btn${isFullscreen ? ' active' : ''}`} onClick={onToggleFullscreen}>
-                        {isFullscreen ? copy.exitFullscreen : copy.fullscreen}
-                    </button>
+                    <div className="tm-subway-map-tabs" role="tablist" aria-label="Map view">
+                        <button type="button" role="tab" aria-selected={false} onClick={() => onNavigateView('field')}>
+                            <span aria-hidden>⌾</span>Taste Field
+                        </button>
+                        <button type="button" role="tab" aria-selected={false} onClick={() => onNavigateView('spotify')}>
+                            <span aria-hidden>⊙</span>Spotify Field
+                        </button>
+                        <button type="button" role="tab" className="active" aria-selected="true">
+                            <span aria-hidden>⌁</span>Metro Map
+                        </button>
+                    </div>
+                    <span className="tm-subway-dock-divider" aria-hidden />
+                    <div className="tm-subway-dock-zoom">
+                        <button type="button" onClick={() => applyZoom(zoom / 1.2)} aria-label={copy.zoomOut}>−</button>
+                        <button type="button" className="value" onClick={fitToVisible}>{Math.round(zoom * 100)}%</button>
+                        <button type="button" onClick={() => applyZoom(zoom * 1.2)} aria-label={copy.zoomIn}>+</button>
+                    </div>
+                    <span className="tm-subway-dock-divider" aria-hidden />
+                    <button type="button" className="tm-subway-dock-action" onClick={resetViewport}>↜ {copy.resetView}</button>
+                    <button type="button" className={`tm-subway-dock-action${inspectorOpen ? ' active' : ''}`} onClick={onToggleInspector}>▣ Inspect</button>
+                    <span className="tm-subway-dock-context">{baseMapView === 'spotify' ? 'Spotify' : 'Taste'} source</span>
                 </div>
             </div>
 
@@ -827,6 +873,7 @@ function SubwayPreviewSvg({
                                 role="button"
                                 tabIndex={0}
                             >
+                                <title>{`${station.trackName} · ${station.trackCount} ${copy.summaryTracks}`}</title>
                                 {(station.isInterchange || isPinned) ? (
                                     <circle
                                         cx={station.mapX}
@@ -893,7 +940,7 @@ function SubwayPreviewSvg({
                                     <g transform={`translate(${labelLayout.x} ${labelLayout.y})`}>
                                         <rect width="230" height="38" rx="14" fill="rgba(8, 18, 31, 0.88)" stroke="rgba(184, 205, 230, 0.12)" />
                                         <text x="14" y="24" fill={theme.shell} fontSize="16" fontWeight="700">
-                                            {truncateText(station.trackName, 26)}
+                                            {truncateText(`${station.trackName} · ${station.trackCount}`, 26)}
                                         </text>
                                     </g>
                                 ) : null}
@@ -901,6 +948,61 @@ function SubwayPreviewSvg({
                         );
                     })}
             </svg>
+            <aside className="tm-subway-navigator" aria-label="Metro map navigator">
+                <div>
+                    <strong>Navigator</strong>
+                    <span>{Math.round(zoom * 100)}%</span>
+                </div>
+                <svg
+                    viewBox={`0 0 ${system.width} ${system.height}`}
+                    role="img"
+                    aria-label="Current metro map area"
+                    onClick={(event) => {
+                        const rect = event.currentTarget.getBoundingClientRect();
+                        if (!rect.width || !rect.height) return;
+                        const nextCenter = {
+                            x: ((event.clientX - rect.left) / rect.width) * system.width,
+                            y: ((event.clientY - rect.top) / rect.height) * system.height,
+                        };
+                        setCenter(clampCenter(nextCenter, zoom));
+                    }}
+                >
+                    <rect width={system.width} height={system.height} rx="70" fill="rgba(12, 21, 34, 0.96)" />
+                    {view.lines.map((line) => (
+                        <path
+                            key={line.key}
+                            d={line.pathData}
+                            fill="none"
+                            stroke={line.color}
+                            strokeWidth={Math.max(12, system.width * 0.006)}
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            opacity="0.8"
+                        />
+                    ))}
+                    {view.stations.map((station) => (
+                        <circle
+                            key={station.id}
+                            cx={station.mapX}
+                            cy={station.mapY}
+                            r={Math.max(10, system.width * 0.004)}
+                            fill="#f4f8ff"
+                            opacity={station.isInterchange ? 1 : 0.7}
+                        />
+                    ))}
+                    <rect
+                        x={navigatorViewX}
+                        y={navigatorViewY}
+                        width={navigatorViewSize}
+                        height={navigatorViewSize}
+                        rx="28"
+                        fill="rgba(132, 166, 255, 0.08)"
+                        stroke="#dce8ff"
+                        strokeWidth={Math.max(8, system.width * 0.004)}
+                    />
+                </svg>
+                <p>{copy.modeSummary} · drag / zoom</p>
+            </aside>
         </div>
     );
 }
@@ -908,6 +1010,8 @@ function SubwayPreviewSvg({
 export default function TasteMapSubwayGenerator({
     open,
     onClose,
+    baseMapView = 'field',
+    onNavigateView,
     tracks,
     activeTrackIds,
     assignmentByTrackId,
@@ -921,7 +1025,7 @@ export default function TasteMapSubwayGenerator({
     const [activeLineKeys, setActiveLineKeys] = useState([]);
     const [interchangesOnly, setInterchangesOnly] = useState(false);
     const [pinnedStationId, setPinnedStationId] = useState(null);
-    const [previewFullscreen, setPreviewFullscreen] = useState(false);
+    const [inspectorOpen, setInspectorOpen] = useState(false);
     const toggleLineSelection = useCallback((lineKey) => {
         if (!lineKey) return;
         setActiveLineKeys((prev) => (
@@ -977,32 +1081,41 @@ export default function TasteMapSubwayGenerator({
         if (!open) return undefined;
         const handleEscape = (event) => {
             if (event.key !== 'Escape') return;
-            if (previewFullscreen) {
-                setPreviewFullscreen(false);
+            if (inspectorOpen) {
+                setInspectorOpen(false);
                 return;
             }
             onClose();
         };
         window.addEventListener('keydown', handleEscape);
         return () => window.removeEventListener('keydown', handleEscape);
-    }, [open, onClose, previewFullscreen]);
+    }, [open, onClose, inspectorOpen]);
 
     useEffect(() => {
         if (!open) {
-            setPreviewFullscreen(false);
+            setInspectorOpen(false);
         }
     }, [open]);
 
     if (!open) return null;
 
     return (
-        <div className="tm-subway-modal-backdrop" onClick={onClose} role="presentation">
-            <section className={`tm-subway-modal${previewFullscreen ? ' preview-fullscreen' : ''}`} onClick={(event) => event.stopPropagation()}>
+        <div className="tm-subway-modal-backdrop" role="presentation">
+            <section className="tm-subway-modal">
                 <header className="tm-subway-head">
                     <div className="tm-subway-head-copy">
-                        <span className="tm-subway-pill">{copy.launcher}</span>
+                        <span className="tm-subway-pill">S P E C T R A</span>
                         <h2>{copy.title}</h2>
                         <p>{copy.subtitle}</p>
+                        {system ? (
+                            <div className="tm-subway-live-meta">
+                                <span>● LIVE MAP</span>
+                                <span>·</span>
+                                <strong>{system.stationCount} {copy.stations}</strong>
+                                <span>·</span>
+                                <strong>{system.lineCount} {copy.lines}</strong>
+                            </div>
+                        ) : null}
                     </div>
                     <div className="tm-subway-head-actions">
                         <div className="tm-subway-variant-seg">
@@ -1039,9 +1152,6 @@ export default function TasteMapSubwayGenerator({
                         >
                             {copy.downloadSvg}
                         </button>
-                        <button type="button" className={`tm-subway-download-btn${previewFullscreen ? ' active' : ''}`} onClick={() => setPreviewFullscreen((prev) => !prev)}>
-                            {previewFullscreen ? copy.exitFullscreen : copy.fullscreen}
-                        </button>
                         <button type="button" className="tm-subway-close-btn" onClick={onClose}>
                             {copy.close}
                         </button>
@@ -1054,7 +1164,7 @@ export default function TasteMapSubwayGenerator({
                     </div>
                 ) : (
                     <div className="tm-subway-layout">
-                        <div className={`tm-subway-preview-shell variant-${variant}${previewFullscreen ? ' fullscreen' : ''}`}>
+                        <div className={`tm-subway-preview-shell variant-${variant}`}>
                             <div className="tm-subway-preview-meta">
                                 <span>{copy.activeScope}</span>
                                 <strong>{usingFilteredScope ? copy.activeScopeFiltered : copy.activeScopeAll}</strong>
@@ -1067,18 +1177,24 @@ export default function TasteMapSubwayGenerator({
                                 activeLineKeys={effectiveActiveLineKeys}
                                 interchangesOnly={interchangesOnly}
                                 pinnedStationId={effectivePinnedStationId}
-                                onStationSelect={setPinnedStationId}
+                                onStationSelect={(nextValue) => {
+                                    setPinnedStationId(nextValue);
+                                    setInspectorOpen(true);
+                                }}
                                 onLineFocus={(lineKey) => {
                                     setPinnedStationId(null);
                                     toggleLineSelection(lineKey);
                                 }}
-                                isFullscreen={previewFullscreen}
-                                onToggleFullscreen={() => setPreviewFullscreen((prev) => !prev)}
+                                baseMapView={baseMapView}
+                                onNavigateView={onNavigateView || onClose}
+                                inspectorOpen={inspectorOpen}
+                                onToggleInspector={() => setInspectorOpen((prev) => !prev)}
                                 copy={copy}
                             />
                         </div>
 
-                        <aside className="tm-subway-sidebar">
+                        <aside className={`tm-subway-sidebar${inspectorOpen ? ' open' : ''}`}>
+                            <button type="button" className="tm-subway-inspector-close" onClick={() => setInspectorOpen(false)} aria-label={copy.close}>×</button>
                             <div className="tm-subway-stats">
                                 <div>
                                     <span>{copy.stations}</span>
@@ -1157,9 +1273,13 @@ export default function TasteMapSubwayGenerator({
                                         )}
                                         <div className="tm-subway-station-copy">
                                             <strong>{selectedStation.trackName}</strong>
-                                            <span>{selectedStation.artists || '-'}</span>
+                                            <span>{selectedStation.trackCount} {copy.summaryTracks} · {selectedStation.artists || '-'}</span>
                                         </div>
                                         <dl className="tm-subway-station-meta">
+                                            <div>
+                                                <dt>{copy.includedTracks}</dt>
+                                                <dd>{selectedStation.trackCount}</dd>
+                                            </div>
                                             <div>
                                                 <dt>{copy.popularity}</dt>
                                                 <dd>{selectedStation.popularity}</dd>
@@ -1169,6 +1289,20 @@ export default function TasteMapSubwayGenerator({
                                                 <dd>{selectedStation.lineCount}</dd>
                                             </div>
                                         </dl>
+                                        <div className="tm-subway-track-group">
+                                            <span className="tm-subway-chip-label">{copy.representativeTracks}</span>
+                                            <ol className="tm-subway-track-list">
+                                                {selectedStation.representativeTracks.map((track) => (
+                                                    <li key={track.id}>
+                                                        {track.coverUrl ? <img src={track.coverUrl} alt="" /> : <span className="fallback" aria-hidden />}
+                                                        <span>
+                                                            <strong>{track.name}</strong>
+                                                            <small>{track.artists || '-'}</small>
+                                                        </span>
+                                                    </li>
+                                                ))}
+                                            </ol>
+                                        </div>
                                         <div className="tm-subway-chip-group">
                                             <span className="tm-subway-chip-label">{copy.belongsTo}</span>
                                             {selectedStation.lineKeys.map((lineKey) => {
