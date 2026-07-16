@@ -1,6 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useTasteData } from '../context/TasteDataContext';
 import TasteMapSubwayGenerator from './TasteMapSubwayGenerator';
+import TasteMapMetroStudio from './TasteMapMetroStudio';
 import './TasteMapPage.css';
 
 const API_BASE = import.meta?.env?.VITE_API_BASE || '';
@@ -282,6 +283,7 @@ const MAP_VIEW_DEFINITIONS = [
     { id: 'spotify', label: 'Spotify Field', available: true },
     { id: 'constellation', label: 'Constellation', available: true },
     { id: 'metro', label: 'Metro Map', available: true },
+    { id: 'metro2', label: 'Metro Map 2', navLabel: 'Metro 2', available: true },
 ];
 
 // ─── Clustering helpers ────────────────────────────────────────────────────────
@@ -1807,6 +1809,7 @@ export default function TasteMapPage() {
     const [showUtilityControls, setShowUtilityControls] = useState(false);
     const [dashboardOpen, setDashboardOpen] = useState(false);
     const [subwayGeneratorOpen, setSubwayGeneratorOpen] = useState(false);
+    const [metroStudioOpen, setMetroStudioOpen] = useState(false);
     const [ambientUiVisible, setAmbientUiVisible] = useState(false);
     const [formationPhase, setFormationPhase] = useState('idle'); // idle | dark | seed | organize | labels | settled
     const [formationPlayed, setFormationPlayed] = useState(false);
@@ -1886,6 +1889,12 @@ export default function TasteMapPage() {
     const handleMapViewChange = useCallback((nextView) => {
         if (nextView === 'metro') {
             setSubwayGeneratorOpen(true);
+            setMetroStudioOpen(false);
+            return;
+        }
+        if (nextView === 'metro2') {
+            setMetroStudioOpen(true);
+            setSubwayGeneratorOpen(false);
             return;
         }
         if (nextView === activeMapView) return;
@@ -5195,14 +5204,27 @@ export default function TasteMapPage() {
                                     type="button"
                                     role="tab"
                                     data-map-view={definition.id}
-                                    className={`tm-view-option${(definition.id === 'metro' ? subwayGeneratorOpen : activeMapView === definition.id) ? ' active' : ''}`}
-                                    aria-selected={definition.id === 'metro' ? subwayGeneratorOpen : activeMapView === definition.id}
+                                    className={`tm-view-option${(
+                                        definition.id === 'metro'
+                                            ? subwayGeneratorOpen
+                                            : definition.id === 'metro2'
+                                                ? metroStudioOpen
+                                                : activeMapView === definition.id
+                                    ) ? ' active' : ''}`}
+                                    aria-selected={
+                                        definition.id === 'metro'
+                                            ? subwayGeneratorOpen
+                                            : definition.id === 'metro2'
+                                                ? metroStudioOpen
+                                                : activeMapView === definition.id
+                                    }
                                     disabled={!definition.available}
                                     onClick={() => handleMapViewChange(definition.id)}
+                                    aria-label={definition.label}
                                     title={definition.available ? definition.label : (lang === 'en' ? 'Coming in a future map' : '추후 추가될 맵입니다')}
                                 >
                                     <span className="tm-view-option-mark" aria-hidden />
-                                    <span>{definition.label}</span>
+                                    <span>{definition.navLabel || definition.label}</span>
                                     {!definition.available && <span className="tm-view-soon">SOON</span>}
                                 </button>
                             ))}
@@ -6137,6 +6159,17 @@ export default function TasteMapPage() {
                 clusterById={clusterById}
                 xAxis={xAxis}
                 yAxis={yAxis}
+                lang={lang}
+            />
+
+            <TasteMapMetroStudio
+                open={metroStudioOpen}
+                onClose={() => setMetroStudioOpen(false)}
+                tracks={tracks}
+                activeTrackIds={activeTrackIds}
+                assignmentByTrackId={assignmentByTrackId}
+                clusterById={clusterById}
+                libraryId={mapId || cacheUserId}
                 lang={lang}
             />
 

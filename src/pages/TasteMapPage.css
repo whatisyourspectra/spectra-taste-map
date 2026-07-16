@@ -4224,14 +4224,25 @@
 }
 
 .tm-view-switcher {
+    min-width: 0;
+    max-width: min(620px, calc(100vw - 380px));
     gap: 3px;
     padding: 3px;
+    overflow-x: auto;
+    overflow-y: hidden;
     border-radius: 14px;
     background: rgba(255, 255, 255, 0.035);
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+}
+
+.tm-view-switcher::-webkit-scrollbar {
+    display: none;
 }
 
 .tm-view-option {
     height: 36px;
+    flex: 0 0 auto;
     padding: 0 12px;
     display: inline-flex;
     align-items: center;
@@ -4290,6 +4301,25 @@
         radial-gradient(circle at 84% 64%, #a9c0ff 0 1.2px, transparent 1.8px),
         linear-gradient(32deg, transparent 43%, rgba(169, 192, 255, 0.7) 45% 51%, transparent 53%);
     box-shadow: 0 0 10px rgba(122, 162, 255, 0.38);
+}
+
+.tm-view-option[data-map-view="metro2"] .tm-view-option-mark {
+    width: 11px;
+    height: 8px;
+    border: 0;
+    border-radius: 0;
+    background:
+        radial-gradient(circle at 1px 6px, currentColor 0 1.5px, transparent 1.7px),
+        radial-gradient(circle at 5.5px 2px, currentColor 0 1.5px, transparent 1.7px),
+        radial-gradient(circle at 10px 6px, currentColor 0 1.5px, transparent 1.7px),
+        linear-gradient(138deg, transparent 39%, currentColor 41% 50%, transparent 52%),
+        linear-gradient(42deg, transparent 47%, currentColor 49% 58%, transparent 60%);
+    box-shadow: none;
+}
+
+.tm-view-option[data-map-view="metro2"].active .tm-view-option-mark {
+    color: #b8caff;
+    filter: drop-shadow(0 0 5px rgba(122, 162, 255, 0.55));
 }
 
 .tm-view-soon {
@@ -5320,6 +5350,10 @@
         padding: 7px;
     }
 
+    .tm-view-switcher {
+        max-width: calc(100vw - 370px);
+    }
+
     .tm-dock-action {
         width: 37px;
         padding: 0;
@@ -5363,6 +5397,10 @@
 
     .tm-view-option {
         padding: 0 9px;
+    }
+
+    .tm-view-switcher {
+        max-width: calc(100vw - 350px);
     }
 
     .tm-dock-divider:first-of-type {
