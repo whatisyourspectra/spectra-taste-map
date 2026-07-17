@@ -14,6 +14,60 @@ const TM_CLUSTER_CACHE_PREFIX = 'taste-map-cluster-v3';
 const TM_LIBRARY_CACHE_PREFIX = 'taste-map-library-v1';
 const TM_LOCALE_STORAGE_KEY = 'spectra-tastemap-lang-v1';
 const TM_THEME_STORAGE_KEY = 'spectra-tastemap-theme-v1';
+const TM_CUSTOM_GROUP_STORAGE_PREFIX = 'spectra-custom-groups-v1';
+const TM_CUSTOM_GROUP_STORAGE_VERSION = 1;
+
+function getCustomGroupStorageKey(libraryId) {
+    return `${TM_CUSTOM_GROUP_STORAGE_PREFIX}.${libraryId || 'guest'}`;
+}
+
+function loadCustomGroups(libraryId) {
+    if (typeof window === 'undefined' || !window.localStorage) return [];
+    try {
+        const parsed = JSON.parse(window.localStorage.getItem(getCustomGroupStorageKey(libraryId)) || 'null');
+        const groups = Array.isArray(parsed) ? parsed : parsed?.groups;
+        if (!Array.isArray(groups)) return [];
+        return groups
+            .filter((group) => group?.id && group?.name)
+            .map((group) => {
+                const tracks = Array.isArray(group.tracks)
+                    ? group.tracks.filter((track) => track?.id)
+                    : [];
+                const trackIds = [...new Set([
+                    ...(Array.isArray(group.trackIds) ? group.trackIds : []),
+                    ...tracks.map((track) => track.id),
+                ].filter(Boolean))];
+                return {
+                    ...group,
+                    name: String(group.name).trim(),
+                    tracks,
+                    trackIds,
+                };
+            });
+    } catch {
+        return [];
+    }
+}
+
+function storeCustomGroups(libraryId, groups) {
+    if (typeof window === 'undefined' || !window.localStorage) return;
+    try {
+        window.localStorage.setItem(getCustomGroupStorageKey(libraryId), JSON.stringify({
+            version: TM_CUSTOM_GROUP_STORAGE_VERSION,
+            groups,
+        }));
+    } catch {
+        // A full or unavailable localStorage should not block map editing.
+    }
+}
+
+function getNextCustomGroupName(groups, language = 'ko') {
+    const prefix = language === 'en' ? 'Group' : '그룹';
+    const existingNames = new Set((Array.isArray(groups) ? groups : []).map((group) => String(group?.name || '').trim()));
+    let index = 1;
+    while (existingNames.has(`${prefix} ${index}`)) index += 1;
+    return `${prefix} ${index}`;
+}
 
 const TM_I18N = {
     ko: {
@@ -90,8 +144,8 @@ const TM_I18N = {
         trackAddAction: '내 필드에 추가',
         spotifySearch: 'Spotify에서 찾기',
         youtubeSearch: 'YouTube에서 찾기',
-        shareOn: '공유 ON',
-        share: '공유',
+        shareOn: '선택 ON',
+        share: '선택',
         subwayGenerator: '노선도 생성기',
         currentBubble: '현재 버블',
         scrollHint: '마우스 휠로 확대 / 축소',
@@ -180,8 +234,8 @@ const TM_I18N = {
         trackAddAction: 'Add to my field',
         spotifySearch: 'Find on Spotify',
         youtubeSearch: 'Find on YouTube',
-        shareOn: 'Share ON',
-        share: 'Share',
+        shareOn: 'Select ON',
+        share: 'Select',
         subwayGenerator: 'Subway Generator',
         currentBubble: 'Current bubble',
         scrollHint: 'Use the mouse wheel to zoom',
@@ -1743,6 +1797,15 @@ export default function TasteMapPage() {
         moved: false,
         lastMoveAt: 0,
     });
+    const groupSelectionDragRef = useRef({
+        pointerId: null,
+        startX: 0,
+        startY: 0,
+        currentX: 0,
+        currentY: 0,
+        additive: false,
+        startTrackId: null,
+    });
     const bubbleSpringTimersRef = useRef(new Map());
 
     const [activeMapView, setActiveMapView] = useState('spotify');
@@ -1804,6 +1867,14 @@ export default function TasteMapPage() {
     const [spectraAffinityMap, setSpectraAffinityMap] = useState({});
     const [shareMode, setShareMode] = useState(false);
     const [shareSelectedMap, setShareSelectedMap] = useState({});
+    const [selectionRect, setSelectionRect] = useState(null);
+    const [selectionSpacePressed, setSelectionSpacePressed] = useState(false);
+    const [customGroups, setCustomGroups] = useState(() => loadCustomGroups(mapId || 'guest'));
+    const [editingGroupId, setEditingGroupId] = useState(null);
+    const [groupName, setGroupName] = useState(() => getNextCustomGroupName(
+        customGroups,
+        typeof window !== 'undefined' && window.localStorage.getItem(TM_LOCALE_STORAGE_KEY) === 'en' ? 'en' : 'ko',
+    ));
     const [expandPinMap, setExpandPinMap] = useState({});
     const [shareMessage, setShareMessage] = useState(null);
     const [showUtilityControls, setShowUtilityControls] = useState(false);
@@ -1841,6 +1912,7 @@ export default function TasteMapPage() {
     const kmeansWorkerRef = useRef(null);
     const bubbleLayoutWorkerRef = useRef(null);
     const copy = TM_I18N[lang] || TM_I18N.ko;
+    const customGroupLibraryId = mapId || cacheUserId || 'guest';
 
     const handleMapTagPointerDown = useCallback((event) => {
         if (event.button !== undefined && event.button !== 0) return;
@@ -1952,6 +2024,28 @@ export default function TasteMapPage() {
         if (typeof window === 'undefined') return;
         window.localStorage.setItem(TM_THEME_STORAGE_KEY, mapTheme);
     }, [mapTheme]);
+
+    useEffect(() => {
+        const isEditableTarget = (target) => Boolean(target?.closest?.('input, textarea, select, [contenteditable="true"]'));
+        const handleKeyDown = (event) => {
+            if (!shareMode || event.code !== 'Space' || isEditableTarget(event.target)) return;
+            event.preventDefault();
+            setSelectionSpacePressed(true);
+        };
+        const handleKeyUp = (event) => {
+            if (event.code !== 'Space') return;
+            setSelectionSpacePressed(false);
+        };
+        const handleWindowBlur = () => setSelectionSpacePressed(false);
+        window.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('keyup', handleKeyUp);
+        window.addEventListener('blur', handleWindowBlur);
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('keyup', handleKeyUp);
+            window.removeEventListener('blur', handleWindowBlur);
+        };
+    }, [shareMode]);
 
     // Followed-artists / saved-albums came from Spotify and no longer apply.
     // recentPlayMap stays empty; librarySummary stays null (UI renders empty).
@@ -2987,6 +3081,7 @@ export default function TasteMapPage() {
         const el = bubbleFieldRef.current;
         if (!el || viewMode !== 'bubble') return;
         const onWheel = (e) => {
+            if (e.target?.closest?.('.tm-group-panel')) return;
             e.preventDefault();
             clearTimeout(scrollHintTimerRef.current);
             setScrollHint(false);
@@ -4513,42 +4608,246 @@ export default function TasteMapPage() {
                     id: track.id,
                     name: track.name,
                     artists: track.artists,
+                    coverUrl: track.coverUrl || '',
                 };
             }
             return next;
         });
         setShareMessage(null);
     }, []);
-    const copyShareSelection = useCallback(async () => {
-        if (!shareSelectedTracks.length) return;
-        const header = 'SPECTRA Taste Map Picks';
-        const lines = shareSelectedTracks.map((track, idx) => (
-            `${idx + 1}. ${track.name} — ${track.artists}\nhttps://open.spotify.com/track/${track.id}`
-        ));
-        const text = `${header}\n\n${lines.join('\n\n')}`;
-        try {
-            if (navigator.clipboard?.writeText) {
-                await navigator.clipboard.writeText(text);
-            } else {
-                const ta = document.createElement('textarea');
-                ta.value = text;
-                ta.style.position = 'fixed';
-                ta.style.opacity = '0';
-                document.body.appendChild(ta);
-                ta.focus();
-                ta.select();
-                document.execCommand('copy');
-                document.body.removeChild(ta);
-            }
-            setShareMessage('선택한 버블 목록을 복사했어요.');
-        } catch {
-            setShareMessage('복사에 실패했어요. 브라우저 권한을 확인해 주세요.');
+
+    const commitCustomGroups = useCallback((updater) => {
+        setCustomGroups((previous) => {
+            const next = typeof updater === 'function' ? updater(previous) : updater;
+            storeCustomGroups(customGroupLibraryId, next);
+            return next;
+        });
+    }, [customGroupLibraryId]);
+
+    const startNewCustomGroup = useCallback(() => {
+        setEditingGroupId(null);
+        setGroupName(getNextCustomGroupName(customGroups, lang));
+        setShareSelectedMap({});
+        setShareMessage(null);
+    }, [customGroups, lang]);
+
+    const editCustomGroup = useCallback((group) => {
+        if (!group?.id) return;
+        const storedTrackById = new Map((group.tracks || []).map((track) => [track.id, track]));
+        const nextSelectedMap = {};
+        (group.trackIds || []).forEach((trackId) => {
+            const track = trackLookupById.get(trackId) || storedTrackById.get(trackId);
+            if (!track) return;
+            nextSelectedMap[trackId] = {
+                id: trackId,
+                name: track.name || 'Untitled',
+                artists: track.artists || '',
+                coverUrl: track.coverUrl || '',
+            };
+        });
+        setEditingGroupId(group.id);
+        setGroupName(group.name);
+        setShareSelectedMap(nextSelectedMap);
+        setShareMessage(null);
+        setShareMode(true);
+        setDashboardOpen(false);
+        setDeepAnalysisOpen(false);
+    }, [trackLookupById]);
+
+    const saveCustomGroup = useCallback(() => {
+        const trimmedName = groupName.trim();
+        if (!trimmedName) {
+            setShareMessage(lang === 'en' ? 'Give this group a name.' : '그룹 이름을 입력해 주세요.');
+            return;
         }
-    }, [shareSelectedTracks]);
-    const toggleShareMode = useCallback(() => {
-        setShareMode((prev) => !prev);
+        if (shareSelectedTracks.length < 2) {
+            setShareMessage(lang === 'en' ? 'Select at least two tracks.' : '두 곡 이상 선택해 주세요.');
+            return;
+        }
+
+        const now = new Date().toISOString();
+        const existing = customGroups.find((group) => group.id === editingGroupId);
+        const id = existing?.id || `taste-group-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+        const tracksForGroup = shareSelectedTracks.map((selected) => {
+            const sourceTrack = trackLookupById.get(selected.id) || selected;
+            return {
+                id: selected.id,
+                name: sourceTrack.name || selected.name || 'Untitled',
+                artists: sourceTrack.artists || selected.artists || '',
+                coverUrl: sourceTrack.coverUrl || selected.coverUrl || '',
+            };
+        });
+        const group = {
+            id,
+            name: trimmedName,
+            color: existing?.color || CLUSTER_COLORS[customGroups.length % CLUSTER_COLORS.length],
+            trackIds: tracksForGroup.map((track) => track.id),
+            tracks: tracksForGroup,
+            createdAt: existing?.createdAt || now,
+            updatedAt: now,
+        };
+        commitCustomGroups((previous) => existing
+            ? previous.map((item) => item.id === id ? group : item)
+            : [group, ...previous]);
+        setEditingGroupId(id);
+        setShareMessage(lang === 'en' ? 'Group saved.' : '그룹을 저장했어요.');
+    }, [commitCustomGroups, customGroups, editingGroupId, groupName, lang, shareSelectedTracks, trackLookupById]);
+
+    const deleteCustomGroup = useCallback((groupId) => {
+        const group = customGroups.find((item) => item.id === groupId);
+        if (!group) return;
+        const confirmed = window.confirm(lang === 'en'
+            ? `Delete “${group.name}”?`
+            : `‘${group.name}’ 그룹을 삭제할까요?`);
+        if (!confirmed) return;
+        commitCustomGroups((previous) => previous.filter((item) => item.id !== groupId));
+        if (editingGroupId === groupId) startNewCustomGroup();
+    }, [commitCustomGroups, customGroups, editingGroupId, lang, startNewCustomGroup]);
+
+    const removeTrackFromGroupDraft = useCallback((trackId) => {
+        setShareSelectedMap((previous) => {
+            const next = { ...previous };
+            delete next[trackId];
+            return next;
+        });
         setShareMessage(null);
     }, []);
+
+    const toggleShareMode = useCallback(() => {
+        const next = !shareMode;
+        setShareMode(next);
+        if (next) {
+            setDashboardOpen(false);
+            setDeepAnalysisOpen(false);
+        } else {
+            setSelectionRect(null);
+            setSelectionSpacePressed(false);
+            groupSelectionDragRef.current.pointerId = null;
+        }
+        setShareMessage(null);
+    }, [shareMode]);
+
+    const handleGroupSelectionStart = useCallback((event) => {
+        if (!shareMode || (event.button !== undefined && event.button !== 0)) return;
+        const field = bubbleFieldRef.current;
+        if (!field) return;
+        const bounds = field.getBoundingClientRect();
+        const localX = Math.min(bounds.width, Math.max(0, event.clientX - bounds.left));
+        const localY = Math.min(bounds.height, Math.max(0, event.clientY - bounds.top));
+        const startTrackId = event.target?.closest?.('[data-bubble-id]')?.dataset?.bubbleId || null;
+
+        event.preventDefault();
+        event.stopPropagation();
+        resetBubbleMagnetism();
+        try { event.currentTarget.setPointerCapture(event.pointerId); } catch { /* ignore */ }
+        groupSelectionDragRef.current = {
+            pointerId: event.pointerId,
+            startX: localX,
+            startY: localY,
+            currentX: localX,
+            currentY: localY,
+            additive: Boolean(event.shiftKey),
+            startTrackId,
+        };
+        setSelectionRect({ left: localX, top: localY, width: 0, height: 0 });
+        setShareMessage(null);
+    }, [resetBubbleMagnetism, shareMode]);
+
+    const handleGroupSelectionMove = useCallback((event) => {
+        const drag = groupSelectionDragRef.current;
+        if (!shareMode || drag.pointerId !== event.pointerId) return;
+        const field = bubbleFieldRef.current;
+        if (!field) return;
+        const bounds = field.getBoundingClientRect();
+        drag.currentX = Math.min(bounds.width, Math.max(0, event.clientX - bounds.left));
+        drag.currentY = Math.min(bounds.height, Math.max(0, event.clientY - bounds.top));
+        setSelectionRect({
+            left: Math.min(drag.startX, drag.currentX),
+            top: Math.min(drag.startY, drag.currentY),
+            width: Math.abs(drag.currentX - drag.startX),
+            height: Math.abs(drag.currentY - drag.startY),
+        });
+        if (event.cancelable) event.preventDefault();
+    }, [shareMode]);
+
+    const handleGroupSelectionEnd = useCallback((event) => {
+        const drag = groupSelectionDragRef.current;
+        if (drag.pointerId !== event.pointerId) return;
+        const field = bubbleFieldRef.current;
+        const fieldBounds = field?.getBoundingClientRect();
+        const left = Math.min(drag.startX, drag.currentX);
+        const top = Math.min(drag.startY, drag.currentY);
+        const right = Math.max(drag.startX, drag.currentX);
+        const bottom = Math.max(drag.startY, drag.currentY);
+        const moved = Math.hypot(drag.currentX - drag.startX, drag.currentY - drag.startY) >= 5;
+        const selectedIds = [];
+
+        if (field && fieldBounds && moved) {
+            field.querySelectorAll('.tm-bubble-item[data-bubble-id]').forEach((element) => {
+                const elementBounds = element.getBoundingClientRect();
+                const centerX = ((elementBounds.left + elementBounds.right) / 2) - fieldBounds.left;
+                const centerY = ((elementBounds.top + elementBounds.bottom) / 2) - fieldBounds.top;
+                if (centerX >= left && centerX <= right && centerY >= top && centerY <= bottom) {
+                    selectedIds.push(element.dataset.bubbleId);
+                }
+            });
+        } else if (drag.startTrackId) {
+            selectedIds.push(drag.startTrackId);
+        }
+
+        setShareSelectedMap((previous) => {
+            const next = drag.additive ? { ...previous } : {};
+            selectedIds.forEach((trackId) => {
+                const track = trackLookupById.get(trackId);
+                if (!track) return;
+                if (!moved && drag.additive && next[trackId]) {
+                    delete next[trackId];
+                    return;
+                }
+                next[trackId] = {
+                    id: track.id,
+                    name: track.name,
+                    artists: track.artists || '',
+                    coverUrl: track.coverUrl || '',
+                };
+            });
+            return next;
+        });
+        try { event.currentTarget.releasePointerCapture(event.pointerId); } catch { /* ignore */ }
+        groupSelectionDragRef.current.pointerId = null;
+        setSelectionRect(null);
+    }, [trackLookupById]);
+
+    const handleGroupSelectionCancel = useCallback((event) => {
+        if (groupSelectionDragRef.current.pointerId !== event.pointerId) return;
+        try { event.currentTarget.releasePointerCapture(event.pointerId); } catch { /* ignore */ }
+        groupSelectionDragRef.current.pointerId = null;
+        setSelectionRect(null);
+    }, []);
+
+    const handleSelectionModePointerMove = useCallback((event) => {
+        if (panRef.current.dragging) {
+            handleBubblePanMove(event);
+            return;
+        }
+        handleGroupSelectionMove(event);
+    }, [handleBubblePanMove, handleGroupSelectionMove]);
+
+    const handleSelectionModePointerEnd = useCallback((event) => {
+        if (panRef.current.dragging) {
+            handleBubblePanEnd(event);
+            return;
+        }
+        handleGroupSelectionEnd(event);
+    }, [handleBubblePanEnd, handleGroupSelectionEnd]);
+
+    const handleSelectionModePointerCancel = useCallback((event) => {
+        if (panRef.current.dragging) {
+            handleBubblePanEnd(event);
+            return;
+        }
+        handleGroupSelectionCancel(event);
+    }, [handleBubblePanEnd, handleGroupSelectionCancel]);
 
     const handlePresetChange = useCallback((presetKey) => {
         const preset = AXIS_PRESETS.find((item) => item.key === presetKey);
@@ -5274,6 +5573,7 @@ export default function TasteMapPage() {
                                 onClick={() => {
                                     setDashboardOpen((prev) => !prev);
                                     setDeepAnalysisOpen(false);
+                                    setShareMode(false);
                                 }}
                                 aria-pressed={dashboardOpen}
                             >
@@ -5285,6 +5585,7 @@ export default function TasteMapPage() {
                                 onClick={() => {
                                     setDeepAnalysisOpen((prev) => !prev);
                                     setDashboardOpen(false);
+                                    setShareMode(false);
                                 }}
                                 aria-pressed={deepAnalysisOpen}
                             >
@@ -5296,7 +5597,7 @@ export default function TasteMapPage() {
                                 onClick={toggleShareMode}
                                 aria-pressed={shareMode}
                             >
-                                <span aria-hidden>↗</span>{lang === 'en' ? 'Share' : '공유'}
+                                <span aria-hidden>⌗</span>{lang === 'en' ? 'Select' : '선택'}
                             </button>
                             <button
                                 type="button"
@@ -5401,7 +5702,7 @@ export default function TasteMapPage() {
                                     <button
                                         className={`tm-share-mode-toggle${shareMode ? ' active' : ''}`}
                                         onClick={toggleShareMode}
-                                        title={shareMode ? '공유 모드 종료' : '공유 모드 시작'}
+                                        title={shareMode ? '선택 모드 종료' : '드래그로 곡 선택'}
                                     >
                                         {shareMode ? copy.shareOn : copy.share}
                                     </button>
@@ -5649,9 +5950,23 @@ export default function TasteMapPage() {
                                     )}
                                     <div
                                         ref={bubbleLayerRef}
-                                        className={`tm-bubble-layer${isConstellationView ? ' tm-constellation-layer' : ''}${isSpectraExpandMode ? ' spectra-expanding' : ''}${visibleBubbleRenderItems.length > 280 ? ' high-density' : ''}`}
+                                        className={`tm-bubble-layer${isConstellationView ? ' tm-constellation-layer' : ''}${isSpectraExpandMode ? ' spectra-expanding' : ''}${visibleBubbleRenderItems.length > 280 ? ' high-density' : ''}${shareMode ? ' selection-mode' : ''}${shareMode && selectionSpacePressed ? ' selection-pan-ready' : ''}`}
                                         style={{ '--tm-bubble-scale': getBubbleVisualScale(bubbleZoom) }}
                                         onPointerDown={(event) => {
+                                            if (shareMode) {
+                                                if (bubbleContextMenu) setBubbleContextMenu(null);
+                                                if (selectedTrackCard) {
+                                                    setSelectedTrackCard(null);
+                                                    setHoveredBubbleId(null);
+                                                }
+                                                const isTrackTarget = Boolean(event.target?.closest?.('[data-bubble-id], .tm-rec-bubble-item, .tm-bubble-share-select'));
+                                                if (selectionSpacePressed && !isTrackTarget) {
+                                                    handleBubblePanStart(event);
+                                                    return;
+                                                }
+                                                handleGroupSelectionStart(event);
+                                                return;
+                                            }
                                             if (!isConstellationView && event.target?.closest?.('.tm-bubble, .tm-bubble-share-select')) return;
                                             if (event.target?.closest?.('.tm-bubble-share-select')) return;
                                             if (bubbleContextMenu) setBubbleContextMenu(null);
@@ -5661,11 +5976,19 @@ export default function TasteMapPage() {
                                             }
                                             handleBubblePanStart(event);
                                         }}
-                                        onClick={handleBubbleLayerClick}
-                                        onContextMenu={handleBubbleLayerContextMenu}
-                                        onPointerMove={isConstellationView ? handleBubblePanMove : handleInteractiveBubbleMove}
-                                        onPointerUp={handleInteractivePointerEnd}
-                                        onPointerCancel={handleInteractivePointerEnd}
+                                        onClick={(event) => {
+                                            if (!shareMode) handleBubbleLayerClick(event);
+                                        }}
+                                        onContextMenu={(event) => {
+                                            if (shareMode) {
+                                                event.preventDefault();
+                                                return;
+                                            }
+                                            handleBubbleLayerContextMenu(event);
+                                        }}
+                                        onPointerMove={shareMode ? handleSelectionModePointerMove : (isConstellationView ? handleBubblePanMove : handleInteractiveBubbleMove)}
+                                        onPointerUp={shareMode ? handleSelectionModePointerEnd : handleInteractivePointerEnd}
+                                        onPointerCancel={shareMode ? handleSelectionModePointerCancel : handleInteractivePointerEnd}
                                         onPointerLeave={resetBubbleMagnetism}
                                     >
                                         {isConstellationView && (
@@ -5706,10 +6029,10 @@ export default function TasteMapPage() {
                                                     key={node.track.id}
                                                     data-bubble-id={node.track.id}
                                                     className={`tm-bubble-item${isConstellationView ? ' tm-constellation-item' : ''}${constellationCoverZoomed ? ' is-cover-zoom' : ''}${active ? '' : ' muted'}${showLabel ? ' show-label' : ''}${hovered ? ' hovered' : ''}${detailSelected ? ' detail-selected' : ''}${picked ? ' picked' : ''}${nowPlaying ? ' now-playing' : ''}${clusterFocused ? ' cluster-focus' : ''}${clusterExpandPulsing ? ' cluster-expand-pulse' : ''}${spectraBlur ? ' spectra-blur' : ''}${spectraAnchor ? ' spectra-anchor' : ''}`}
-                                                    onPointerDown={isConstellationView ? undefined : (event) => handleBubbleDragStart(event, node.track.id)}
-                                                    onPointerMove={isConstellationView ? undefined : handleBubbleDragMove}
-                                                    onPointerUp={isConstellationView ? undefined : handleBubbleDragEnd}
-                                                    onPointerCancel={isConstellationView ? undefined : handleBubbleDragEnd}
+                                                    onPointerDown={(isConstellationView || shareMode) ? undefined : (event) => handleBubbleDragStart(event, node.track.id)}
+                                                    onPointerMove={(isConstellationView || shareMode) ? undefined : handleBubbleDragMove}
+                                                    onPointerUp={(isConstellationView || shareMode) ? undefined : handleBubbleDragEnd}
+                                                    onPointerCancel={(isConstellationView || shareMode) ? undefined : handleBubbleDragEnd}
                                                     style={{
                                                         '--tm-bubble-size': node.style['--tm-bubble-size'],
                                                         '--tm-bubble-color': node.style['--tm-bubble-color'],
@@ -5751,8 +6074,8 @@ export default function TasteMapPage() {
                                                                     e.stopPropagation();
                                                                     toggleShareTrack(node.track);
                                                                 }}
-                                                                title={picked ? '공유 목록에서 제거' : '공유 목록에 추가'}
-                                                                aria-label={picked ? '공유 목록에서 제거' : '공유 목록에 추가'}
+                                                                title={picked ? '선택에서 제거' : '선택에 추가'}
+                                                                aria-label={picked ? '선택에서 제거' : '선택에 추가'}
                                                             >
                                                                 {picked ? '✓' : '+'}
                                                             </button>
@@ -5831,6 +6154,18 @@ export default function TasteMapPage() {
                                             ) : null
                                         ))}
                                     </div>
+                                    {selectionRect && (
+                                        <div
+                                            className="tm-group-selection-rect"
+                                            style={{
+                                                left: `${selectionRect.left}px`,
+                                                top: `${selectionRect.top}px`,
+                                                width: `${selectionRect.width}px`,
+                                                height: `${selectionRect.height}px`,
+                                            }}
+                                            aria-hidden
+                                        />
+                                    )}
                                     {selectedTrackDetails && selectedTrackCardPosition && (
                                         <aside
                                             className={`tm-track-detail-card side-${selectedTrackCardPosition.side}`}
@@ -5962,28 +6297,131 @@ export default function TasteMapPage() {
                                         </div>
                                     )}
                                     {shareMode && (
-                                        <div className="tm-share-tray">
-                                            <div className="tm-share-tray-head">
-                                                <span>{shareSelectedIds.length}곡 선택됨</span>
-                                                <div className="tm-share-tray-head-actions">
-                                                    <button className="tm-share-link" onClick={() => { setShareSelectedMap({}); setShareMessage(null); }}>
-                                                        비우기
+                                        <aside
+                                            className="tm-group-panel"
+                                            aria-label={lang === 'en' ? 'My track groups' : '나만의 곡 그룹'}
+                                            onPointerDown={(event) => event.stopPropagation()}
+                                        >
+                                            <header className="tm-group-panel-head">
+                                                <div>
+                                                    <span>{lang === 'en' ? 'SELECTION' : '곡 선택'}</span>
+                                                    <h2>{lang === 'en' ? 'My groups' : '나만의 그룹'}</h2>
+                                                </div>
+                                                <button type="button" onClick={toggleShareMode} aria-label={copy.close || '닫기'}>×</button>
+                                            </header>
+
+                                            <div className="tm-group-selection-guide">
+                                                <span aria-hidden>⌗</span>
+                                                <p>
+                                                    {isConstellationView
+                                                        ? (lang === 'en'
+                                                            ? 'Click a star or drag across several. Hold Shift to add to the selection.'
+                                                            : '별을 클릭하거나 여러 별을 드래그해 선택하세요. Shift를 누르면 선택이 추가됩니다.')
+                                                        : (lang === 'en'
+                                                            ? 'Drag across the map to select. Hold Shift and drag again to add more.'
+                                                            : '맵을 드래그해 곡을 묶으세요. Shift를 누르고 다시 드래그하면 선택이 추가됩니다.')}
+                                                </p>
+                                            </div>
+
+                                            <section className="tm-group-editor">
+                                                <div className="tm-group-editor-title">
+                                                    <strong>{editingGroupId ? (lang === 'en' ? 'Edit group' : '그룹 수정') : (lang === 'en' ? 'New group' : '새 그룹')}</strong>
+                                                    {editingGroupId && (
+                                                        <button type="button" onClick={startNewCustomGroup}>
+                                                            {lang === 'en' ? 'New' : '새로 만들기'}
+                                                        </button>
+                                                    )}
+                                                </div>
+                                                <label htmlFor="tm-custom-group-name">{lang === 'en' ? 'Group name' : '그룹 이름'}</label>
+                                                <input
+                                                    id="tm-custom-group-name"
+                                                    value={groupName}
+                                                    maxLength={32}
+                                                    placeholder={lang === 'en' ? 'e.g. Late-night walk' : '예: 늦은 밤 산책'}
+                                                    onChange={(event) => {
+                                                        setGroupName(event.target.value);
+                                                        setShareMessage(null);
+                                                    }}
+                                                />
+
+                                                <div className="tm-group-picked-head">
+                                                    <strong>{lang === 'en' ? 'Selected tracks' : '선택한 곡'}</strong>
+                                                    <span>{shareSelectedIds.length}{lang === 'en' ? '' : '곡'}</span>
+                                                    {shareSelectedIds.length > 0 && (
+                                                        <button type="button" onClick={() => { setShareSelectedMap({}); setShareMessage(null); }}>
+                                                            {lang === 'en' ? 'Clear' : '비우기'}
+                                                        </button>
+                                                    )}
+                                                </div>
+                                                {shareSelectedTracks.length > 0 ? (
+                                                    <div className="tm-group-track-list">
+                                                        {shareSelectedTracks.map((track) => (
+                                                            <div key={track.id} className="tm-group-track-row">
+                                                                {track.coverUrl ? <img src={track.coverUrl} alt="" /> : <span aria-hidden>♪</span>}
+                                                                <div>
+                                                                    <strong>{track.name}</strong>
+                                                                    <small>{track.artists || '-'}</small>
+                                                                </div>
+                                                                <button type="button" onClick={() => removeTrackFromGroupDraft(track.id)} aria-label={`${track.name} 제거`}>×</button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <p className="tm-group-empty">
+                                                        {lang === 'en' ? 'Drag over tracks on the map to begin.' : '맵에서 곡들을 드래그해 선택해 주세요.'}
+                                                    </p>
+                                                )}
+
+                                                {shareMessage && <p className="tm-group-message">{shareMessage}</p>}
+                                                <div className="tm-group-primary-actions">
+                                                    <button
+                                                        type="button"
+                                                        className="tm-group-save"
+                                                        onClick={saveCustomGroup}
+                                                        disabled={!groupName.trim() || shareSelectedIds.length < 2}
+                                                    >
+                                                        {editingGroupId ? (lang === 'en' ? 'Save changes' : '변경 저장') : (lang === 'en' ? 'Create group' : '그룹 만들기')}
                                                     </button>
-                                                    <button className="tm-share-link" onClick={toggleShareMode}>
-                                                        닫기
+                                                    <button
+                                                        type="button"
+                                                        className="tm-group-export"
+                                                        disabled
+                                                        title={lang === 'en' ? 'Playlist export is coming soon.' : '플레이리스트 내보내기는 준비 중입니다.'}
+                                                    >
+                                                        {lang === 'en' ? 'Export' : '내보내기'}
+                                                        <small>{lang === 'en' ? 'Soon' : '준비 중'}</small>
                                                     </button>
                                                 </div>
-                                            </div>
-                                            <div className="tm-share-tray-actions">
-                                                <button className="tm-share-copy-btn" onClick={copyShareSelection} disabled={shareSelectedIds.length === 0}>
-                                                    목록 복사해서 공유
-                                                </button>
-                                            </div>
-                                            {!shareMessage && shareSelectedIds.length === 0 && (
-                                                <div className="tm-share-msg">버블의 + 버튼으로 공유할 곡을 선택해 주세요.</div>
-                                            )}
-                                            {shareMessage && <div className="tm-share-msg">{shareMessage}</div>}
-                                        </div>
+                                            </section>
+
+                                            <section className="tm-saved-groups">
+                                                <div className="tm-saved-groups-head">
+                                                    <strong>{lang === 'en' ? 'Saved groups' : '저장한 그룹'}</strong>
+                                                    <span>{customGroups.length}</span>
+                                                </div>
+                                                {customGroups.length > 0 ? (
+                                                    <div className="tm-saved-group-list">
+                                                        {customGroups.map((group) => (
+                                                            <article key={group.id} className={editingGroupId === group.id ? 'active' : ''}>
+                                                                <i style={{ background: group.color }} />
+                                                                <button type="button" className="tm-saved-group-main" onClick={() => editCustomGroup(group)}>
+                                                                    <strong>{group.name}</strong>
+                                                                    <small>{group.trackIds.length}{lang === 'en' ? ' tracks' : '곡'} · Metro Map 2</small>
+                                                                </button>
+                                                                <button type="button" className="tm-saved-group-edit" onClick={() => editCustomGroup(group)}>
+                                                                    {lang === 'en' ? 'Edit' : '수정'}
+                                                                </button>
+                                                                <button type="button" className="tm-saved-group-delete" onClick={() => deleteCustomGroup(group.id)} aria-label={`${group.name} 삭제`}>×</button>
+                                                            </article>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <p className="tm-group-empty compact">
+                                                        {lang === 'en' ? 'Your saved groups will appear here.' : '만든 그룹은 여기에 쌓이고 Metro Map 2에서도 사용할 수 있어요.'}
+                                                    </p>
+                                                )}
+                                            </section>
+                                        </aside>
                                     )}
                             </div>
                             <div className="tm-track-count">
@@ -6169,6 +6607,7 @@ export default function TasteMapPage() {
                 activeTrackIds={activeTrackIds}
                 assignmentByTrackId={assignmentByTrackId}
                 clusterById={clusterById}
+                customGroups={customGroups}
                 libraryId={mapId || cacheUserId}
                 lang={lang}
             />

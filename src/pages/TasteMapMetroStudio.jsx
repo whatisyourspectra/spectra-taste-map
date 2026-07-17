@@ -2,11 +2,15 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import './TasteMapMetroStudio.css';
 import {
     buildMetroMapLayout,
+    buildMetroTrainRoute,
     buildMetroTasteLines,
     buildSeedGenreLines,
     createMetroMapDefinition,
+    getMetroAdjacentStationIds,
     getMetroMagneticPosition,
     getMetroColor,
+    getMetroTrainPosition,
+    getMetroTrainRouteProjection,
     METRO_CANVAS_GROWTH,
     METRO_GRID_SIZE,
     METRO_MAP_HEIGHT,
@@ -17,6 +21,25 @@ import {
 } from './metroMap2Engine';
 
 const STORAGE_VERSION = 1;
+const EMPTY_TRAINS = [];
+const METRO_MIN_ZOOM = 0.5;
+const TRAIN_COLORS = ['#f4d35e', '#70d6ff', '#ff7c8b', '#8ee3a8', '#b79cff', '#f7a65a'];
+const DEFAULT_TRAIN_SPEED = 96;
+const TRAIN_DWELL_SECONDS = 1.2;
+const LEGACY_TRAIN_STYLE = {
+    city: { color: '#f4d35e', speed: 96 },
+    express: { color: '#70d6ff', speed: 142 },
+    night: { color: '#b79cff', speed: 72 },
+};
+
+function getTrainColor(train) {
+    return train?.color || LEGACY_TRAIN_STYLE[train?.type]?.color || TRAIN_COLORS[0];
+}
+
+function getTrainSpeed(train) {
+    const speed = Number(train?.speed) || LEGACY_TRAIN_STYLE[train?.type]?.speed || DEFAULT_TRAIN_SPEED;
+    return Math.min(170, Math.max(55, speed));
+}
 
 const COPY = {
     ko: {
@@ -76,9 +99,45 @@ const COPY = {
         songs: '곡',
         zoom: '배율',
         stationRemoved: '중심역은 삭제할 수 없습니다.',
-        dragHint: '역을 움직이면 가까운 격자점에 붙습니다',
-        mapGestureHint: '격자 노선 · 빈 공간 이동 · 휠 확대',
+        dragHint: '열차를 잡아 원하는 노선으로 옮길 수 있어요',
+        mapGestureHint: '역은 격자에 스냅 · 빈 공간 이동 · 휠 확대',
         resetLayout: '배치 초기화',
+        trains: '열차',
+        trainControl: '열차 운행',
+        trainControlDesc: '열차를 만든 뒤 지도에서 직접 끌어 원하는 노선과 위치에 놓을 수 있어요.',
+        addTrain: '열차 놓기',
+        newTrain: '새 열차',
+        trainName: '열차 이름',
+        trainNamePlaceholder: '예: 퇴근길 열차',
+        trainColor: '열차 색상',
+        trainSpeed: '운행 속도',
+        slower: '느리게',
+        faster: '빠르게',
+        routeMethod: '운행 경로',
+        lineRoute: '노선 선택',
+        customRoute: '직접 선택',
+        customRouteHint: '밝게 표시된 역만 다음 경유지로 선택할 수 있어요.',
+        customRouteEmpty: '지도에서 출발역을 선택하세요.',
+        customRouteInvalid: '현재 역과 바로 연결된 역을 선택해주세요.',
+        routeSongs: '경유 곡 묶음',
+        currentLocation: '현재 위치',
+        nextStation: '다음 역',
+        running: '운행 중',
+        paused: '일시 정지',
+        pause: '정지',
+        resume: '출발',
+        resetTrain: '출발역으로',
+        removeTrain: '열차 삭제',
+        noTrains: '아직 운행 중인 열차가 없습니다.',
+        selectAtLeastTwo: '두 개 이상의 연결된 역이 필요합니다.',
+        removeLastStop: '마지막 역 취소',
+        playlistReady: '플레이리스트 준비됨',
+        dragTrainHint: '열차를 잡아 다른 노선이나 위치로 옮겨보세요.',
+        dropTrainHint: '놓으면 가장 가까운 노선에 붙습니다.',
+        trainMoved: '열차가 새 노선으로 이동했습니다.',
+        myGroup: '내 그룹',
+        exportPlaylist: '내보내기',
+        exportSoon: '플레이리스트 내보내기는 준비 중입니다.',
     },
     en: {
         studio: 'METRO MAP 2 · STUDIO',
@@ -137,9 +196,45 @@ const COPY = {
         songs: 'tracks',
         zoom: 'Zoom',
         stationRemoved: 'The seed station cannot be removed.',
-        dragHint: 'Stations snap to the nearest grid point',
-        mapGestureHint: 'Grid routes · drag map · wheel to zoom',
+        dragHint: 'Grab a train and move it onto any line',
+        mapGestureHint: 'Stations snap to grid · drag map · wheel to zoom',
         resetLayout: 'Reset layout',
+        trains: 'Trains',
+        trainControl: 'Train service',
+        trainControlDesc: 'Create a train, then drag it directly onto any line and position on the map.',
+        addTrain: 'Place train',
+        newTrain: 'New train',
+        trainName: 'Train name',
+        trainNamePlaceholder: 'e.g. Evening train',
+        trainColor: 'Train color',
+        trainSpeed: 'Travel speed',
+        slower: 'Slower',
+        faster: 'Faster',
+        routeMethod: 'Journey route',
+        lineRoute: 'Choose a line',
+        customRoute: 'Pick stations',
+        customRouteHint: 'Only the brightly marked stations can be chosen as the next stop.',
+        customRouteEmpty: 'Choose the first station on the map.',
+        customRouteInvalid: 'Choose a station directly connected to the current stop.',
+        routeSongs: 'Route song bundle',
+        currentLocation: 'Current position',
+        nextStation: 'Next station',
+        running: 'Running',
+        paused: 'Paused',
+        pause: 'Pause',
+        resume: 'Depart',
+        resetTrain: 'Back to start',
+        removeTrain: 'Remove train',
+        noTrains: 'There are no trains in service yet.',
+        selectAtLeastTwo: 'Choose at least two connected stations.',
+        removeLastStop: 'Undo last stop',
+        playlistReady: 'Playlist ready',
+        dragTrainHint: 'Grab a train and move it to another line or position.',
+        dropTrainHint: 'It snaps to the nearest line when dropped.',
+        trainMoved: 'Train moved to a new line.',
+        myGroup: 'My group',
+        exportPlaylist: 'Export',
+        exportSoon: 'Playlist export is coming soon.',
     },
 };
 
@@ -151,7 +246,20 @@ function loadStoredMaps(storageKey) {
         return parsed.maps
             .filter((map) => map?.id && Array.isArray(map.lines))
             .map((map) => {
-                if (map.canvas?.width && map.canvas?.height) return map;
+                const normalizedMap = {
+                    ...map,
+                    trains: Array.isArray(map.trains)
+                        ? map.trains
+                            .filter((train) => train?.id && Array.isArray(train.routeStationIds))
+                            .map((train, index) => ({
+                                ...train,
+                                name: train.name || `Train ${index + 1}`,
+                                color: getTrainColor(train),
+                                speed: getTrainSpeed(train),
+                            }))
+                        : [],
+                };
+                if (map.canvas?.width && map.canvas?.height) return normalizedMap;
                 const shiftX = (METRO_MAP_WIDTH - 1600) / 2;
                 const shiftY = (METRO_MAP_HEIGHT - 960) / 2;
                 const stationPositions = Object.fromEntries(
@@ -161,7 +269,7 @@ function loadStoredMaps(storageKey) {
                     }]),
                 );
                 return {
-                    ...map,
+                    ...normalizedMap,
                     canvas: { width: METRO_MAP_WIDTH, height: METRO_MAP_HEIGHT },
                     stationPositions,
                 };
@@ -182,7 +290,9 @@ function persistMaps(storageKey, maps) {
 
 function downloadSvg(svgNode, filename) {
     if (!svgNode) return;
-    const source = `<?xml version="1.0" encoding="UTF-8"?>\n${svgNode.outerHTML}`;
+    const exportNode = svgNode.cloneNode(true);
+    exportNode.querySelectorAll('[data-tm2-export-ignore="true"]').forEach((node) => node.remove());
+    const source = `<?xml version="1.0" encoding="UTF-8"?>\n${exportNode.outerHTML}`;
     const blob = new Blob([source], { type: 'image/svg+xml;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -408,7 +518,11 @@ function MetroCreationWizard({ tracks, lineOptions, lang, canCancel, onCancel, o
                                             <span className="tm2-line-swatch" style={{ background: line.color }} />
                                             <span>
                                                 <strong>{line.label}</strong>
-                                                <small>{line.count} {copy.songs} · {line.genres.slice(0, 2).join(' / ')}</small>
+                                                <small>
+                                                    {line.count} {copy.songs}
+                                                    {' · '}
+                                                    {line.source === 'custom' ? copy.myGroup : line.genres.slice(0, 2).join(' / ')}
+                                                </small>
                                             </span>
                                             <span className="tm2-choice-check" aria-hidden>{selected ? '✓' : '+'}</span>
                                         </button>
@@ -563,6 +677,40 @@ function MetroCreationWizard({ tracks, lineOptions, lang, canCancel, onCancel, o
     );
 }
 
+function MetroTrainGlyph({ trainView, selected, dragging, onSelect, onDragStart, onDragMove, onDragEnd }) {
+    const { train, position } = trainView;
+    const color = getTrainColor(train);
+    return (
+        <g
+            className={`tm2-svg-train${selected ? ' selected' : ''}${dragging ? ' dragging' : ''}`}
+            transform={`translate(${position.x} ${position.y}) rotate(${position.angle})`}
+            role="button"
+            tabIndex="0"
+            aria-label={train.name}
+            onPointerDown={(event) => onDragStart(train.id, event)}
+            onPointerMove={(event) => onDragMove(train.id, event)}
+            onPointerUp={(event) => onDragEnd(train.id, event)}
+            onPointerCancel={(event) => onDragEnd(train.id, event)}
+            onClick={(event) => {
+                event.stopPropagation();
+                onSelect(train.id);
+            }}
+            onKeyDown={(event) => {
+                if (event.key !== 'Enter' && event.key !== ' ') return;
+                event.preventDefault();
+                onSelect(train.id);
+            }}
+        >
+            <ellipse cx="0" cy="5" rx="27" ry="15" fill="#05090d" opacity="0.48" />
+            {selected || dragging ? <rect x="-30" y="-18" width="60" height="36" rx="13" fill={color} opacity={dragging ? 0.24 : 0.14} /> : null}
+            <rect x="-23" y="-11" width="46" height="22" rx="7" fill={color} stroke="#071015" strokeWidth="4" />
+            <rect x="-13" y="-5" width="26" height="10" rx="3" fill="#13202a" opacity="0.88" />
+            <circle cx="-13" cy="12" r="3" fill="#071015" />
+            <circle cx="13" cy="12" r="3" fill="#071015" />
+        </g>
+    );
+}
+
 function MetroMapSvg({
     map,
     layout,
@@ -573,6 +721,14 @@ function MetroMapSvg({
     draggingStationId = null,
     dragSnapTarget = null,
     dragMagnetStrength = 0,
+    trainViews = [],
+    selectedTrainId = null,
+    routePreview = null,
+    routeDraftStationIds = [],
+    routeSelectableIds = [],
+    routePicking = false,
+    trainDragCandidateLineKey = null,
+    draggingTrainId = null,
     onStationSelect,
     onStationHover,
     onStationDragStart,
@@ -581,17 +737,23 @@ function MetroMapSvg({
     onStationNudge,
     onLineSelect,
     onLineHover,
+    onTrainSelect,
+    onTrainDragStart,
+    onTrainDragMove,
+    onTrainDragEnd,
     onCanvasSelect,
     svgRef,
     interactive = true,
 }) {
     const lineByKey = new Map(layout.lines.map((line) => [line.key, line]));
     const safeMapId = String(map.id || 'preview').replace(/[^a-zA-Z0-9_-]/g, '');
+    const draftStationSet = new Set(routeDraftStationIds);
+    const selectableStationSet = new Set(routeSelectableIds);
 
     return (
         <svg
             ref={svgRef}
-            className="tm2-map-svg"
+            className={`tm2-map-svg${routePicking ? ' route-picking' : ''}${draggingTrainId ? ' train-dragging' : ''}`}
             viewBox={`0 0 ${layout.width} ${layout.height}`}
             role="img"
             aria-label={`${map.name} metro map`}
@@ -619,14 +781,15 @@ function MetroMapSvg({
 
             {layout.lines.map((line) => {
                 const focusedLineKey = selectedLineKey || hoveredLineKey;
-                const active = !focusedLineKey || focusedLineKey === line.key;
-                const highlighted = selectedLineKey === line.key || (!selectedLineKey && hoveredLineKey === line.key);
+                const dropCandidate = trainDragCandidateLineKey === line.key;
+                const active = dropCandidate || (!trainDragCandidateLineKey && (!focusedLineKey || focusedLineKey === line.key));
+                const highlighted = dropCandidate || selectedLineKey === line.key || (!selectedLineKey && hoveredLineKey === line.key);
                 const labelOnRight = line.labelPoint.x > layout.width / 2;
                 const labelWidth = Math.min(154, Math.max(82, (line.label.length * 8) + 24));
                 return (
                     <g
                         key={`route-${line.key}`}
-                        className={`tm2-svg-line${active ? '' : ' dimmed'}${highlighted ? ' highlighted' : ''}`}
+                        className={`tm2-svg-line${active ? '' : ' dimmed'}${highlighted ? ' highlighted' : ''}${dropCandidate ? ' train-drop-target' : ''}`}
                         onClick={interactive ? () => onLineSelect(line.key) : undefined}
                         onMouseEnter={interactive ? () => onLineHover?.(line.key) : undefined}
                         onMouseLeave={interactive ? () => onLineHover?.(null) : undefined}
@@ -662,6 +825,14 @@ function MetroMapSvg({
                 );
             })}
 
+            {routePreview?.valid ? (
+                <g className="tm2-route-preview" aria-hidden="true" data-tm2-export-ignore="true">
+                    <path d={routePreview.pathData} fill="none" stroke="#071015" strokeWidth="19" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d={routePreview.pathData} fill="none" stroke="#f3f7fb" strokeWidth="11" strokeLinecap="round" strokeLinejoin="round" opacity="0.86" />
+                    <path d={routePreview.pathData} fill="none" stroke="#75d7ff" strokeWidth="4" strokeDasharray="5 12" strokeLinecap="round" strokeLinejoin="round" />
+                </g>
+            ) : null}
+
             {layout.stations.map((station, stationIndex) => {
                 const primaryLine = lineByKey.get(station.lineKeys[0]);
                 const color = primaryLine?.color || '#ffffff';
@@ -672,21 +843,25 @@ function MetroMapSvg({
                 const dimmed = focusedLineKey && !station.lineKeys.includes(focusedLineKey);
                 const nodeSize = station.isSeed ? 54 : (station.isTransfer ? 46 : 40);
                 const halfSize = nodeSize / 2;
+                const routeSelected = draftStationSet.has(station.trackId);
+                const routeSelectable = selectableStationSet.has(station.trackId);
+                const routeUnavailable = routePicking && !routeSelected && !routeSelectable;
+                const stationInteractive = interactive && !routeUnavailable;
                 return (
                     <g
                         key={station.trackId}
-                        className={`tm2-svg-station${selected ? ' selected' : ''}${hovered ? ' hovered' : ''}${dragging ? ' dragging' : ''}${dimmed ? ' dimmed' : ''}`}
-                        role={interactive ? 'button' : undefined}
-                        tabIndex={interactive ? 0 : undefined}
+                        className={`tm2-svg-station${selected ? ' selected' : ''}${hovered ? ' hovered' : ''}${dragging ? ' dragging' : ''}${dimmed ? ' dimmed' : ''}${routeSelected ? ' route-selected' : ''}${routeSelectable ? ' route-selectable' : ''}${routeUnavailable ? ' route-unavailable' : ''}`}
+                        role={stationInteractive ? 'button' : undefined}
+                        tabIndex={stationInteractive ? 0 : undefined}
                         aria-label={`${station.track.name} — ${station.track.artists || ''}`}
-                        onClick={interactive ? () => onStationSelect(station.trackId) : undefined}
-                        onMouseEnter={interactive ? () => onStationHover?.(station.trackId) : undefined}
-                        onMouseLeave={interactive ? () => onStationHover?.(null) : undefined}
-                        onPointerDown={interactive ? (event) => onStationDragStart?.(station.trackId, event) : undefined}
-                        onPointerMove={interactive ? (event) => onStationDragMove?.(station.trackId, event) : undefined}
-                        onPointerUp={interactive ? (event) => onStationDragEnd?.(station.trackId, event) : undefined}
-                        onPointerCancel={interactive ? (event) => onStationDragEnd?.(station.trackId, event) : undefined}
-                        onKeyDown={interactive ? (event) => {
+                        onClick={stationInteractive ? () => onStationSelect(station.trackId) : undefined}
+                        onMouseEnter={stationInteractive ? () => onStationHover?.(station.trackId) : undefined}
+                        onMouseLeave={stationInteractive ? () => onStationHover?.(null) : undefined}
+                        onPointerDown={stationInteractive ? (event) => onStationDragStart?.(station.trackId, event) : undefined}
+                        onPointerMove={stationInteractive ? (event) => onStationDragMove?.(station.trackId, event) : undefined}
+                        onPointerUp={stationInteractive ? (event) => onStationDragEnd?.(station.trackId, event) : undefined}
+                        onPointerCancel={stationInteractive ? (event) => onStationDragEnd?.(station.trackId, event) : undefined}
+                        onKeyDown={stationInteractive ? (event) => {
                             if (event.key === 'Enter' || event.key === ' ') {
                                 event.preventDefault();
                                 onStationSelect(station.trackId);
@@ -770,11 +945,69 @@ function MetroMapSvg({
                             />
                         ))}
                         {station.isSeed ? <circle cx={station.x + halfSize - 2} cy={station.y - halfSize + 2} r="6" fill="#f2f5f5" stroke="#0c1319" strokeWidth="3" /> : null}
+                        {routeSelected ? (
+                            <circle cx={station.x + halfSize - 1} cy={station.y - halfSize + 1} r="8" fill="#75d7ff" stroke="#071015" strokeWidth="3" />
+                        ) : null}
+                        {routeSelectable ? (
+                            <rect
+                                className="tm2-route-choice-ring"
+                                x={station.x - halfSize - 9}
+                                y={station.y - halfSize - 9}
+                                width={nodeSize + 18}
+                                height={nodeSize + 18}
+                                rx="15"
+                                fill="none"
+                                stroke="#91e6ff"
+                                strokeWidth="4"
+                            />
+                        ) : null}
                     </g>
                 );
             })}
+
+            {trainViews.map((trainView) => (
+                <MetroTrainGlyph
+                    key={trainView.train.id}
+                    trainView={trainView}
+                    selected={selectedTrainId === trainView.train.id}
+                    dragging={trainView.train.id === draggingTrainId}
+                    onSelect={onTrainSelect}
+                    onDragStart={onTrainDragStart}
+                    onDragMove={onTrainDragMove}
+                    onDragEnd={onTrainDragEnd}
+                />
+            ))}
         </svg>
     );
+}
+
+function getTrainJourneyState(route, runtime) {
+    if (!route?.valid || !route.stationIds.length) return null;
+    const direction = runtime?.direction === -1 ? -1 : 1;
+    const distance = Math.min(route.totalLength, Math.max(0, (runtime?.progress || 0) * route.totalLength));
+    let currentIndex;
+    let nextIndex;
+    if (direction > 0) {
+        currentIndex = 0;
+        for (let index = 0; index < route.stationOffsets.length; index += 1) {
+            if (route.stationOffsets[index] <= distance + 0.5) currentIndex = index;
+        }
+        nextIndex = Math.min(route.stationIds.length - 1, currentIndex + 1);
+    } else {
+        currentIndex = route.stationIds.length - 1;
+        for (let index = route.stationOffsets.length - 1; index >= 0; index -= 1) {
+            if (route.stationOffsets[index] >= distance - 0.5) currentIndex = index;
+        }
+        nextIndex = Math.max(0, currentIndex - 1);
+    }
+    return {
+        currentStationId: route.stationIds[currentIndex],
+        nextStationId: route.stationIds[nextIndex],
+        currentIndex,
+        nextIndex,
+        direction,
+        progress: route.totalLength ? distance / route.totalLength : 0,
+    };
 }
 
 export default function TasteMapMetroStudio({
@@ -784,6 +1017,7 @@ export default function TasteMapMetroStudio({
     activeTrackIds,
     assignmentByTrackId,
     clusterById,
+    customGroups = [],
     libraryId = 'guest',
     lang = 'ko',
 }) {
@@ -801,6 +1035,18 @@ export default function TasteMapMetroStudio({
     const [isPanning, setIsPanning] = useState(false);
     const [editorMode, setEditorMode] = useState('line');
     const [editorOpen, setEditorOpen] = useState(false);
+    const [trainPanelOpen, setTrainPanelOpen] = useState(false);
+    const [trainComposerOpen, setTrainComposerOpen] = useState(false);
+    const [selectedTrainId, setSelectedTrainId] = useState(null);
+    const [trainDraftName, setTrainDraftName] = useState('');
+    const [trainDraftColor, setTrainDraftColor] = useState(TRAIN_COLORS[0]);
+    const [trainDraftSpeed, setTrainDraftSpeed] = useState(DEFAULT_TRAIN_SPEED);
+    const [trainDraftMode, setTrainDraftMode] = useState('line');
+    const [trainDraftLineKey, setTrainDraftLineKey] = useState(null);
+    const [trainDraftStationIds, setTrainDraftStationIds] = useState([]);
+    const [trainRouteError, setTrainRouteError] = useState('');
+    const [trainRuntimeById, setTrainRuntimeById] = useState({});
+    const [trainDrag, setTrainDrag] = useState(null);
     const [trackSearch, setTrackSearch] = useState('');
     const [zoom, setZoom] = useState(1);
     const zoomRef = useRef(1);
@@ -808,8 +1054,11 @@ export default function TasteMapMetroStudio({
     const svgRef = useRef(null);
     const canvasStageRef = useRef(null);
     const stationDragRef = useRef(null);
+    const trainDragRef = useRef(null);
+    const trainTrashRef = useRef(null);
     const panDragRef = useRef(null);
     const suppressStationClickRef = useRef(null);
+    const suppressTrainClickRef = useRef(null);
 
     useEffect(() => {
         if (!open) return undefined;
@@ -825,18 +1074,48 @@ export default function TasteMapMetroStudio({
         };
     }, [open, onClose]);
 
+    const libraryTracks = useMemo(
+        () => (Array.isArray(tracks) ? tracks : []).filter((track) => track?.id && track?.name),
+        [tracks],
+    );
+    const customGroupTrackIds = useMemo(
+        () => new Set((Array.isArray(customGroups) ? customGroups : []).flatMap((group) => group.trackIds || [])),
+        [customGroups],
+    );
+    const tasteLineTracks = useMemo(
+        () => libraryTracks.filter((track) => !activeTrackIds || activeTrackIds.has(track.id)),
+        [libraryTracks, activeTrackIds],
+    );
     const sourceTracks = useMemo(
-        () => (Array.isArray(tracks) ? tracks : [])
-            .filter((track) => track?.id && track?.name)
-            .filter((track) => !activeTrackIds || activeTrackIds.has(track.id)),
-        [tracks, activeTrackIds],
+        () => libraryTracks.filter((track) => (
+            !activeTrackIds || activeTrackIds.has(track.id) || customGroupTrackIds.has(track.id)
+        )),
+        [libraryTracks, activeTrackIds, customGroupTrackIds],
     );
     const trackById = useMemo(() => new Map(sourceTracks.map((track) => [track.id, track])), [sourceTracks]);
-    const lineOptions = useMemo(() => buildMetroTasteLines({
-        tracks: sourceTracks,
-        assignmentByTrackId,
-        clusterById,
-    }), [sourceTracks, assignmentByTrackId, clusterById]);
+    const lineOptions = useMemo(() => {
+        const sourceTrackIds = new Set(sourceTracks.map((track) => track.id));
+        const customLines = (Array.isArray(customGroups) ? customGroups : [])
+            .map((group, index) => {
+                const trackIds = [...new Set((group.trackIds || []).filter((trackId) => sourceTrackIds.has(trackId)))];
+                return {
+                    key: `custom-${group.id}`,
+                    label: group.name,
+                    color: group.color || getMetroColor(index),
+                    trackIds,
+                    count: trackIds.length,
+                    genres: [],
+                    source: 'custom',
+                };
+            })
+            .filter((line) => line.count >= 2);
+        const tasteLines = buildMetroTasteLines({
+            tracks: tasteLineTracks,
+            assignmentByTrackId,
+            clusterById,
+        });
+        return [...customLines, ...tasteLines];
+    }, [sourceTracks, tasteLineTracks, assignmentByTrackId, clusterById, customGroups]);
     const activeMap = maps.find((map) => map.id === activeMapId) || maps[0] || null;
     const mapForLayout = useMemo(() => {
         if (!activeMap || !dragPosition) return activeMap;
@@ -852,6 +1131,121 @@ export default function TasteMapMetroStudio({
         () => buildMetroMapLayout(mapForLayout, sourceTracks, { transientStationId: draggingStationId }),
         [mapForLayout, sourceTracks, draggingStationId],
     );
+    const activeTrains = Array.isArray(activeMap?.trains) ? activeMap.trains : EMPTY_TRAINS;
+    const trainRoutes = useMemo(() => new Map(
+        activeTrains.map((train) => [train.id, buildMetroTrainRoute(layout, train.routeStationIds)]),
+    ), [activeTrains, layout]);
+    const lineTrainRoutes = useMemo(() => new Map(
+        layout.lines.map((line) => [line.key, buildMetroTrainRoute(layout, line.stationIds)]),
+    ), [layout]);
+    const resolvedTrainDraftLineKey = activeMap?.lines.some((line) => line.key === trainDraftLineKey)
+        ? trainDraftLineKey
+        : (activeMap?.lines[0]?.key || null);
+    const lineDraftStationIds = layout.lines.find((line) => line.key === resolvedTrainDraftLineKey)?.stationIds || [];
+    const activeDraftStationIds = trainDraftMode === 'line' ? lineDraftStationIds : trainDraftStationIds;
+    const trainDraftRoute = buildMetroTrainRoute(layout, activeDraftStationIds);
+    const routeSelectableIds = useMemo(() => {
+        if (!trainPanelOpen || !trainComposerOpen || trainDraftMode !== 'custom') return [];
+        const lastStationId = trainDraftStationIds[trainDraftStationIds.length - 1];
+        if (!lastStationId) return layout.stations.map((station) => station.trackId);
+        const usedIds = new Set(trainDraftStationIds);
+        return getMetroAdjacentStationIds(layout, lastStationId).filter((trackId) => !usedIds.has(trackId));
+    }, [layout, trainComposerOpen, trainDraftMode, trainDraftStationIds, trainPanelOpen]);
+
+    useEffect(() => {
+        if (!open || creating || !activeTrains.some((train) => train.running !== false)) return undefined;
+        let animationFrame = null;
+        let lastUpdateTime = performance.now();
+        const animate = (now) => {
+            if (now - lastUpdateTime >= 30) {
+                const elapsed = Math.min(0.06, Math.max(0, (now - lastUpdateTime) / 1000));
+                lastUpdateTime = now;
+                setTrainRuntimeById((current) => {
+                    let changed = false;
+                    const next = { ...current };
+                    activeTrains.forEach((train) => {
+                        if (train.running === false || trainDrag?.trainId === train.id) return;
+                        const route = trainRoutes.get(train.id);
+                        if (!route?.valid || !route.totalLength) return;
+                        const previous = current[train.id] || { progress: 0, direction: 1, dwellRemaining: TRAIN_DWELL_SECONDS };
+                        const runtime = { ...previous };
+                        if ((runtime.dwellRemaining || 0) > 0) {
+                            runtime.dwellRemaining = Math.max(0, runtime.dwellRemaining - elapsed);
+                            next[train.id] = runtime;
+                            changed = true;
+                            return;
+                        }
+                        const speed = getTrainSpeed(train);
+                        const previousDistance = runtime.progress * route.totalLength;
+                        const travelDistance = speed * elapsed;
+                        if (runtime.direction > 0) {
+                            const targetDistance = Math.min(route.totalLength, previousDistance + travelDistance);
+                            const nextStop = route.stationOffsets.find((offset) => (
+                                offset > previousDistance + 0.5 && offset <= targetDistance + 0.5
+                            ));
+                            if (nextStop !== undefined) {
+                                runtime.progress = nextStop / route.totalLength;
+                                runtime.dwellRemaining = TRAIN_DWELL_SECONDS;
+                                if (nextStop >= route.totalLength - 0.5) runtime.direction = -1;
+                            } else {
+                                runtime.progress = targetDistance / route.totalLength;
+                            }
+                        } else {
+                            const targetDistance = Math.max(0, previousDistance - travelDistance);
+                            const nextStop = [...route.stationOffsets].reverse().find((offset) => (
+                                offset < previousDistance - 0.5 && offset >= targetDistance - 0.5
+                            ));
+                            if (nextStop !== undefined) {
+                                runtime.progress = nextStop / route.totalLength;
+                                runtime.dwellRemaining = TRAIN_DWELL_SECONDS;
+                                if (nextStop <= 0.5) runtime.direction = 1;
+                            } else {
+                                runtime.progress = targetDistance / route.totalLength;
+                            }
+                        }
+                        next[train.id] = runtime;
+                        changed = true;
+                    });
+                    return changed ? next : current;
+                });
+            }
+            animationFrame = window.requestAnimationFrame(animate);
+        };
+        animationFrame = window.requestAnimationFrame(animate);
+        return () => {
+            if (animationFrame) window.cancelAnimationFrame(animationFrame);
+        };
+    }, [activeTrains, creating, open, trainDrag?.trainId, trainRoutes]);
+
+    const trainViews = activeTrains.map((train) => {
+        const route = trainRoutes.get(train.id);
+        const runtime = trainRuntimeById[train.id] || { progress: 0, direction: 1 };
+        const routePosition = getMetroTrainPosition(route, runtime.progress);
+        const position = trainDrag?.trainId === train.id && trainDrag.position
+            ? trainDrag.position
+            : routePosition;
+        if (!position) return null;
+        return {
+            train,
+            route,
+            runtime,
+            position: trainDrag?.trainId === train.id
+                ? position
+                : (runtime.direction < 0 ? { ...position, angle: position.angle + 180 } : position),
+            journey: getTrainJourneyState(route, runtime),
+        };
+    }).filter(Boolean);
+    const resolvedSelectedTrainId = activeTrains.some((train) => train.id === selectedTrainId)
+        ? selectedTrainId
+        : (activeTrains[0]?.id || null);
+    const selectedTrainDefinition = activeTrains.find((train) => train.id === resolvedSelectedTrainId) || null;
+    const activeTrainView = trainViews.find((view) => view.train.id === resolvedSelectedTrainId) || trainViews[0] || null;
+    const activeTrainCurrentTrack = activeTrainView?.journey
+        ? trackById.get(activeTrainView.journey.currentStationId)
+        : null;
+    const activeTrainNextTrack = activeTrainView?.journey
+        ? trackById.get(activeTrainView.journey.nextStationId)
+        : null;
     useEffect(() => {
         if (!open || creating || !activeMapId) return undefined;
         let measureFrame = null;
@@ -892,7 +1286,7 @@ export default function TasteMapMetroStudio({
         const stage = canvasStageRef.current;
         if (!stage) return undefined;
         let zoomFrame = null;
-        let zoomCommitTimer = null;
+        let zoomAnchorResetTimer = null;
         let pendingWheelDelta = 0;
         const handleNativeWheel = (event) => {
             event.preventDefault();
@@ -913,27 +1307,31 @@ export default function TasteMapMetroStudio({
                 const currentZoom = zoomRef.current;
                 const zoomFactor = Math.exp(-pendingWheelDelta * 0.0012);
                 pendingWheelDelta = 0;
-                const nextZoom = Math.min(1.9, Math.max(0.72, Number((currentZoom * zoomFactor).toFixed(3))));
+                const nextZoom = Math.min(1.9, Math.max(METRO_MIN_ZOOM, Number((currentZoom * zoomFactor).toFixed(3))));
                 const anchor = wheelAnchorRef.current;
                 if (!anchor) return;
                 if (nextZoom === currentZoom) {
-                    wheelAnchorRef.current = null;
+                    if (zoomAnchorResetTimer) window.clearTimeout(zoomAnchorResetTimer);
+                    zoomAnchorResetTimer = window.setTimeout(() => {
+                        wheelAnchorRef.current = null;
+                        zoomAnchorResetTimer = null;
+                    }, 90);
                     return;
                 }
                 const canvasWidth = Number(stage.dataset.canvasWidth) || METRO_MAP_WIDTH;
                 const canvasHeight = Number(stage.dataset.canvasHeight) || METRO_MAP_HEIGHT;
                 const gutter = METRO_GRID_SIZE * 10;
                 zoomRef.current = nextZoom;
+                setZoom(nextZoom);
                 stage.style.setProperty('--tm2-canvas-zoom', String(nextZoom));
                 stage.style.setProperty('--tm2-shell-width', `${(canvasWidth + (gutter * 2)) * nextZoom}px`);
                 stage.style.setProperty('--tm2-shell-height', `${(canvasHeight + (gutter * 2)) * nextZoom}px`);
                 stage.scrollLeft = (anchor.x * nextZoom) - (stage.clientWidth / 2);
                 stage.scrollTop = (anchor.y * nextZoom) - (stage.clientHeight / 2);
-                if (zoomCommitTimer) window.clearTimeout(zoomCommitTimer);
-                zoomCommitTimer = window.setTimeout(() => {
-                    setZoom(zoomRef.current);
+                if (zoomAnchorResetTimer) window.clearTimeout(zoomAnchorResetTimer);
+                zoomAnchorResetTimer = window.setTimeout(() => {
                     wheelAnchorRef.current = null;
-                    zoomCommitTimer = null;
+                    zoomAnchorResetTimer = null;
                 }, 90);
             });
         };
@@ -941,7 +1339,7 @@ export default function TasteMapMetroStudio({
         return () => {
             stage.removeEventListener('wheel', handleNativeWheel);
             if (zoomFrame) window.cancelAnimationFrame(zoomFrame);
-            if (zoomCommitTimer) window.clearTimeout(zoomCommitTimer);
+            if (zoomAnchorResetTimer) window.clearTimeout(zoomAnchorResetTimer);
             wheelAnchorRef.current = null;
         };
     }, [open, creating, activeMapId]);
@@ -973,6 +1371,120 @@ export default function TasteMapMetroStudio({
         commitMaps(nextMaps);
     };
 
+    const openTrainControl = () => {
+        setTrainPanelOpen(true);
+        setEditorOpen(false);
+        setSelectedStationId(null);
+        setTrainRouteError('');
+        if (!activeTrains.length) {
+            setTrainComposerOpen(true);
+            setSelectedLineKey(trainDraftMode === 'line' ? resolvedTrainDraftLineKey : null);
+        } else {
+            setTrainComposerOpen(false);
+            setSelectedLineKey(null);
+        }
+        if (!trainDraftLineKey) setTrainDraftLineKey(activeMap?.lines[0]?.key || null);
+    };
+
+    const closeTrainControl = () => {
+        setTrainPanelOpen(false);
+        setTrainComposerOpen(false);
+        setSelectedLineKey(null);
+        setTrainRouteError('');
+    };
+
+    const startTrainComposer = () => {
+        setTrainComposerOpen(true);
+        setTrainRouteError('');
+        setSelectedLineKey(trainDraftMode === 'line' ? resolvedTrainDraftLineKey : null);
+    };
+
+    const stopTrainComposer = () => {
+        setTrainComposerOpen(false);
+        setSelectedLineKey(null);
+        setTrainRouteError('');
+    };
+
+    const toggleTrain = (trainId) => {
+        updateActiveMap((map) => ({
+            ...map,
+            trains: (map.trains || []).map((train) => train.id === trainId
+                ? { ...train, running: train.running === false }
+                : train),
+        }));
+    };
+
+    const updateTrain = (trainId, patch) => {
+        updateActiveMap((map) => ({
+            ...map,
+            trains: (map.trains || []).map((train) => train.id === trainId ? { ...train, ...patch } : train),
+        }));
+    };
+
+    const resetTrain = (trainId) => {
+        setTrainRuntimeById((current) => ({
+            ...current,
+            [trainId]: { progress: 0, direction: 1, dwellRemaining: TRAIN_DWELL_SECONDS },
+        }));
+    };
+
+    const removeTrain = (trainId) => {
+        updateActiveMap((map) => ({
+            ...map,
+            trains: (map.trains || []).filter((train) => train.id !== trainId),
+        }));
+        setTrainRuntimeById((current) => {
+            const next = { ...current };
+            delete next[trainId];
+            return next;
+        });
+        if (selectedTrainId === trainId) setSelectedTrainId(null);
+    };
+
+    const addTrain = () => {
+        const routeStationIds = [...activeDraftStationIds];
+        const route = buildMetroTrainRoute(layout, routeStationIds);
+        if (!route.valid || routeStationIds.length < 2) {
+            setTrainRouteError(copy.selectAtLeastTwo);
+            return;
+        }
+        const trainNumber = (activeMap?.trains?.length || 0) + 1;
+        const createdAt = new Date().toISOString();
+        const trainId = `${activeMap.id}-train-${Date.now().toString(36)}`;
+        const line = activeMap.lines.find((item) => item.key === resolvedTrainDraftLineKey);
+        const routeLabel = trainDraftMode === 'line'
+            ? (line?.label || copy.lineRoute)
+            : (lang === 'en' ? 'Custom journey' : '직접 선택 경로');
+        const train = {
+            id: trainId,
+            name: trainDraftName.trim() || (lang === 'en' ? `Train ${trainNumber}` : `${trainNumber}호 열차`),
+            color: trainDraftColor,
+            speed: trainDraftSpeed,
+            routeMode: trainDraftMode,
+            lineKey: trainDraftMode === 'line' ? resolvedTrainDraftLineKey : null,
+            routeLabel,
+            routeStationIds,
+            running: true,
+            createdAt,
+            playlist: {
+                name: `${activeMap.name} · ${routeLabel}`,
+                trackIds: [...routeStationIds],
+                createdAt,
+            },
+        };
+        updateActiveMap((map) => ({ ...map, trains: [...(map.trains || []), train] }));
+        setTrainRuntimeById((current) => ({
+            ...current,
+            [trainId]: { progress: 0, direction: 1, dwellRemaining: TRAIN_DWELL_SECONDS },
+        }));
+        setSelectedTrainId(trainId);
+        setTrainDraftName('');
+        setTrainDraftStationIds([]);
+        setTrainRouteError('');
+        setTrainComposerOpen(false);
+        setSelectedLineKey(null);
+    };
+
     const getPointerMapPosition = (event) => {
         const svg = svgRef.current;
         const matrix = svg?.getScreenCTM?.();
@@ -985,6 +1497,165 @@ export default function TasteMapMetroStudio({
             x: Math.min(layout.width - METRO_GRID_SIZE, Math.max(METRO_GRID_SIZE, transformed.x)),
             y: Math.min(layout.height - METRO_GRID_SIZE, Math.max(METRO_GRID_SIZE, transformed.y)),
         };
+    };
+
+    const isPointerOverTrainTrash = (event) => {
+        const rect = trainTrashRef.current?.getBoundingClientRect();
+        if (!rect) return false;
+        return event.clientX >= rect.left
+            && event.clientX <= rect.right
+            && event.clientY >= rect.top
+            && event.clientY <= rect.bottom;
+    };
+
+    const getTrainDropTarget = (trainId, point) => {
+        if (!point) return null;
+        const train = activeTrains.find((item) => item.id === trainId);
+        const currentRoute = trainRoutes.get(trainId);
+        const currentProjection = getMetroTrainRouteProjection(currentRoute, point);
+        let closestLineTarget = null;
+        lineTrainRoutes.forEach((route, lineKey) => {
+            const projection = getMetroTrainRouteProjection(route, point);
+            if (!projection || (closestLineTarget && closestLineTarget.distance <= projection.distance)) return;
+            closestLineTarget = {
+                kind: 'line',
+                lineKey,
+                route,
+                progress: projection.progress,
+                distance: projection.distance,
+                position: { x: projection.x, y: projection.y, angle: projection.angle },
+            };
+        });
+        const snapDistance = METRO_GRID_SIZE * 1.05;
+        if (
+            train?.routeMode === 'custom'
+            && currentProjection
+            && currentProjection.distance <= snapDistance
+            && (!closestLineTarget || currentProjection.distance <= closestLineTarget.distance + 10)
+        ) {
+            return {
+                kind: 'current',
+                lineKey: null,
+                route: currentRoute,
+                progress: currentProjection.progress,
+                distance: currentProjection.distance,
+                position: { x: currentProjection.x, y: currentProjection.y, angle: currentProjection.angle },
+            };
+        }
+        if (closestLineTarget?.distance <= snapDistance) return closestLineTarget;
+        if (currentProjection?.distance <= snapDistance) {
+            return {
+                kind: 'current',
+                lineKey: train?.lineKey || null,
+                route: currentRoute,
+                progress: currentProjection.progress,
+                distance: currentProjection.distance,
+                position: { x: currentProjection.x, y: currentProjection.y, angle: currentProjection.angle },
+            };
+        }
+        return null;
+    };
+
+    const handleTrainDragStart = (trainId, event) => {
+        if (event.button !== undefined && event.button !== 0) return;
+        const view = trainViews.find((item) => item.train.id === trainId);
+        if (!view) return;
+        event.preventDefault();
+        event.stopPropagation();
+        event.currentTarget.setPointerCapture?.(event.pointerId);
+        trainDragRef.current = {
+            trainId,
+            pointerId: event.pointerId,
+            startClientX: event.clientX,
+            startClientY: event.clientY,
+            moved: false,
+            target: null,
+        };
+        setSelectedTrainId(trainId);
+        setTrainDrag({
+            trainId,
+            moved: false,
+            target: null,
+            position: { ...view.position },
+        });
+    };
+
+    const handleTrainDragMove = (trainId, event) => {
+        const drag = trainDragRef.current;
+        if (!drag || drag.trainId !== trainId || drag.pointerId !== event.pointerId) return;
+        const distance = Math.hypot(event.clientX - drag.startClientX, event.clientY - drag.startClientY);
+        if (!drag.moved && distance < 4) return;
+        const point = getPointerMapPosition(event);
+        if (!point) return;
+        event.preventDefault();
+        event.stopPropagation();
+        drag.moved = true;
+        drag.target = isPointerOverTrainTrash(event) ? { kind: 'trash' } : getTrainDropTarget(trainId, point);
+        setTrainDrag({
+            trainId,
+            moved: true,
+            target: drag.target,
+            position: drag.target?.position || { ...point, angle: 0 },
+        });
+    };
+
+    const handleTrainDragEnd = (trainId, event) => {
+        const drag = trainDragRef.current;
+        if (!drag || drag.trainId !== trainId || drag.pointerId !== event.pointerId) return;
+        const point = getPointerMapPosition(event);
+        const target = drag.moved && isPointerOverTrainTrash(event)
+            ? { kind: 'trash' }
+            : (drag.moved && point ? getTrainDropTarget(trainId, point) : drag.target);
+        try { event.currentTarget.releasePointerCapture?.(event.pointerId); } catch { /* pointer capture may already be released */ }
+        if (drag.moved && target) {
+            if (target.kind === 'trash') {
+                removeTrain(trainId);
+            } else {
+                const previousRuntime = trainRuntimeById[trainId] || { progress: 0, direction: 1 };
+                if (target.kind === 'line') {
+                    const lineLayout = layout.lines.find((line) => line.key === target.lineKey);
+                    const lineDefinition = activeMap.lines.find((line) => line.key === target.lineKey);
+                    if (lineLayout && lineDefinition) {
+                        updateActiveMap((map) => ({
+                            ...map,
+                            trains: (map.trains || []).map((train) => train.id === trainId ? {
+                                ...train,
+                                routeMode: 'line',
+                                lineKey: target.lineKey,
+                                routeLabel: lineDefinition.label,
+                                routeStationIds: [...lineLayout.stationIds],
+                                playlist: {
+                                    ...(train.playlist || {}),
+                                    name: `${map.name} · ${lineDefinition.label}`,
+                                    trackIds: [...lineLayout.stationIds],
+                                },
+                            } : train),
+                        }));
+                    }
+                }
+                setTrainRuntimeById((current) => ({
+                    ...current,
+                    [trainId]: { progress: target.progress, direction: previousRuntime.direction, dwellRemaining: 0 },
+                }));
+            }
+        }
+        if (drag.moved) {
+            suppressTrainClickRef.current = trainId;
+            window.setTimeout(() => {
+                if (suppressTrainClickRef.current === trainId) suppressTrainClickRef.current = null;
+            }, 0);
+        }
+        trainDragRef.current = null;
+        setTrainDrag(null);
+    };
+
+    const handleTrainSelect = (trainId) => {
+        if (suppressTrainClickRef.current === trainId) {
+            suppressTrainClickRef.current = null;
+            return;
+        }
+        setSelectedTrainId(trainId);
+        openTrainControl();
     };
 
     const getMagneticPointerMapPosition = (event, trackId) => {
@@ -1011,6 +1682,7 @@ export default function TasteMapMetroStudio({
     };
 
     const handleStationDragStart = (trackId, event) => {
+        if (trainPanelOpen && trainComposerOpen && trainDraftMode === 'custom') return;
         if (event.button !== undefined && event.button !== 0) return;
         const point = getPointerMapPosition(event);
         if (!point) return;
@@ -1129,6 +1801,27 @@ export default function TasteMapMetroStudio({
             suppressStationClickRef.current = null;
             return;
         }
+        if (trainPanelOpen && trainComposerOpen && trainDraftMode === 'custom') {
+            setTrainDraftStationIds((current) => {
+                const existingIndex = current.indexOf(trackId);
+                if (existingIndex >= 0) {
+                    setTrainRouteError('');
+                    return current.slice(0, existingIndex + 1);
+                }
+                if (!current.length) {
+                    setTrainRouteError('');
+                    return [trackId];
+                }
+                const lastStationId = current[current.length - 1];
+                if (!getMetroAdjacentStationIds(layout, lastStationId).includes(trackId)) {
+                    setTrainRouteError(copy.customRouteInvalid);
+                    return current;
+                }
+                setTrainRouteError('');
+                return [...current, trackId];
+            });
+            return;
+        }
         setSelectedStationId((current) => current === trackId ? null : trackId);
     };
 
@@ -1166,13 +1859,17 @@ export default function TasteMapMetroStudio({
     };
 
     const handleCreate = (map) => {
-        const nextMaps = [...maps, map];
+        const nextMaps = [...maps, { ...map, trains: [] }];
         commitMaps(nextMaps);
         setActiveMapId(map.id);
         setCreating(false);
         setSelectedStationId(null);
         setSelectedLineKey(null);
         setEditorOpen(false);
+        setTrainPanelOpen(false);
+        setTrainComposerOpen(false);
+        setSelectedTrainId(null);
+        setTrainDraftStationIds([]);
         setZoom(1);
     };
 
@@ -1185,6 +1882,9 @@ export default function TasteMapMetroStudio({
         setSelectedStationId(null);
         setSelectedLineKey(null);
         setEditorOpen(false);
+        setTrainPanelOpen(false);
+        setTrainComposerOpen(false);
+        setSelectedTrainId(null);
     };
 
     const handleDuplicateMap = () => {
@@ -1197,11 +1897,21 @@ export default function TasteMapMetroStudio({
             updatedAt: new Date().toISOString(),
             lines: activeMap.lines.map((line) => ({ ...line, trackIds: [...line.trackIds] })),
             transferIds: [...activeMap.transferIds],
+            trains: (activeMap.trains || []).map((train, index) => ({
+                ...train,
+                id: `${activeMap.id}-copy-train-${index}-${Date.now().toString(36)}`,
+                running: false,
+                routeStationIds: [...train.routeStationIds],
+                playlist: train.playlist ? { ...train.playlist, trackIds: [...train.playlist.trackIds] } : null,
+            })),
         };
         const nextMaps = [...maps, duplicate];
         commitMaps(nextMaps);
         setActiveMapId(duplicate.id);
         setSelectedStationId(null);
+        setSelectedTrainId(null);
+        setTrainPanelOpen(false);
+        setTrainComposerOpen(false);
     };
 
     const addLine = (option) => {
@@ -1236,10 +1946,21 @@ export default function TasteMapMetroStudio({
 
     const removeLine = (lineKey) => {
         if (!activeMap || activeMap.lines.length <= 1) return;
-        updateActiveMap((map) => ({
-            ...map,
-            lines: map.lines.filter((line) => line.key !== lineKey),
-        }));
+        updateActiveMap((map) => {
+            const lines = map.lines.filter((line) => line.key !== lineKey);
+            const remainingIds = new Set([
+                ...map.transferIds,
+                ...lines.flatMap((line) => line.trackIds),
+            ]);
+            return {
+                ...map,
+                lines,
+                trains: (map.trains || []).filter((train) => (
+                    train.lineKey !== lineKey
+                    && train.routeStationIds.every((trackId) => remainingIds.has(trackId))
+                )),
+            };
+        });
         if (selectedLineKey === lineKey) setSelectedLineKey(null);
         setSelectedStationId(null);
     };
@@ -1247,14 +1968,25 @@ export default function TasteMapMetroStudio({
     const removeStation = () => {
         if (!activeMap || !selectedStation) return;
         if (selectedStation.isSeed) return;
-        updateActiveMap((map) => ({
-            ...map,
-            transferIds: map.transferIds.filter((trackId) => trackId !== selectedStation.trackId),
-            lines: map.lines.map((line) => ({
-                ...line,
-                trackIds: line.trackIds.filter((trackId) => trackId !== selectedStation.trackId),
-            })),
-        }));
+        updateActiveMap((map) => {
+            const trains = (map.trains || []).map((train) => {
+                const routeStationIds = train.routeStationIds.filter((trackId) => trackId !== selectedStation.trackId);
+                return {
+                    ...train,
+                    routeStationIds,
+                    playlist: train.playlist ? { ...train.playlist, trackIds: [...routeStationIds] } : null,
+                };
+            }).filter((train) => train.routeStationIds.length >= 2);
+            return {
+                ...map,
+                transferIds: map.transferIds.filter((trackId) => trackId !== selectedStation.trackId),
+                lines: map.lines.map((line) => ({
+                    ...line,
+                    trackIds: line.trackIds.filter((trackId) => trackId !== selectedStation.trackId),
+                })),
+                trains,
+            };
+        });
         setSelectedStationId(null);
     };
 
@@ -1322,16 +2054,37 @@ export default function TasteMapMetroStudio({
                                         draggingStationId={draggingStationId}
                                         dragSnapTarget={dragPosition?.snapTarget || null}
                                         dragMagnetStrength={dragPosition?.magnetStrength || 0}
+                                        trainViews={trainViews}
+                                        selectedTrainId={resolvedSelectedTrainId}
+                                        routePreview={trainPanelOpen && trainComposerOpen ? trainDraftRoute : null}
+                                        routeDraftStationIds={trainPanelOpen && trainComposerOpen ? activeDraftStationIds : []}
+                                        routeSelectableIds={routeSelectableIds}
+                                        routePicking={trainPanelOpen && trainComposerOpen && trainDraftMode === 'custom'}
+                                        trainDragCandidateLineKey={trainDrag?.target?.kind === 'line' ? trainDrag.target.lineKey : null}
+                                        draggingTrainId={trainDrag?.trainId || null}
                                         onStationSelect={handleStationSelect}
                                         onStationHover={setHoveredStationId}
                                         onStationDragStart={handleStationDragStart}
                                         onStationDragMove={handleStationDragMove}
                                         onStationDragEnd={handleStationDragEnd}
                                         onStationNudge={handleStationNudge}
-                                        onLineSelect={(lineKey) => setSelectedLineKey((current) => current === lineKey ? null : lineKey)}
+                                        onLineSelect={(lineKey) => {
+                                            if (trainPanelOpen && trainComposerOpen && trainDraftMode === 'line') {
+                                                setTrainDraftLineKey(lineKey);
+                                                setSelectedLineKey(lineKey);
+                                                setTrainRouteError('');
+                                                return;
+                                            }
+                                            setSelectedLineKey((current) => current === lineKey ? null : lineKey);
+                                        }}
                                         onLineHover={setHoveredLineKey}
+                                        onTrainSelect={handleTrainSelect}
+                                        onTrainDragStart={handleTrainDragStart}
+                                        onTrainDragMove={handleTrainDragMove}
+                                        onTrainDragEnd={handleTrainDragEnd}
                                         onCanvasSelect={() => {
                                             if (isPanning) return;
+                                            if (trainPanelOpen && trainComposerOpen && trainDraftMode === 'custom') return;
                                             setSelectedStationId(null);
                                             setSelectedLineKey(null);
                                         }}
@@ -1340,6 +2093,17 @@ export default function TasteMapMetroStudio({
                                 </div>
                             </div>
                         </div>
+
+                        {trainDrag ? (
+                            <div
+                                ref={trainTrashRef}
+                                className={`tm2-train-trash${trainDrag.target?.kind === 'trash' ? ' over' : ''}`}
+                                aria-hidden="true"
+                            >
+                                <span><i /></span>
+                                <strong>{copy.removeTrain}</strong>
+                            </div>
+                        ) : null}
 
                         <header className="tm2-map-heading">
                             <span className="tm2-map-kicker">Metro Map 2</span>
@@ -1378,8 +2142,16 @@ export default function TasteMapMetroStudio({
                                 <button
                                     type="button"
                                     key={line.key}
-                                    className={selectedLineKey === line.key ? 'active' : ''}
-                                    onClick={() => setSelectedLineKey((current) => current === line.key ? null : line.key)}
+                                    className={(selectedLineKey === line.key || (trainPanelOpen && trainComposerOpen && resolvedTrainDraftLineKey === line.key)) ? 'active' : ''}
+                                    onClick={() => {
+                                        if (trainPanelOpen && trainComposerOpen && trainDraftMode === 'line') {
+                                            setTrainDraftLineKey(line.key);
+                                            setSelectedLineKey(line.key);
+                                            setTrainRouteError('');
+                                            return;
+                                        }
+                                        setSelectedLineKey((current) => current === line.key ? null : line.key);
+                                    }}
                                 >
                                     <i style={{ background: line.color }} />
                                     <b>{String(index + 1).padStart(2, '0')}</b>
@@ -1389,7 +2161,7 @@ export default function TasteMapMetroStudio({
                             ))}
                         </nav>
 
-                        {selectedStation && !editorOpen ? (
+                        {selectedStation && !editorOpen && !trainPanelOpen ? (
                             <aside className="tm2-station-popover">
                                 <button type="button" className="tm2-popover-close" onClick={() => setSelectedStationId(null)} aria-label={copy.close}>×</button>
                                 <div className="tm2-selected-track">
@@ -1411,11 +2183,221 @@ export default function TasteMapMetroStudio({
                                     </div>
                                     <div className="tm2-inspector-actions">
                                         {!selectedStation.isTransfer && activeMap.mode !== 'seed' ? <button type="button" onClick={makeTransfer}>{copy.makeTransfer}</button> : null}
-                                        <button type="button" onClick={() => setEditorOpen(true)}>{copy.editMap}</button>
+                                        <button type="button" onClick={() => {
+                                            setTrainPanelOpen(false);
+                                            setTrainComposerOpen(false);
+                                            setEditorOpen(true);
+                                        }}>{copy.editMap}</button>
                                     </div>
                                 </div>
                             </aside>
                         ) : null}
+
+                        <aside className={`tm2-train-panel${trainPanelOpen ? ' open' : ''}`} aria-label={copy.trainControl}>
+                            <div className="tm2-train-panel-head">
+                                <div>
+                                    <h2>{copy.trains}</h2>
+                                    <p>{copy.dragTrainHint} {copy.dropTrainHint}</p>
+                                </div>
+                                <button type="button" className="tm2-editor-close" onClick={closeTrainControl} aria-label={copy.close}>×</button>
+                            </div>
+
+                            <section className="tm2-train-panel-section">
+                                <div className="tm2-train-section-title">
+                                    <h3>{lang === 'en' ? 'On the map' : '지도 위 열차'}</h3>
+                                    <span>{activeTrains.length}{lang === 'en' ? '' : '대'}</span>
+                                </div>
+                                {activeTrains.length ? (
+                                    <div className="tm2-train-list">
+                                        {activeTrains.map((train) => {
+                                            const routeValid = trainRoutes.get(train.id)?.valid;
+                                            return (
+                                                <div key={train.id} className={`tm2-train-card${resolvedSelectedTrainId === train.id ? ' active' : ''}${routeValid ? '' : ' invalid'}`}>
+                                                    <button type="button" className="tm2-train-card-main" onClick={() => setSelectedTrainId(train.id)}>
+                                                        <span className="tm2-train-type-mark" style={{ '--tm2-train-color': getTrainColor(train) }}><i /></span>
+                                                        <span>
+                                                            <strong>{train.name}</strong>
+                                                            <small>{train.routeLabel} · {train.routeStationIds.length} {copy.songs}</small>
+                                                        </span>
+                                                        <i className={train.running === false ? 'paused' : ''}>{train.running === false ? copy.paused : copy.running}</i>
+                                                    </button>
+                                                    <button type="button" className="tm2-train-icon-btn" onClick={() => toggleTrain(train.id)} aria-label={train.running === false ? copy.resume : copy.pause}>
+                                                        {train.running === false ? '▶' : 'Ⅱ'}
+                                                    </button>
+                                                    <button type="button" className="tm2-train-icon-btn danger" onClick={() => removeTrain(train.id)} aria-label={copy.removeTrain}>×</button>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                ) : <p className="tm2-editor-empty">{copy.noTrains}</p>}
+
+                                {selectedTrainDefinition ? (
+                                    <div className="tm2-train-quick-edit">
+                                        <input
+                                            value={selectedTrainDefinition.name}
+                                            aria-label={copy.trainName}
+                                            maxLength={24}
+                                            onChange={(event) => updateTrain(selectedTrainDefinition.id, { name: event.target.value })}
+                                        />
+                                        <div className="tm2-color-row" aria-label={copy.trainColor}>
+                                            {TRAIN_COLORS.map((color) => (
+                                                <button
+                                                    type="button"
+                                                    key={color}
+                                                    className={getTrainColor(selectedTrainDefinition) === color ? 'active' : ''}
+                                                    style={{ '--tm2-color': color }}
+                                                    onClick={() => updateTrain(selectedTrainDefinition.id, { color })}
+                                                    aria-label={color}
+                                                />
+                                            ))}
+                                        </div>
+                                        <label>
+                                            <span>{copy.trainSpeed}</span>
+                                            <input
+                                                type="range"
+                                                min="55"
+                                                max="170"
+                                                step="5"
+                                                value={getTrainSpeed(selectedTrainDefinition)}
+                                                onChange={(event) => updateTrain(selectedTrainDefinition.id, { speed: Number(event.target.value) })}
+                                            />
+                                        </label>
+                                    </div>
+                                ) : null}
+                            </section>
+
+                            {!trainComposerOpen ? (
+                                <button type="button" className="tm2-open-train-composer" onClick={startTrainComposer}>＋ {copy.newTrain}</button>
+                            ) : null}
+
+                            {trainComposerOpen ? (
+                            <section className="tm2-train-panel-section tm2-new-train">
+                                <div className="tm2-train-section-title">
+                                    <h3>{copy.newTrain}</h3>
+                                    <button type="button" className="tm2-composer-cancel" onClick={stopTrainComposer}>{copy.cancel}</button>
+                                </div>
+                                <label className="tm2-train-field-label" htmlFor="tm2-train-name">{copy.trainName}</label>
+                                <input
+                                    id="tm2-train-name"
+                                    className="tm2-train-name-input"
+                                    value={trainDraftName}
+                                    maxLength={24}
+                                    placeholder={copy.trainNamePlaceholder}
+                                    onChange={(event) => setTrainDraftName(event.target.value)}
+                                />
+
+                                <label className="tm2-train-field-label">{copy.trainColor}</label>
+                                <div className="tm2-color-row tm2-color-row-large">
+                                    {TRAIN_COLORS.map((color) => (
+                                        <button
+                                            type="button"
+                                            key={color}
+                                            className={trainDraftColor === color ? 'active' : ''}
+                                            style={{ '--tm2-color': color }}
+                                            onClick={() => setTrainDraftColor(color)}
+                                            aria-label={color}
+                                        />
+                                    ))}
+                                </div>
+
+                                <label className="tm2-train-field-label tm2-speed-label" htmlFor="tm2-train-speed">
+                                    <span>{copy.trainSpeed}</span><b>{copy.slower}</b><b>{copy.faster}</b>
+                                </label>
+                                <input
+                                    id="tm2-train-speed"
+                                    className="tm2-train-speed-input"
+                                    type="range"
+                                    min="55"
+                                    max="170"
+                                    step="5"
+                                    value={trainDraftSpeed}
+                                    onChange={(event) => setTrainDraftSpeed(Number(event.target.value))}
+                                />
+
+                                <label className="tm2-train-field-label">{copy.routeMethod}</label>
+                                <div className="tm2-train-route-tabs">
+                                    <button
+                                        type="button"
+                                        className={trainDraftMode === 'line' ? 'active' : ''}
+                                        onClick={() => {
+                                            setTrainDraftMode('line');
+                                            setSelectedLineKey(resolvedTrainDraftLineKey);
+                                            setTrainRouteError('');
+                                        }}
+                                    >{copy.lineRoute}</button>
+                                    <button
+                                        type="button"
+                                        className={trainDraftMode === 'custom' ? 'active' : ''}
+                                        onClick={() => {
+                                            setTrainDraftMode('custom');
+                                            setSelectedLineKey(null);
+                                            setTrainRouteError('');
+                                        }}
+                                    >{copy.customRoute}</button>
+                                </div>
+
+                                {trainDraftMode === 'line' ? (
+                                    <div className="tm2-train-line-options">
+                                        {activeMap.lines.map((line) => (
+                                            <button
+                                                type="button"
+                                                key={line.key}
+                                                className={resolvedTrainDraftLineKey === line.key ? 'active' : ''}
+                                                onClick={() => {
+                                                    setTrainDraftLineKey(line.key);
+                                                    setSelectedLineKey(line.key);
+                                                    setTrainRouteError('');
+                                                }}
+                                            >
+                                                <i style={{ background: line.color }} />
+                                                <strong>{line.label}</strong>
+                                                <small>{layout.lines.find((item) => item.key === line.key)?.stationIds.length || 0}</small>
+                                            </button>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="tm2-custom-route-builder">
+                                        <p>{copy.customRouteHint}</p>
+                                        {trainDraftStationIds.length ? (
+                                            <div className="tm2-route-stop-list">
+                                                {trainDraftStationIds.map((trackId, index) => {
+                                                    const track = trackById.get(trackId);
+                                                    return (
+                                                        <span key={`${trackId}-${index}`}>
+                                                            <b>{index + 1}</b>{track?.name || trackId}
+                                                        </span>
+                                                    );
+                                                })}
+                                            </div>
+                                        ) : <div className="tm2-route-empty">＋ {copy.customRouteEmpty}</div>}
+                                        {trainDraftStationIds.length ? (
+                                            <button
+                                                type="button"
+                                                className="tm2-route-undo"
+                                                onClick={() => {
+                                                    setTrainDraftStationIds((current) => current.slice(0, -1));
+                                                    setTrainRouteError('');
+                                                }}
+                                            >↶ {copy.removeLastStop}</button>
+                                        ) : null}
+                                    </div>
+                                )}
+
+                                {trainRouteError ? <p className="tm2-train-route-error">{trainRouteError}</p> : null}
+                                <div className={`tm2-playlist-bundle${trainDraftRoute.valid ? ' ready' : ''}`}>
+                                    <span aria-hidden style={{ '--tm2-train-color': trainDraftColor }}><i /></span>
+                                    <div>
+                                        <strong>{copy.routeSongs}</strong>
+                                        <small>{trainDraftRoute.valid ? `${activeDraftStationIds.length} ${copy.songs} · ${copy.playlistReady}` : copy.selectAtLeastTwo}</small>
+                                    </div>
+                                </div>
+                                <button type="button" className="tm2-add-train-btn" disabled={!trainDraftRoute.valid} onClick={addTrain}>
+                                    <span style={{ '--tm2-train-color': trainDraftColor }}><i /></span>
+                                    {copy.addTrain}<b>→</b>
+                                </button>
+                            </section>
+                            ) : null}
+                        </aside>
 
                         <aside className={`tm2-editor${editorOpen ? ' open' : ''}`}>
                             <div className="tm2-editor-head">
@@ -1513,6 +2495,47 @@ export default function TasteMapMetroStudio({
                             </div>
                         </aside>
 
+                        {activeTrainView && activeTrainCurrentTrack && !trainDrag ? (
+                            <section className="tm2-train-status" aria-live="polite">
+                                <button type="button" className="tm2-status-train" onClick={openTrainControl} style={{ '--tm2-train-color': getTrainColor(activeTrainView.train) }}>
+                                    <span><i /></span>
+                                    <small>{activeTrainView.train.name}</small>
+                                </button>
+                                {activeTrainCurrentTrack.coverUrl ? (
+                                    <img src={activeTrainCurrentTrack.coverUrl} alt="" />
+                                ) : <span className="tm2-status-cover-fallback" aria-hidden>♪</span>}
+                                <div className="tm2-status-current">
+                                    <span>{copy.currentLocation}</span>
+                                    <strong>{activeTrainCurrentTrack.name}</strong>
+                                    <small>{activeTrainCurrentTrack.artists || '-'}</small>
+                                </div>
+                                <div className="tm2-status-next">
+                                    <span>{copy.nextStation}</span>
+                                    <strong>{activeTrainNextTrack?.name || activeTrainCurrentTrack.name}</strong>
+                                </div>
+                                <div className="tm2-status-playlist">
+                                    <span>♫</span>
+                                    <strong>{activeTrainView.train.playlist?.trackIds?.length || activeTrainView.train.routeStationIds.length}</strong>
+                                    <small>{copy.songs}</small>
+                                </div>
+                                <div className="tm2-status-progress" aria-hidden>
+                                    <i style={{ width: `${Math.round((activeTrainView.journey?.progress || 0) * 100)}%` }} />
+                                </div>
+                                <button
+                                    type="button"
+                                    className="tm2-status-export"
+                                    disabled
+                                    title={copy.exportSoon}
+                                >
+                                    <span aria-hidden>↗</span>{copy.exportPlaylist}
+                                </button>
+                                <button type="button" className="tm2-status-action" onClick={() => toggleTrain(activeTrainView.train.id)} aria-label={activeTrainView.train.running === false ? copy.resume : copy.pause}>
+                                    {activeTrainView.train.running === false ? '▶' : 'Ⅱ'}
+                                </button>
+                                <button type="button" className="tm2-status-action" onClick={() => resetTrain(activeTrainView.train.id)} aria-label={copy.resetTrain}>↺</button>
+                            </section>
+                        ) : null}
+
                         <div className="tm2-bottom-dock">
                             <button type="button" className="tm2-field-return" onClick={onClose}>← {lang === 'en' ? 'Taste Field' : '취향 필드'}</button>
                             <span className="tm2-dock-divider" aria-hidden />
@@ -1527,6 +2550,8 @@ export default function TasteMapMetroStudio({
                                             setSelectedStationId(null);
                                             setSelectedLineKey(null);
                                             setEditorOpen(false);
+                                            setTrainPanelOpen(false);
+                                            setTrainComposerOpen(false);
                                             setZoom(1);
                                         }}
                                     >
@@ -1537,11 +2562,18 @@ export default function TasteMapMetroStudio({
                             </nav>
                             <span className="tm2-dock-divider" aria-hidden />
                             <div className="tm2-map-toolbar">
-                                <button type="button" onClick={() => setZoom((value) => Math.max(0.72, value - 0.12))}>−</button>
+                                <button type="button" onClick={() => setZoom((value) => Math.max(METRO_MIN_ZOOM, value - 0.12))}>−</button>
                                 <button type="button" className="value" onClick={() => setZoom(1)}>{Math.round(zoom * 100)}%</button>
                                 <button type="button" onClick={() => setZoom((value) => Math.min(1.6, value + 0.12))}>＋</button>
                             </div>
-                            <button type="button" className={`tm2-edit-toggle${editorOpen ? ' active' : ''}`} onClick={() => setEditorOpen((current) => !current)}>＋ {copy.editMap}</button>
+                            <button type="button" className={`tm2-train-toggle${trainPanelOpen ? ' active' : ''}`} onClick={() => {
+                                if (trainPanelOpen) closeTrainControl();
+                                else openTrainControl();
+                            }}>▰ {copy.trainControl}</button>
+                            <button type="button" className={`tm2-edit-toggle${editorOpen ? ' active' : ''}`} onClick={() => {
+                                closeTrainControl();
+                                setEditorOpen((current) => !current);
+                            }}>＋ {copy.editMap}</button>
                         </div>
                     </div>
                 ) : null}

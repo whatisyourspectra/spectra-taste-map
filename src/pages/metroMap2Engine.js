@@ -712,6 +712,106 @@ export function buildMetroMapLayout(map, tracks, options = {}) {
     };
 }
 
+function metroLineSegment(line, fromStationId, toStationId) {
+    if (!line || !fromStationId || !toStationId) return null;
+    const fromStationIndex = line.stationIds.indexOf(fromStationId);
+    const toStationIndex = line.stationIds.indexOf(toStationId);
+    if (fromStationIndex < 0 || toStationIndex < 0 || Math.abs(fromStationIndex - toStationIndex) !== 1) return null;
+
+    const fromPointIndex = line.routePoints.findIndex((point) => point.stationId === fromStationId);
+    const toPointIndex = line.routePoints.findIndex((point) => point.stationId === toStationId);
+    if (fromPointIndex < 0 || toPointIndex < 0) return null;
+
+    const start = Math.min(fromPointIndex, toPointIndex);
+    const end = Math.max(fromPointIndex, toPointIndex);
+    const points = line.routePoints.slice(start, end + 1).map((point) => ({ x: point.x, y: point.y }));
+    return fromPointIndex <= toPointIndex ? points : points.reverse();
+}
+
+export function getMetroAdjacentStationIds(layout, stationId) {
+    if (!layout || !stationId) return [];
+    const adjacent = new Set();
+    layout.lines.forEach((line) => {
+        const index = line.stationIds.indexOf(stationId);
+        if (index < 0) return;
+        if (line.stationIds[index - 1]) adjacent.add(line.stationIds[index - 1]);
+        if (line.stationIds[index + 1]) adjacent.add(line.stationIds[index + 1]);
+    });
+    return [...adjacent];
+}
+
+export function buildMetroTrainRoute(layout, routeStationIds) {
+    const requestedIds = (Array.isArray(routeStationIds) ? routeStationIds : []).filter(Boolean);
+    if (!layout || requestedIds.length < 2) {
+        return { valid: false, points: [], pathData: '', stationIds: requestedIds, stationOffsets: [], totalLength: 0 };
+    }
+
+    const points = [];
+    const stationOffsets = [0];
+    let totalLength = 0;
+    for (let index = 1; index < requestedIds.length; index += 1) {
+        const fromStationId = requestedIds[index - 1];
+        const toStationId = requestedIds[index];
+        const line = layout.lines.find((candidate) => metroLineSegment(candidate, fromStationId, toStationId));
+        const segment = metroLineSegment(line, fromStationId, toStationId);
+        if (!segment?.length) {
+            return { valid: false, points: [], pathData: '', stationIds: requestedIds, stationOffsets: [], totalLength: 0 };
+        }
+        segment.forEach((point, pointIndex) => {
+            if (points.length && pointIndex === 0) return;
+            const previous = points[points.length - 1];
+            if (previous) totalLength += Math.hypot(point.x - previous.x, point.y - previous.y);
+            points.push(point);
+        });
+        stationOffsets.push(totalLength);
+    }
+
+    return {
+        valid: points.length > 1 && totalLength > 0,
+        points,
+        pathData: roundedPathFromPoints(points),
+        stationIds: requestedIds,
+        stationOffsets,
+        totalLength,
+    };
+}
+
+export function getMetroTrainPosition(route, progress = 0) {
+    if (!route?.valid || route.points.length < 2 || !route.totalLength) return null;
+    let remaining = clamp(progress, 0, 1) * route.totalLength;
+    for (let index = 1; index < route.points.length; index += 1) {
+        const start = route.points[index - 1];
+        const end = route.points[index];
+        const dx = end.x - start.x;
+        const dy = end.y - start.y;
+        const length = Math.hypot(dx, dy);
+        if (remaining <= length || index === route.points.length - 1) {
+            const ratio = length ? clamp(remaining / length, 0, 1) : 0;
+            return {
+                x: start.x + (dx * ratio),
+                y: start.y + (dy * ratio),
+                angle: Math.atan2(dy, dx) * (180 / Math.PI),
+                distance: clamp(progress, 0, 1) * route.totalLength,
+            };
+        }
+        remaining -= length;
+    }
+    return null;
+}
+
+export function getMetroTrainRouteProjection(route, point) {
+    if (!route?.valid || !point || route.points.length < 2 || !route.totalLength) return null;
+    const projection = projectPointOnPolyline(point, route.points);
+    if (!projection || typeof projection === 'number') return null;
+    const position = getMetroTrainPosition(route, projection.progress / route.totalLength);
+    if (!position) return null;
+    return {
+        ...position,
+        progress: clamp(projection.progress / route.totalLength, 0, 1),
+        distance: projection.distance,
+    };
+}
+
 export function reorderMetroStationOnLine(map, tracks, trackId, position) {
     if (!map || !trackId || !position) return map;
     const targetLine = map.lines.find((line) => line.trackIds.includes(trackId));
