@@ -605,11 +605,14 @@ function SubwayPreviewSvg({
                 </div>
                 <div className="tm-subway-viewport-actions">
                     <div className="tm-subway-map-tabs" role="tablist" aria-label="Map view">
-                        <button type="button" role="tab" aria-selected={false} onClick={() => onNavigateView('field')}>
+                        <button type="button" role="tab" aria-selected={false} hidden onClick={() => onNavigateView('field')}>
                             <span aria-hidden>⌾</span>Taste Field
                         </button>
                         <button type="button" role="tab" aria-selected={false} onClick={() => onNavigateView('spotify')}>
                             <span aria-hidden>⊙</span>Spotify Field
+                        </button>
+                        <button type="button" role="tab" aria-selected={false} onClick={() => onNavigateView('constellation')}>
+                            <span aria-hidden>✦</span>Constellation
                         </button>
                         <button type="button" role="tab" className="active" aria-selected="true">
                             <span aria-hidden>⌁</span>Metro Map
