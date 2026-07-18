@@ -2774,6 +2774,205 @@
     color: #eaf8ff;
 }
 
+.tm2-train-marquee {
+    position: absolute;
+    z-index: 8;
+    top: 92px;
+    left: 50%;
+    width: min(940px, calc(100vw - 520px));
+    min-height: 94px;
+    display: grid;
+    grid-template-columns: 148px 70px minmax(0, 1.45fr) minmax(0, 1fr) 126px;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 18px;
+    border: 1px solid rgba(163, 187, 219, 0.18);
+    border-radius: 22px;
+    background:
+        linear-gradient(90deg, color-mix(in srgb, var(--tm2-train-color, #78a8ff) 12%, rgba(9, 14, 24, 0.96)), rgba(9, 14, 24, 0.94) 30%, rgba(9, 14, 24, 0.9)),
+        rgba(9, 14, 24, 0.92);
+    box-shadow: 0 24px 58px rgba(0, 0, 0, 0.34);
+    backdrop-filter: blur(22px) saturate(130%);
+    transform: translateX(-50%);
+}
+
+.tm2-train-marquee-train {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: 48px minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #edf3fb;
+    text-align: left;
+    cursor: pointer;
+}
+
+.tm2-train-marquee-mark {
+    width: 48px;
+    height: 48px;
+    display: grid;
+    place-items: center;
+    border: 2px solid var(--tm2-train-color, #78a8ff);
+    border-radius: 10px 16px 16px 10px;
+    background: color-mix(in srgb, var(--tm2-train-color, #78a8ff) 18%, #13202a);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.tm2-train-marquee-mark i {
+    width: 23px;
+    height: 12px;
+    border-radius: 3px;
+    background: #eef3fb;
+    opacity: 0.9;
+}
+
+.tm2-train-marquee-train-copy,
+.tm2-train-marquee-current,
+.tm2-train-marquee-next,
+.tm2-train-marquee-side {
+    min-width: 0;
+    display: grid;
+}
+
+.tm2-train-marquee-train-copy {
+    gap: 4px;
+}
+
+.tm2-train-marquee-train-copy small,
+.tm2-train-marquee-current span,
+.tm2-train-marquee-next span {
+    color: #7ad8ff;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.tm2-train-marquee-train-copy strong,
+.tm2-train-marquee-current strong,
+.tm2-train-marquee-next strong,
+.tm2-train-marquee-current small,
+.tm2-train-marquee-next small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.tm2-train-marquee-train-copy strong {
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+}
+
+.tm2-train-marquee-cover,
+.tm2-train-marquee-fallback {
+    width: 70px;
+    height: 70px;
+    border-radius: 16px;
+}
+
+.tm2-train-marquee-cover {
+    object-fit: cover;
+    box-shadow: 0 14px 30px rgba(0, 0, 0, 0.28);
+}
+
+.tm2-train-marquee-fallback {
+    display: grid;
+    place-items: center;
+    background: rgba(38, 52, 66, 0.92);
+    color: #edf3fb;
+    font-size: 28px;
+}
+
+.tm2-train-marquee-current,
+.tm2-train-marquee-next {
+    gap: 4px;
+}
+
+.tm2-train-marquee-current strong,
+.tm2-train-marquee-next strong {
+    color: #f2f6fc;
+    font-size: clamp(19px, 1.7vw, 26px);
+    font-weight: 830;
+    letter-spacing: -0.04em;
+}
+
+.tm2-train-marquee-current small,
+.tm2-train-marquee-next small {
+    color: #a3afc0;
+    font-size: 13px;
+}
+
+.tm2-train-marquee-side {
+    gap: 10px;
+    justify-self: end;
+}
+
+.tm2-train-marquee-actions {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.tm2-train-marquee-state {
+    display: grid;
+    justify-items: end;
+    gap: 2px;
+}
+
+.tm2-train-marquee-state b {
+    color: var(--tm2-train-color, #78a8ff);
+    font-size: 11px;
+    font-weight: 850;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.tm2-train-marquee-state strong {
+    color: #f4f8fe;
+    font-size: 25px;
+    font-weight: 860;
+    line-height: 1;
+}
+
+.tm2-train-marquee-state small {
+    color: #8e9bad;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.tm2-train-marquee-progress {
+    width: 118px;
+    height: 7px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.tm2-train-marquee-progress i {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--tm2-train-color, #78a8ff), #f4f8fe);
+    box-shadow: 0 0 18px color-mix(in srgb, var(--tm2-train-color, #78a8ff) 55%, transparent);
+}
+
+.tm2-train-marquee-actions .tm2-status-export {
+    min-width: 118px;
+    height: 38px;
+    font-size: 12px;
+}
+
+.tm2-train-marquee-actions .tm2-status-action {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+}
+
 .tm2-train-status {
     position: absolute;
     z-index: 10;
@@ -2943,6 +3142,46 @@
 }
 
 @media (max-width: 1050px) {
+    .tm2-train-marquee {
+        width: min(620px, calc(100vw - 290px));
+        grid-template-columns: 122px 52px minmax(0, 1fr) 104px;
+        gap: 10px;
+    }
+
+    .tm2-train-marquee-next {
+        display: none;
+    }
+
+    .tm2-train-marquee-cover,
+    .tm2-train-marquee-fallback {
+        width: 52px;
+        height: 52px;
+        border-radius: 13px;
+    }
+
+    .tm2-train-marquee-current strong {
+        font-size: 18px;
+    }
+
+    .tm2-train-marquee-state strong {
+        font-size: 19px;
+    }
+
+    .tm2-train-marquee-progress {
+        width: 96px;
+    }
+
+    .tm2-train-marquee-actions .tm2-status-export {
+        min-width: 98px;
+        padding: 0 10px;
+        font-size: 11px;
+    }
+
+    .tm2-train-marquee-actions .tm2-status-action {
+        width: 34px;
+        height: 34px;
+    }
+
     .tm2-train-status {
         width: min(620px, calc(100vw - 280px));
         grid-template-columns: 65px 44px minmax(110px, 1fr) minmax(90px, 0.7fr) 34px 34px;
@@ -2953,7 +3192,121 @@
     }
 }
 
+@media (max-width: 920px) {
+    .tm2-train-marquee {
+        width: min(560px, calc(100vw - 32px));
+        grid-template-columns: 52px minmax(0, 1fr);
+        align-items: start;
+    }
+
+    .tm2-train-marquee-train,
+    .tm2-train-marquee-next {
+        display: none;
+    }
+
+    .tm2-train-marquee-cover,
+    .tm2-train-marquee-fallback {
+        grid-column: 1;
+        grid-row: 1;
+    }
+
+    .tm2-train-marquee-current {
+        grid-column: 2;
+        grid-row: 1;
+    }
+
+    .tm2-train-marquee-side {
+        grid-column: 1 / -1;
+        grid-row: 2;
+        justify-self: stretch;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-areas:
+            "progress state"
+            "actions actions";
+        align-items: center;
+        gap: 10px 8px;
+        margin-top: 4px;
+    }
+
+    .tm2-train-marquee-state {
+        grid-area: state;
+        justify-items: end;
+    }
+
+    .tm2-train-marquee-progress {
+        grid-area: progress;
+        width: 100%;
+    }
+
+    .tm2-train-marquee-actions {
+        grid-area: actions;
+        justify-self: stretch;
+        justify-content: flex-end;
+    }
+}
+
 @media (max-width: 760px) {
+    .tm2-train-marquee {
+        left: 12px;
+        right: 12px;
+        top: 82px;
+        width: auto;
+        min-height: 0;
+        grid-template-columns: 48px minmax(0, 1fr);
+        gap: 9px;
+        padding: 10px 12px;
+        transform: none;
+    }
+
+    .tm2-train-marquee-cover,
+    .tm2-train-marquee-fallback {
+        width: 48px;
+        height: 48px;
+        border-radius: 11px;
+    }
+
+    .tm2-train-marquee-current strong {
+        font-size: 17px;
+    }
+
+    .tm2-train-marquee-current small {
+        font-size: 11px;
+    }
+
+    .tm2-train-marquee-side {
+        gap: 7px;
+    }
+
+    .tm2-train-marquee-state b,
+    .tm2-train-marquee-state small {
+        display: none;
+    }
+
+    .tm2-train-marquee-state strong {
+        font-size: 17px;
+    }
+
+    .tm2-train-marquee-progress {
+        width: 66px;
+    }
+
+    .tm2-train-marquee-actions {
+        gap: 6px;
+    }
+
+    .tm2-train-marquee-actions .tm2-status-export {
+        min-width: 0;
+        padding: 0 9px;
+        font-size: 11px;
+    }
+
+    .tm2-train-marquee-actions .tm2-status-action {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+    }
+
     .tm2-train-panel {
         top: 72px;
         right: 12px;

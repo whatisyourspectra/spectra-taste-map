@@ -22,6 +22,7 @@ import {
 
 const STORAGE_VERSION = 1;
 const EMPTY_TRAINS = [];
+const HISTORY_LIMIT = 80;
 const METRO_MIN_ZOOM = 0.5;
 const TRAIN_COLORS = ['#f4d35e', '#70d6ff', '#ff7c8b', '#8ee3a8', '#b79cff', '#f7a65a'];
 const DEFAULT_TRAIN_SPEED = 96;
@@ -138,6 +139,7 @@ const COPY = {
         myGroup: '내 그룹',
         exportPlaylist: '내보내기',
         exportSoon: '플레이리스트 내보내기는 준비 중입니다.',
+        nowPassing: '지나는 곡',
     },
     en: {
         studio: 'METRO MAP 2 · STUDIO',
@@ -235,6 +237,7 @@ const COPY = {
         myGroup: 'My group',
         exportPlaylist: 'Export',
         exportSoon: 'Playlist export is coming soon.',
+        nowPassing: 'Now passing',
     },
 };
 
@@ -286,6 +289,23 @@ function persistMaps(storageKey, maps) {
     } catch {
         // Local storage can be unavailable or full. The in-memory studio still works.
     }
+}
+
+function cloneMetroHistoryValue(value) {
+    if (typeof structuredClone === 'function') return structuredClone(value);
+    return JSON.parse(JSON.stringify(value));
+}
+
+function trimHistoryStack(stack) {
+    return stack.length > HISTORY_LIMIT ? stack.slice(stack.length - HISTORY_LIMIT) : stack;
+}
+
+function isEditableShortcutTarget(target) {
+    const element = target instanceof HTMLElement ? target : null;
+    if (!element) return false;
+    if (element.isContentEditable) return true;
+    const tagName = element.tagName?.toLowerCase();
+    return tagName === 'input' || tagName === 'textarea' || tagName === 'select';
 }
 
 function downloadSvg(svgNode, filename) {
@@ -1059,11 +1079,99 @@ export default function TasteMapMetroStudio({
     const panDragRef = useRef(null);
     const suppressStationClickRef = useRef(null);
     const suppressTrainClickRef = useRef(null);
+    const editorStateRef = useRef({ maps, activeMapId, creating });
+    const historyRef = useRef({ past: [], future: [] });
+
+    const sanitizeEditorState = (nextMaps, nextActiveMapId, nextCreating) => {
+        const safeMaps = Array.isArray(nextMaps) ? nextMaps : [];
+        const resolvedActiveMapId = nextActiveMapId && safeMaps.some((map) => map.id === nextActiveMapId)
+            ? nextActiveMapId
+            : (safeMaps[0]?.id || null);
+        return {
+            maps: safeMaps,
+            activeMapId: resolvedActiveMapId,
+            creating: typeof nextCreating === 'boolean' ? nextCreating : safeMaps.length === 0,
+        };
+    };
+
+    const buildEditorSnapshot = (state = editorStateRef.current) => {
+        const source = state || { maps: [], activeMapId: null, creating: true };
+        return {
+            maps: cloneMetroHistoryValue(source.maps || []),
+            activeMapId: source.activeMapId || null,
+            creating: Boolean(source.creating),
+        };
+    };
+
+    const applyEditorState = (nextState) => {
+        const resolved = sanitizeEditorState(nextState.maps, nextState.activeMapId, nextState.creating);
+        setMaps(resolved.maps);
+        persistMaps(storageKey, resolved.maps);
+        setActiveMapId(resolved.activeMapId);
+        setCreating(resolved.creating);
+    };
+
+    const commitMaps = (nextMaps, options = {}) => {
+        const currentState = editorStateRef.current;
+        if (options.trackHistory !== false && currentState) {
+            historyRef.current = {
+                past: trimHistoryStack([...historyRef.current.past, buildEditorSnapshot(currentState)]),
+                future: [],
+            };
+        }
+        const resolved = sanitizeEditorState(
+            nextMaps,
+            Object.prototype.hasOwnProperty.call(options, 'activeMapId') ? options.activeMapId : currentState?.activeMapId,
+            Object.prototype.hasOwnProperty.call(options, 'creating') ? options.creating : currentState?.creating,
+        );
+        applyEditorState(resolved);
+    };
+
+    const undoMapChange = () => {
+        if (!historyRef.current.past.length) return;
+        const currentState = editorStateRef.current;
+        const previous = historyRef.current.past[historyRef.current.past.length - 1];
+        historyRef.current = {
+            past: historyRef.current.past.slice(0, -1),
+            future: trimHistoryStack([...historyRef.current.future, buildEditorSnapshot(currentState)]),
+        };
+        applyEditorState(previous);
+    };
+
+    const redoMapChange = () => {
+        if (!historyRef.current.future.length) return;
+        const currentState = editorStateRef.current;
+        const next = historyRef.current.future[historyRef.current.future.length - 1];
+        historyRef.current = {
+            past: trimHistoryStack([...historyRef.current.past, buildEditorSnapshot(currentState)]),
+            future: historyRef.current.future.slice(0, -1),
+        };
+        applyEditorState(next);
+    };
+
+    useEffect(() => {
+        editorStateRef.current = { maps, activeMapId, creating };
+    }, [maps, activeMapId, creating]);
 
     useEffect(() => {
         if (!open) return undefined;
         const previousOverflow = document.body.style.overflow;
         const handleKeyDown = (event) => {
+            if ((event.metaKey || event.ctrlKey) && !event.altKey && !isEditableShortcutTarget(event.target)) {
+                const key = event.key.toLowerCase();
+                const redo = (key === 'z' && event.shiftKey) || (key === 'y' && event.ctrlKey && !event.metaKey);
+                const undo = key === 'z' && !event.shiftKey;
+                if (redo) {
+                    event.preventDefault();
+                    redoMapChange();
+                    return;
+                }
+                if (undo) {
+                    event.preventDefault();
+                    undoMapChange();
+                    return;
+                }
+            }
             if (event.key === 'Escape') onClose();
         };
         document.body.style.overflow = 'hidden';
@@ -1072,7 +1180,7 @@ export default function TasteMapMetroStudio({
             document.body.style.overflow = previousOverflow;
             window.removeEventListener('keydown', handleKeyDown);
         };
-    }, [open, onClose]);
+    }, [open, onClose, redoMapChange, undoMapChange]);
 
     const libraryTracks = useMemo(
         () => (Array.isArray(tracks) ? tracks : []).filter((track) => track?.id && track?.name),
@@ -1246,6 +1354,12 @@ export default function TasteMapMetroStudio({
     const activeTrainNextTrack = activeTrainView?.journey
         ? trackById.get(activeTrainView.journey.nextStationId)
         : null;
+    const activeTrainSongCount = activeTrainView
+        ? (activeTrainView.train.playlist?.trackIds?.length || activeTrainView.train.routeStationIds.length)
+        : 0;
+    const activeTrainProgressPercent = activeTrainView?.journey
+        ? Math.round((activeTrainView.journey.progress || 0) * 100)
+        : 0;
     useEffect(() => {
         if (!open || creating || !activeMapId) return undefined;
         let measureFrame = null;
@@ -1355,11 +1469,6 @@ export default function TasteMapMetroStudio({
             return !query || `${track.name} ${track.artists || ''}`.toLowerCase().includes(query);
         })
         .slice(0, 28);
-
-    const commitMaps = (nextMaps) => {
-        setMaps(nextMaps);
-        persistMaps(storageKey, nextMaps);
-    };
 
     const updateActiveMap = (updater) => {
         if (!activeMap) return;
@@ -1860,9 +1969,7 @@ export default function TasteMapMetroStudio({
 
     const handleCreate = (map) => {
         const nextMaps = [...maps, { ...map, trains: [] }];
-        commitMaps(nextMaps);
-        setActiveMapId(map.id);
-        setCreating(false);
+        commitMaps(nextMaps, { activeMapId: map.id, creating: false });
         setSelectedStationId(null);
         setSelectedLineKey(null);
         setEditorOpen(false);
@@ -1876,9 +1983,10 @@ export default function TasteMapMetroStudio({
     const handleDeleteMap = () => {
         if (!activeMap) return;
         const nextMaps = maps.filter((map) => map.id !== activeMap.id);
-        commitMaps(nextMaps);
-        setActiveMapId(nextMaps[0]?.id || null);
-        setCreating(nextMaps.length === 0);
+        commitMaps(nextMaps, {
+            activeMapId: nextMaps[0]?.id || null,
+            creating: nextMaps.length === 0,
+        });
         setSelectedStationId(null);
         setSelectedLineKey(null);
         setEditorOpen(false);
@@ -1906,8 +2014,7 @@ export default function TasteMapMetroStudio({
             })),
         };
         const nextMaps = [...maps, duplicate];
-        commitMaps(nextMaps);
-        setActiveMapId(duplicate.id);
+        commitMaps(nextMaps, { activeMapId: duplicate.id });
         setSelectedStationId(null);
         setSelectedTrainId(null);
         setTrainPanelOpen(false);
@@ -2000,6 +2107,26 @@ export default function TasteMapMetroStudio({
                 trackIds: line.trackIds.filter((trackId) => trackId !== selectedStation.trackId),
             })),
         }));
+    };
+
+    const openMapTab = (mapId) => {
+        setActiveMapId(mapId);
+        setSelectedStationId(null);
+        setSelectedLineKey(null);
+        setEditorOpen(false);
+        setTrainPanelOpen(false);
+        setTrainComposerOpen(false);
+        setZoom(1);
+    };
+
+    const toggleTrainPanel = () => {
+        if (trainPanelOpen) closeTrainControl();
+        else openTrainControl();
+    };
+
+    const toggleEditorPanel = () => {
+        closeTrainControl();
+        setEditorOpen((current) => !current);
     };
 
     if (!open) return null;
@@ -2124,6 +2251,97 @@ export default function TasteMapMetroStudio({
                         <div className="tm2-interaction-hint">
                             <strong>{copy.dragHint}</strong>
                             <span>{copy.mapGestureHint}</span>
+                        </div>
+
+                        {activeTrainView && activeTrainCurrentTrack && !trainDrag ? (
+                            <section
+                                className="tm2-train-marquee"
+                                aria-live="polite"
+                                style={{ '--tm2-train-color': getTrainColor(activeTrainView.train) }}
+                            >
+                                <button type="button" className="tm2-train-marquee-train" onClick={openTrainControl}>
+                                    <span className="tm2-train-marquee-mark"><i /></span>
+                                    <span className="tm2-train-marquee-train-copy">
+                                        <small>{copy.nowPassing}</small>
+                                        <strong>{activeTrainView.train.name}</strong>
+                                    </span>
+                                </button>
+                                {activeTrainCurrentTrack.coverUrl ? (
+                                    <img src={activeTrainCurrentTrack.coverUrl} alt="" className="tm2-train-marquee-cover" />
+                                ) : <span className="tm2-train-marquee-fallback" aria-hidden>♪</span>}
+                                <div className="tm2-train-marquee-current">
+                                    <span>{copy.currentLocation}</span>
+                                    <strong>{activeTrainCurrentTrack.name}</strong>
+                                    <small>{activeTrainCurrentTrack.artists || '-'}</small>
+                                </div>
+                                <div className="tm2-train-marquee-next">
+                                    <span>{copy.nextStation}</span>
+                                    <strong>{activeTrainNextTrack?.name || activeTrainCurrentTrack.name}</strong>
+                                    <small>{activeTrainView.train.routeLabel}</small>
+                                </div>
+                                <div className="tm2-train-marquee-side">
+                                    <div className="tm2-train-marquee-state">
+                                        <b>{activeTrainView.train.running === false ? copy.paused : copy.running}</b>
+                                        <strong>{activeTrainSongCount}</strong>
+                                        <small>{copy.songs}</small>
+                                    </div>
+                                    <div className="tm2-train-marquee-progress">
+                                        <i style={{ width: `${activeTrainProgressPercent}%` }} />
+                                    </div>
+                                    <div className="tm2-train-marquee-actions">
+                                        <button
+                                            type="button"
+                                            className="tm2-status-export"
+                                            disabled
+                                            title={copy.exportSoon}
+                                        >
+                                            <span aria-hidden>↗</span>{copy.exportPlaylist}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="tm2-status-action"
+                                            onClick={() => toggleTrain(activeTrainView.train.id)}
+                                            aria-label={activeTrainView.train.running === false ? copy.resume : copy.pause}
+                                        >
+                                            {activeTrainView.train.running === false ? '▶' : 'Ⅱ'}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="tm2-status-action"
+                                            onClick={() => resetTrain(activeTrainView.train.id)}
+                                            aria-label={copy.resetTrain}
+                                        >
+                                            ↺
+                                        </button>
+                                    </div>
+                                </div>
+                            </section>
+                        ) : null}
+
+                        <div className="tm2-bottom-dock">
+                            <button type="button" className="tm2-field-return" onClick={onClose}>← {lang === 'en' ? 'Taste Field' : '취향 필드'}</button>
+                            <span className="tm2-dock-divider" aria-hidden />
+                            <nav className="tm2-map-tabs" aria-label="Metro maps">
+                                {maps.map((map, index) => (
+                                    <button
+                                        key={map.id}
+                                        type="button"
+                                        className={activeMap.id === map.id ? 'active' : ''}
+                                        onClick={() => openMapTab(map.id)}
+                                    >
+                                        <span>{String(index + 1).padStart(2, '0')}</span>{map.name}
+                                    </button>
+                                ))}
+                                <button type="button" className="tm2-new-tab" onClick={() => setCreating(true)}>＋ {copy.newMetro}</button>
+                            </nav>
+                            <span className="tm2-dock-divider" aria-hidden />
+                            <div className="tm2-map-toolbar">
+                                <button type="button" onClick={() => setZoom((value) => Math.max(METRO_MIN_ZOOM, value - 0.12))}>−</button>
+                                <button type="button" className="value" onClick={() => setZoom(1)}>{Math.round(zoom * 100)}%</button>
+                                <button type="button" onClick={() => setZoom((value) => Math.min(1.6, value + 0.12))}>＋</button>
+                            </div>
+                            <button type="button" className={`tm2-train-toggle${trainPanelOpen ? ' active' : ''}`} onClick={toggleTrainPanel}>▰ {copy.trainControl}</button>
+                            <button type="button" className={`tm2-edit-toggle${editorOpen ? ' active' : ''}`} onClick={toggleEditorPanel}>＋ {copy.editMap}</button>
                         </div>
 
                         <div className="tm2-map-actions">
@@ -2495,86 +2713,6 @@ export default function TasteMapMetroStudio({
                             </div>
                         </aside>
 
-                        {activeTrainView && activeTrainCurrentTrack && !trainDrag ? (
-                            <section className="tm2-train-status" aria-live="polite">
-                                <button type="button" className="tm2-status-train" onClick={openTrainControl} style={{ '--tm2-train-color': getTrainColor(activeTrainView.train) }}>
-                                    <span><i /></span>
-                                    <small>{activeTrainView.train.name}</small>
-                                </button>
-                                {activeTrainCurrentTrack.coverUrl ? (
-                                    <img src={activeTrainCurrentTrack.coverUrl} alt="" />
-                                ) : <span className="tm2-status-cover-fallback" aria-hidden>♪</span>}
-                                <div className="tm2-status-current">
-                                    <span>{copy.currentLocation}</span>
-                                    <strong>{activeTrainCurrentTrack.name}</strong>
-                                    <small>{activeTrainCurrentTrack.artists || '-'}</small>
-                                </div>
-                                <div className="tm2-status-next">
-                                    <span>{copy.nextStation}</span>
-                                    <strong>{activeTrainNextTrack?.name || activeTrainCurrentTrack.name}</strong>
-                                </div>
-                                <div className="tm2-status-playlist">
-                                    <span>♫</span>
-                                    <strong>{activeTrainView.train.playlist?.trackIds?.length || activeTrainView.train.routeStationIds.length}</strong>
-                                    <small>{copy.songs}</small>
-                                </div>
-                                <div className="tm2-status-progress" aria-hidden>
-                                    <i style={{ width: `${Math.round((activeTrainView.journey?.progress || 0) * 100)}%` }} />
-                                </div>
-                                <button
-                                    type="button"
-                                    className="tm2-status-export"
-                                    disabled
-                                    title={copy.exportSoon}
-                                >
-                                    <span aria-hidden>↗</span>{copy.exportPlaylist}
-                                </button>
-                                <button type="button" className="tm2-status-action" onClick={() => toggleTrain(activeTrainView.train.id)} aria-label={activeTrainView.train.running === false ? copy.resume : copy.pause}>
-                                    {activeTrainView.train.running === false ? '▶' : 'Ⅱ'}
-                                </button>
-                                <button type="button" className="tm2-status-action" onClick={() => resetTrain(activeTrainView.train.id)} aria-label={copy.resetTrain}>↺</button>
-                            </section>
-                        ) : null}
-
-                        <div className="tm2-bottom-dock">
-                            <button type="button" className="tm2-field-return" onClick={onClose}>← {lang === 'en' ? 'Taste Field' : '취향 필드'}</button>
-                            <span className="tm2-dock-divider" aria-hidden />
-                            <nav className="tm2-map-tabs" aria-label="Metro maps">
-                                {maps.map((map, index) => (
-                                    <button
-                                        key={map.id}
-                                        type="button"
-                                        className={activeMap.id === map.id ? 'active' : ''}
-                                        onClick={() => {
-                                            setActiveMapId(map.id);
-                                            setSelectedStationId(null);
-                                            setSelectedLineKey(null);
-                                            setEditorOpen(false);
-                                            setTrainPanelOpen(false);
-                                            setTrainComposerOpen(false);
-                                            setZoom(1);
-                                        }}
-                                    >
-                                        <span>{String(index + 1).padStart(2, '0')}</span>{map.name}
-                                    </button>
-                                ))}
-                                <button type="button" className="tm2-new-tab" onClick={() => setCreating(true)}>＋ {copy.newMetro}</button>
-                            </nav>
-                            <span className="tm2-dock-divider" aria-hidden />
-                            <div className="tm2-map-toolbar">
-                                <button type="button" onClick={() => setZoom((value) => Math.max(METRO_MIN_ZOOM, value - 0.12))}>−</button>
-                                <button type="button" className="value" onClick={() => setZoom(1)}>{Math.round(zoom * 100)}%</button>
-                                <button type="button" onClick={() => setZoom((value) => Math.min(1.6, value + 0.12))}>＋</button>
-                            </div>
-                            <button type="button" className={`tm2-train-toggle${trainPanelOpen ? ' active' : ''}`} onClick={() => {
-                                if (trainPanelOpen) closeTrainControl();
-                                else openTrainControl();
-                            }}>▰ {copy.trainControl}</button>
-                            <button type="button" className={`tm2-edit-toggle${editorOpen ? ' active' : ''}`} onClick={() => {
-                                closeTrainControl();
-                                setEditorOpen((current) => !current);
-                            }}>＋ {copy.editMap}</button>
-                        </div>
                     </div>
                 ) : null}
             </section>
