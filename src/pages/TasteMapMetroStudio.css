@@ -2907,11 +2907,14 @@
 }
 
 .tm2-train-marquee-side {
-    gap: 10px;
-    justify-self: end;
+    display: contents;
 }
 
 .tm2-train-marquee-actions {
+    grid-column: -2 / -1;
+    grid-row: 2;
+    align-self: end;
+    justify-self: end;
     display: inline-flex;
     align-items: center;
     justify-content: flex-end;
@@ -2919,6 +2922,10 @@
 }
 
 .tm2-train-marquee-state {
+    grid-column: -2 / -1;
+    grid-row: 1;
+    align-self: start;
+    justify-self: end;
     display: grid;
     justify-items: end;
     gap: 2px;
@@ -2946,7 +2953,11 @@
 }
 
 .tm2-train-marquee-progress {
-    width: 118px;
+    grid-column: 1;
+    grid-row: 2;
+    align-self: end;
+    width: 100%;
+    max-width: 148px;
     height: 7px;
     overflow: hidden;
     border-radius: 999px;
@@ -3217,13 +3228,11 @@
 
     .tm2-train-marquee-side {
         grid-column: 1 / -1;
-        grid-row: 2;
-        justify-self: stretch;
+        grid-row: 3;
         display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-columns: 1fr auto;
         grid-template-areas:
-            "progress state"
-            "actions actions";
+            "state actions";
         align-items: center;
         gap: 10px 8px;
         margin-top: 4px;
@@ -3231,18 +3240,22 @@
 
     .tm2-train-marquee-state {
         grid-area: state;
-        justify-items: end;
+        justify-items: start;
     }
 
     .tm2-train-marquee-progress {
-        grid-area: progress;
+        grid-column: 1 / -1;
+        grid-row: 2;
         width: 100%;
+        max-width: none;
+        margin-top: 4px;
     }
 
     .tm2-train-marquee-actions {
-        grid-area: actions;
-        justify-self: stretch;
-        justify-content: flex-end;
+        grid-column: auto;
+        grid-row: auto;
+        align-self: center;
+        justify-self: end;
     }
 }
 
@@ -3285,10 +3298,6 @@
 
     .tm2-train-marquee-state strong {
         font-size: 17px;
-    }
-
-    .tm2-train-marquee-progress {
-        width: 66px;
     }
 
     .tm2-train-marquee-actions {

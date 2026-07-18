@@ -1550,33 +1550,36 @@ export default function TasteMapMetroStudio({
         if (selectedTrainId === trainId) setSelectedTrainId(null);
     };
 
-    const addTrain = () => {
-        const routeStationIds = [...activeDraftStationIds];
+    const createTrain = ({
+        routeStationIds,
+        routeMode = 'line',
+        lineKey = null,
+        routeLabel,
+        name = '',
+        color = TRAIN_COLORS[activeTrains.length % TRAIN_COLORS.length] || TRAIN_COLORS[0],
+        speed = DEFAULT_TRAIN_SPEED,
+    }) => {
         const route = buildMetroTrainRoute(layout, routeStationIds);
         if (!route.valid || routeStationIds.length < 2) {
             setTrainRouteError(copy.selectAtLeastTwo);
-            return;
+            return null;
         }
         const trainNumber = (activeMap?.trains?.length || 0) + 1;
         const createdAt = new Date().toISOString();
         const trainId = `${activeMap.id}-train-${Date.now().toString(36)}`;
-        const line = activeMap.lines.find((item) => item.key === resolvedTrainDraftLineKey);
-        const routeLabel = trainDraftMode === 'line'
-            ? (line?.label || copy.lineRoute)
-            : (lang === 'en' ? 'Custom journey' : '직접 선택 경로');
         const train = {
             id: trainId,
-            name: trainDraftName.trim() || (lang === 'en' ? `Train ${trainNumber}` : `${trainNumber}호 열차`),
-            color: trainDraftColor,
-            speed: trainDraftSpeed,
-            routeMode: trainDraftMode,
-            lineKey: trainDraftMode === 'line' ? resolvedTrainDraftLineKey : null,
-            routeLabel,
+            name: name.trim() || (lang === 'en' ? `Train ${trainNumber}` : `${trainNumber}호 열차`),
+            color,
+            speed,
+            routeMode,
+            lineKey,
+            routeLabel: routeLabel || copy.lineRoute,
             routeStationIds,
             running: true,
             createdAt,
             playlist: {
-                name: `${activeMap.name} · ${routeLabel}`,
+                name: `${activeMap.name} · ${routeLabel || copy.lineRoute}`,
                 trackIds: [...routeStationIds],
                 createdAt,
             },
@@ -1587,11 +1590,56 @@ export default function TasteMapMetroStudio({
             [trainId]: { progress: 0, direction: 1, dwellRemaining: TRAIN_DWELL_SECONDS },
         }));
         setSelectedTrainId(trainId);
+        return trainId;
+    };
+
+    const addTrain = () => {
+        const routeStationIds = [...activeDraftStationIds];
+        const line = activeMap.lines.find((item) => item.key === resolvedTrainDraftLineKey);
+        const routeLabel = trainDraftMode === 'line'
+            ? (line?.label || copy.lineRoute)
+            : (lang === 'en' ? 'Custom journey' : '직접 선택 경로');
+        const createdTrainId = createTrain({
+            routeStationIds,
+            routeMode: trainDraftMode,
+            lineKey: trainDraftMode === 'line' ? resolvedTrainDraftLineKey : null,
+            routeLabel,
+            name: trainDraftName,
+            color: trainDraftColor,
+            speed: trainDraftSpeed,
+        });
+        if (!createdTrainId) return;
         setTrainDraftName('');
         setTrainDraftStationIds([]);
         setTrainRouteError('');
         setTrainComposerOpen(false);
         setSelectedLineKey(null);
+    };
+
+    const createDefaultTrainForActiveMap = () => {
+        if (!activeMap) return null;
+        const candidateLineKeys = [
+            selectedLineKey,
+            resolvedTrainDraftLineKey,
+            ...activeMap.lines.map((line) => line.key),
+        ].filter((value, index, list) => value && list.indexOf(value) === index);
+        const targetLineKey = candidateLineKeys.find((lineKey) => {
+            const route = lineTrainRoutes.get(lineKey);
+            const stationIds = layout.lines.find((line) => line.key === lineKey)?.stationIds || [];
+            return route?.valid && stationIds.length >= 2;
+        });
+        if (!targetLineKey) {
+            setTrainRouteError(copy.selectAtLeastTwo);
+            return null;
+        }
+        const targetLine = activeMap.lines.find((line) => line.key === targetLineKey);
+        const routeStationIds = [...(layout.lines.find((line) => line.key === targetLineKey)?.stationIds || [])];
+        return createTrain({
+            routeStationIds,
+            routeMode: 'line',
+            lineKey: targetLineKey,
+            routeLabel: targetLine?.label || copy.lineRoute,
+        });
     };
 
     const getPointerMapPosition = (event) => {
@@ -2120,8 +2168,22 @@ export default function TasteMapMetroStudio({
     };
 
     const toggleTrainPanel = () => {
-        if (trainPanelOpen) closeTrainControl();
-        else openTrainControl();
+        if (trainPanelOpen) {
+            closeTrainControl();
+            return;
+        }
+        if (!activeTrains.length) {
+            const createdTrainId = createDefaultTrainForActiveMap();
+            if (createdTrainId) {
+                setTrainPanelOpen(false);
+                setTrainComposerOpen(false);
+                setEditorOpen(false);
+                setSelectedStationId(null);
+                setSelectedLineKey(null);
+                return;
+            }
+        }
+        openTrainControl();
     };
 
     const toggleEditorPanel = () => {
@@ -2279,14 +2341,14 @@ export default function TasteMapMetroStudio({
                                     <strong>{activeTrainNextTrack?.name || activeTrainCurrentTrack.name}</strong>
                                     <small>{activeTrainView.train.routeLabel}</small>
                                 </div>
+                                <div className="tm2-train-marquee-progress">
+                                    <i style={{ width: `${activeTrainProgressPercent}%` }} />
+                                </div>
                                 <div className="tm2-train-marquee-side">
                                     <div className="tm2-train-marquee-state">
                                         <b>{activeTrainView.train.running === false ? copy.paused : copy.running}</b>
                                         <strong>{activeTrainSongCount}</strong>
                                         <small>{copy.songs}</small>
-                                    </div>
-                                    <div className="tm2-train-marquee-progress">
-                                        <i style={{ width: `${activeTrainProgressPercent}%` }} />
                                     </div>
                                     <div className="tm2-train-marquee-actions">
                                         <button
