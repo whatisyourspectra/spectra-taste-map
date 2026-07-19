@@ -1,40 +1,36 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
   <title id="title">SPECTRA Mark</title>
-  <desc id="desc">Cinematic glass orb icon for SPECTRA.</desc>
+  <desc id="desc">Minimal S mark with a spectral blue gradient for SPECTRA.</desc>
   <defs>
-    <radialGradient id="bg" cx="28%" cy="20%" r="86%">
-      <stop offset="0%" stop-color="#9dc0ff" stop-opacity="0.96"/>
-      <stop offset="36%" stop-color="#4f7fdd" stop-opacity="0.92"/>
-      <stop offset="78%" stop-color="#14234d" stop-opacity="0.98"/>
-      <stop offset="100%" stop-color="#090f24" stop-opacity="1"/>
-    </radialGradient>
-    <radialGradient id="core" cx="34%" cy="32%" r="68%">
-      <stop offset="0%" stop-color="#f7fbff" stop-opacity="0.95"/>
-      <stop offset="55%" stop-color="#c4d8ff" stop-opacity="0.26"/>
-      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
-    </radialGradient>
-    <linearGradient id="ring" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#d6e7ff" stop-opacity="0.9"/>
-      <stop offset="100%" stop-color="#84aef5" stop-opacity="0.48"/>
+    <linearGradient id="bg" x1="16%" y1="8%" x2="88%" y2="100%">
+      <stop offset="0%" stop-color="#0d1830"/>
+      <stop offset="100%" stop-color="#060b16"/>
     </linearGradient>
-    <filter id="softGlow" x="-60%" y="-60%" width="220%" height="220%">
-      <feGaussianBlur stdDeviation="3.2" result="blur"/>
-      <feColorMatrix in="blur" type="matrix" values="
-        0 0 0 0 0.50
-        0 0 0 0 0.67
-        0 0 0 0 0.98
-        0 0 0 0.46 0"/>
+    <radialGradient id="glow" cx="28%" cy="20%" r="72%">
+      <stop offset="0%" stop-color="#2b5cff" stop-opacity="0.28"/>
+      <stop offset="100%" stop-color="#2b5cff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="lens" cx="34%" cy="28%" r="78%">
+      <stop offset="0%" stop-color="#162752" stop-opacity="0.94"/>
+      <stop offset="100%" stop-color="#0a1124" stop-opacity="0.98"/>
+    </radialGradient>
+    <filter id="softGlow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="5" result="blur"/>
+      <feColorMatrix
+        in="blur"
+        type="matrix"
+        values="
+          0 0 0 0 0.30
+          0 0 0 0 0.48
+          0 0 0 0 1.00
+          0 0 0 0.22 0"/>
     </filter>
   </defs>
 
-  <rect width="128" height="128" rx="28" fill="#050913"/>
-  <circle cx="64" cy="64" r="46" fill="url(#bg)"/>
-  <circle cx="64" cy="64" r="45.4" fill="none" stroke="url(#ring)" stroke-width="1.2"/>
-  <circle cx="64" cy="64" r="34" fill="none" stroke="#c1d8ff" stroke-opacity="0.34" stroke-width="1.1"/>
-  <circle cx="64" cy="64" r="22" fill="none" stroke="#d6e7ff" stroke-opacity="0.38" stroke-width="1"/>
-  <path d="M39 76c8 7 17 10 25 10 9 0 18-3 26-11" fill="none" stroke="#eff6ff" stroke-opacity="0.84" stroke-width="3.2" stroke-linecap="round"/>
-  <path d="M43 53c7-7 14-10 22-10 7 0 15 3 22 9" fill="none" stroke="#d9e8ff" stroke-opacity="0.72" stroke-width="2.2" stroke-linecap="round"/>
-  <circle cx="64" cy="64" r="16" fill="url(#core)"/>
-  <ellipse cx="53" cy="47" rx="15" ry="8" fill="#f6fbff" fill-opacity="0.25"/>
-  <circle cx="64" cy="64" r="40" fill="none" stroke="#9fc0ff" stroke-opacity="0.15" stroke-width="10" filter="url(#softGlow)"/>
+  <rect width="128" height="128" rx="28" fill="url(#bg)"/>
+  <rect width="128" height="128" rx="28" fill="url(#glow)"/>
+  <circle cx="64" cy="64" r="41" fill="none" stroke="#9bbcff" stroke-opacity="0.12" stroke-width="2"/>
+  <circle cx="64" cy="64" r="37" fill="url(#lens)"/>
+  <circle cx="64" cy="64" r="37" fill="none" stroke="#7da5ff" stroke-opacity="0.2" stroke-width="8" filter="url(#softGlow)"/>
+  <circle cx="64" cy="64" r="24" fill="none" stroke="#dce7ff" stroke-opacity="0.08" stroke-width="1.5"/>
 </svg>
