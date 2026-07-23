@@ -731,6 +731,25 @@ function MetroTrainGlyph({ trainView, selected, dragging, onSelect, onDragStart,
     );
 }
 
+function CurrentTrackTrainGlyph({ trainView }) {
+    if (!trainView?.position) return null;
+    const color = getTrainColor(trainView.train);
+    return (
+        <g
+            className="tm2-svg-current-train"
+            transform={`translate(${trainView.position.x} ${trainView.position.y}) rotate(${trainView.position.angle || 0})`}
+            aria-label={trainView.train.name}
+        >
+            <circle r="37" fill={color} opacity="0.12" />
+            <circle r="29" fill="none" stroke={color} strokeWidth="3" opacity="0.7" />
+            <rect x="-24" y="-12" width="48" height="24" rx="8" fill={color} stroke="#071015" strokeWidth="4" />
+            <rect x="-14" y="-6" width="28" height="11" rx="3" fill="#13202a" />
+            <circle cx="-14" cy="13" r="3.5" fill="#071015" />
+            <circle cx="14" cy="13" r="3.5" fill="#071015" />
+        </g>
+    );
+}
+
 function MetroMapSvg({
     map,
     layout,
@@ -742,6 +761,7 @@ function MetroMapSvg({
     dragSnapTarget = null,
     dragMagnetStrength = 0,
     trainViews = [],
+    currentTrackTrainView = null,
     selectedTrainId = null,
     routePreview = null,
     routeDraftStationIds = [],
@@ -764,6 +784,8 @@ function MetroMapSvg({
     onCanvasSelect,
     svgRef,
     interactive = true,
+    compact = false,
+    viewport = null,
 }) {
     const lineByKey = new Map(layout.lines.map((line) => [line.key, line]));
     const safeMapId = String(map.id || 'preview').replace(/[^a-zA-Z0-9_-]/g, '');
@@ -773,8 +795,8 @@ function MetroMapSvg({
     return (
         <svg
             ref={svgRef}
-            className={`tm2-map-svg${routePicking ? ' route-picking' : ''}${draggingTrainId ? ' train-dragging' : ''}`}
-            viewBox={`0 0 ${layout.width} ${layout.height}`}
+            className={`tm2-map-svg${compact ? ' compact' : ''}${routePicking ? ' route-picking' : ''}${draggingTrainId ? ' train-dragging' : ''}`}
+            viewBox={viewport || `0 0 ${layout.width} ${layout.height}`}
             role="img"
             aria-label={`${map.name} metro map`}
             xmlns="http://www.w3.org/2000/svg"
@@ -997,7 +1019,206 @@ function MetroMapSvg({
                     onDragEnd={onTrainDragEnd}
                 />
             ))}
+            {currentTrackTrainView ? <CurrentTrackTrainGlyph trainView={currentTrackTrainView} /> : null}
         </svg>
+    );
+}
+
+function MiniMetroMap({
+    map,
+    layout,
+    selectedTrack,
+    currentTrackTrainView,
+    onTrackSelect,
+    onExpand,
+    onDismiss,
+    lang,
+}) {
+    const baseViewportWidth = 720;
+    const baseViewportHeight = 400;
+    const currentStation = layout?.stations.find((station) => station.trackId === selectedTrack?.id) || null;
+    const currentLine = map?.lines.find((line) => currentStation?.lineKeys.includes(line.key)) || null;
+    const initialCenter = currentStation || {
+        x: (layout?.width || METRO_MAP_WIDTH) / 2,
+        y: (layout?.height || METRO_MAP_HEIGHT) / 2,
+    };
+    const [view, setView] = useState(() => ({ x: initialCenter.x, y: initialCenter.y, zoom: 1 }));
+    const viewRef = useRef(view);
+    const dragRef = useRef(null);
+    const cameraAnimationRef = useRef(null);
+    const previousTrackIdRef = useRef(selectedTrack?.id || null);
+    const viewportWidth = baseViewportWidth / view.zoom;
+    const viewportHeight = baseViewportHeight / view.zoom;
+    const viewport = `${view.x - (viewportWidth / 2)} ${view.y - (viewportHeight / 2)} ${viewportWidth} ${viewportHeight}`;
+
+    useEffect(() => {
+        viewRef.current = view;
+    }, [view]);
+
+    useEffect(() => {
+        const nextTrackId = selectedTrack?.id || null;
+        if (!currentStation || previousTrackIdRef.current === nextTrackId) return undefined;
+        previousTrackIdRef.current = nextTrackId;
+        if (cameraAnimationRef.current) window.cancelAnimationFrame(cameraAnimationRef.current);
+
+        const start = { ...viewRef.current };
+        const target = { x: currentStation.x, y: currentStation.y, zoom: start.zoom };
+        const startedAt = performance.now();
+        const duration = 560;
+        const animateCamera = (now) => {
+            const progress = Math.min(1, Math.max(0, (now - startedAt) / duration));
+            const eased = 1 - ((1 - progress) ** 3);
+            const next = {
+                x: start.x + ((target.x - start.x) * eased),
+                y: start.y + ((target.y - start.y) * eased),
+                zoom: start.zoom,
+            };
+            viewRef.current = next;
+            setView(next);
+            if (progress < 1) {
+                cameraAnimationRef.current = window.requestAnimationFrame(animateCamera);
+            } else {
+                cameraAnimationRef.current = null;
+            }
+        };
+        cameraAnimationRef.current = window.requestAnimationFrame(animateCamera);
+        return () => {
+            if (cameraAnimationRef.current) {
+                window.cancelAnimationFrame(cameraAnimationRef.current);
+                cameraAnimationRef.current = null;
+            }
+        };
+    }, [currentStation, selectedTrack?.id]);
+
+    const handlePointerDown = (event) => {
+        if (event.button !== undefined && event.button !== 0) return;
+        if (event.target?.closest?.('.tm2-svg-station')) return;
+        if (cameraAnimationRef.current) {
+            window.cancelAnimationFrame(cameraAnimationRef.current);
+            cameraAnimationRef.current = null;
+        }
+        const bounds = event.currentTarget.getBoundingClientRect();
+        dragRef.current = {
+            pointerId: event.pointerId,
+            x: event.clientX,
+            y: event.clientY,
+            centerX: view.x,
+            centerY: view.y,
+            viewportWidth,
+            viewportHeight,
+            clientWidth: Math.max(1, bounds.width),
+            clientHeight: Math.max(1, bounds.height),
+        };
+        event.currentTarget.setPointerCapture?.(event.pointerId);
+    };
+
+    const handlePointerMove = (event) => {
+        const drag = dragRef.current;
+        if (!drag || drag.pointerId !== event.pointerId) return;
+        const dx = ((event.clientX - drag.x) / drag.clientWidth) * drag.viewportWidth;
+        const dy = ((event.clientY - drag.y) / drag.clientHeight) * drag.viewportHeight;
+        setView((current) => ({
+            ...current,
+            x: drag.centerX - dx,
+            y: drag.centerY - dy,
+        }));
+    };
+
+    const handlePointerEnd = (event) => {
+        if (dragRef.current?.pointerId !== event.pointerId) return;
+        event.currentTarget.releasePointerCapture?.(event.pointerId);
+        dragRef.current = null;
+    };
+
+    const updateZoom = (nextZoom) => {
+        setView((current) => ({
+            ...current,
+            zoom: Math.min(2.5, Math.max(0.72, Number(nextZoom.toFixed(2)))),
+        }));
+    };
+
+    const resetView = () => {
+        const center = currentStation || initialCenter;
+        setView({ x: center.x, y: center.y, zoom: 1 });
+    };
+
+    return (
+        <aside className="tm2-mini" aria-label={lang === 'en' ? 'Now playing metro map' : '현재 곡 미니 메트로 맵'}>
+            <header className="tm2-mini-head">
+                <div>
+                    <span><i /> LIVE METRO</span>
+                    <strong>{map?.name || (lang === 'en' ? 'Taste Metro' : '취향 메트로')}</strong>
+                </div>
+                <div className="tm2-mini-head-actions">
+                    <button type="button" onClick={onExpand} aria-label={lang === 'en' ? 'Open full metro map' : '메트로 맵 전체 화면'}>
+                        <span aria-hidden>↗</span>
+                    </button>
+                    <button type="button" onClick={onDismiss} aria-label={lang === 'en' ? 'Close mini metro map' : '미니 메트로 맵 닫기'}>×</button>
+                </div>
+            </header>
+
+            <div
+                className="tm2-mini-canvas"
+                onPointerDown={handlePointerDown}
+                onPointerMove={handlePointerMove}
+                onPointerUp={handlePointerEnd}
+                onPointerCancel={handlePointerEnd}
+                onDoubleClick={resetView}
+                onWheel={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    updateZoom(view.zoom * Math.exp(-event.deltaY * 0.0015));
+                }}
+            >
+                {map && layout?.lines.length ? (
+                    <div className="tm2-mini-map-plane">
+                        <MetroMapSvg
+                            map={map}
+                            layout={layout}
+                            selectedStationId={selectedTrack?.id || null}
+                            selectedLineKey={map.mode === 'seed' ? null : (currentLine?.key || null)}
+                            currentTrackTrainView={currentTrackTrainView}
+                            onStationSelect={(trackId) => {
+                                const station = layout.stations.find((item) => item.trackId === trackId);
+                                if (!station?.track) return;
+                                const focusedView = {
+                                    ...viewRef.current,
+                                    x: station.x,
+                                    y: station.y,
+                                };
+                                viewRef.current = focusedView;
+                                setView(focusedView);
+                                onTrackSelect?.(station.track);
+                            }}
+                            onLineSelect={() => {}}
+                            interactive
+                            compact
+                            viewport={viewport}
+                        />
+                    </div>
+                ) : (
+                    <div className="tm2-mini-empty">
+                        <span>⌁</span>
+                        <strong>{lang === 'en' ? 'Build your first metro map' : '첫 노선도를 만들어 보세요'}</strong>
+                    </div>
+                )}
+                <div className="tm2-mini-zoom" onPointerDown={(event) => event.stopPropagation()}>
+                    <button type="button" onClick={() => updateZoom(view.zoom - 0.16)} aria-label="zoom out">−</button>
+                    <button type="button" className="value" onClick={resetView}>{Math.round(view.zoom * 100)}%</button>
+                    <button type="button" onClick={() => updateZoom(view.zoom + 0.16)} aria-label="zoom in">＋</button>
+                </div>
+            </div>
+
+            <footer className="tm2-mini-now">
+                {selectedTrack?.coverUrl ? <img src={selectedTrack.coverUrl} alt="" /> : <span className="tm2-mini-cover-fallback">♪</span>}
+                <div>
+                    <span>{lang === 'en' ? 'TRAIN AT CURRENT TRACK' : '현재 곡 위치의 열차'}</span>
+                    <strong>{selectedTrack?.name || (lang === 'en' ? 'Select a track' : '곡을 선택하세요')}</strong>
+                    <small>{selectedTrack?.artists || currentLine?.label || '-'}</small>
+                </div>
+                <b style={{ '--tm2-current-line': currentLine?.color || '#78a8ff' }}>{currentLine?.label || (lang === 'en' ? 'Metro' : '메트로')}</b>
+            </footer>
+        </aside>
     );
 }
 
@@ -1032,7 +1253,12 @@ function getTrainJourneyState(route, runtime) {
 
 export default function TasteMapMetroStudio({
     open,
+    expanded = false,
     onClose,
+    onExpand,
+    onDismiss,
+    onTrackSelect,
+    selectedTrack = null,
     tracks,
     activeTrackIds,
     assignmentByTrackId,
@@ -1154,7 +1380,7 @@ export default function TasteMapMetroStudio({
     }, [maps, activeMapId, creating]);
 
     useEffect(() => {
-        if (!open) return undefined;
+        if (!open || !expanded) return undefined;
         const previousOverflow = document.body.style.overflow;
         const handleKeyDown = (event) => {
             if ((event.metaKey || event.ctrlKey) && !event.altKey && !isEditableShortcutTarget(event.target)) {
@@ -1180,7 +1406,7 @@ export default function TasteMapMetroStudio({
             document.body.style.overflow = previousOverflow;
             window.removeEventListener('keydown', handleKeyDown);
         };
-    }, [open, onClose, redoMapChange, undoMapChange]);
+    }, [expanded, open, onClose, redoMapChange, undoMapChange]);
 
     const libraryTracks = useMemo(
         () => (Array.isArray(tracks) ? tracks : []).filter((track) => track?.id && track?.name),
@@ -1200,7 +1426,12 @@ export default function TasteMapMetroStudio({
         )),
         [libraryTracks, activeTrackIds, customGroupTrackIds],
     );
-    const trackById = useMemo(() => new Map(sourceTracks.map((track) => [track.id, track])), [sourceTracks]);
+    const displayTracks = useMemo(() => (
+        selectedTrack?.id && !sourceTracks.some((track) => track.id === selectedTrack.id)
+            ? [...sourceTracks, selectedTrack]
+            : sourceTracks
+    ), [selectedTrack, sourceTracks]);
+    const trackById = useMemo(() => new Map(displayTracks.map((track) => [track.id, track])), [displayTracks]);
     const lineOptions = useMemo(() => {
         const sourceTrackIds = new Set(sourceTracks.map((track) => track.id));
         const customLines = (Array.isArray(customGroups) ? customGroups : [])
@@ -1225,6 +1456,32 @@ export default function TasteMapMetroStudio({
         return [...customLines, ...tasteLines];
     }, [sourceTracks, tasteLineTracks, assignmentByTrackId, clusterById, customGroups]);
     const activeMap = maps.find((map) => map.id === activeMapId) || maps[0] || null;
+    const miniMap = useMemo(() => {
+        if (!selectedTrack?.id || !displayTracks.length) return null;
+        const existingSeedMap = maps.find((map) => (
+            map.selectionDriven && map.mode === 'seed' && map.seedTrackId === selectedTrack.id
+        ));
+        if (existingSeedMap) return existingSeedMap;
+        const seedLines = buildSeedGenreLines(selectedTrack, displayTracks, 4);
+        const selectedLines = seedLines.length ? seedLines : lineOptions.slice(0, 4);
+        if (!selectedLines.length) return null;
+        const definition = createMetroMapDefinition({
+            name: `${selectedTrack.name} · Metro`,
+            mode: 'seed',
+            selectedLines,
+            tracks: displayTracks,
+            maxPerLine: 8,
+            maxTotal: 32,
+            transferMode: 'none',
+            transferCount: 0,
+            seedTrackId: selectedTrack.id,
+        });
+        return { ...definition, selectionDriven: true };
+    }, [displayTracks, lineOptions, maps, selectedTrack]);
+    const miniLayout = useMemo(
+        () => buildMetroMapLayout(miniMap, displayTracks),
+        [displayTracks, miniMap],
+    );
     const mapForLayout = useMemo(() => {
         if (!activeMap || !dragPosition) return activeMap;
         return {
@@ -1236,8 +1493,8 @@ export default function TasteMapMetroStudio({
         };
     }, [activeMap, dragPosition]);
     const layout = useMemo(
-        () => buildMetroMapLayout(mapForLayout, sourceTracks, { transientStationId: draggingStationId }),
-        [mapForLayout, sourceTracks, draggingStationId],
+        () => buildMetroMapLayout(mapForLayout, displayTracks, { transientStationId: draggingStationId }),
+        [mapForLayout, displayTracks, draggingStationId],
     );
     const activeTrains = Array.isArray(activeMap?.trains) ? activeMap.trains : EMPTY_TRAINS;
     const trainRoutes = useMemo(() => new Map(
@@ -1343,6 +1600,24 @@ export default function TasteMapMetroStudio({
             journey: getTrainJourneyState(route, runtime),
         };
     }).filter(Boolean);
+    const miniCurrentStation = miniLayout.stations.find((station) => station.trackId === selectedTrack?.id)
+        || miniLayout.stations[0]
+        || null;
+    const fullCurrentStation = layout.stations.find((station) => station.trackId === selectedTrack?.id)
+        || layout.stations[0]
+        || null;
+    const makeCurrentTrackTrainView = (station) => station && selectedTrack ? {
+        train: {
+            id: `current-track-${selectedTrack.id}`,
+            name: `${selectedTrack.name} · ${lang === 'en' ? 'current track' : '현재 곡'}`,
+            color: station.lineKeys
+                .map((lineKey) => miniMap?.lines.find((line) => line.key === lineKey)?.color)
+                .find(Boolean) || TRAIN_COLORS[0],
+        },
+        position: { x: station.x, y: station.y, angle: 0 },
+    } : null;
+    const miniCurrentTrackTrainView = makeCurrentTrackTrainView(miniCurrentStation);
+    const fullCurrentTrackTrainView = makeCurrentTrackTrainView(fullCurrentStation);
     const resolvedSelectedTrainId = activeTrains.some((train) => train.id === selectedTrainId)
         ? selectedTrainId
         : (activeTrains[0]?.id || null);
@@ -1368,6 +1643,17 @@ export default function TasteMapMetroStudio({
                 const stage = canvasStageRef.current;
                 const svg = svgRef.current;
                 if (!stage || !svg) return;
+                const focusStation = layout.stations.find((station) => station.trackId === selectedTrack?.id);
+                if (focusStation) {
+                    const currentZoom = zoomRef.current || 1;
+                    const gutter = METRO_GRID_SIZE * 10;
+                    stage.scrollTo({
+                        left: Math.max(0, ((gutter + focusStation.x) * currentZoom) - (stage.clientWidth / 2)),
+                        top: Math.max(0, ((gutter + focusStation.y) * currentZoom) - (stage.clientHeight / 2)),
+                        behavior: 'smooth',
+                    });
+                    return;
+                }
                 const stationRects = [...svg.querySelectorAll('.tm2-svg-station')]
                     .map((station) => station.getBoundingClientRect())
                     .filter((rect) => rect.width > 0 && rect.height > 0);
@@ -1391,7 +1677,7 @@ export default function TasteMapMetroStudio({
             window.cancelAnimationFrame(frame);
             if (measureFrame) window.cancelAnimationFrame(measureFrame);
         };
-    }, [open, creating, activeMapId]);
+    }, [open, creating, activeMapId, selectedTrack?.id]);
     useEffect(() => {
         zoomRef.current = zoom;
     }, [zoom]);
@@ -1979,7 +2265,9 @@ export default function TasteMapMetroStudio({
             });
             return;
         }
-        setSelectedStationId((current) => current === trackId ? null : trackId);
+        const track = trackById.get(trackId);
+        setSelectedStationId(trackId);
+        if (track) onTrackSelect?.(track);
     };
 
     const handleCanvasPointerDown = (event) => {
@@ -2191,7 +2479,43 @@ export default function TasteMapMetroStudio({
         setEditorOpen((current) => !current);
     };
 
+    const expandSelectionMap = () => {
+        if (!miniMap) {
+            onExpand?.();
+            return;
+        }
+        const mapAlreadyStored = maps.some((map) => map.id === miniMap.id);
+        commitMaps(
+            mapAlreadyStored ? maps : [miniMap, ...maps],
+            {
+                activeMapId: miniMap.id,
+                creating: false,
+                trackHistory: false,
+            },
+        );
+        setSelectedStationId(selectedTrack?.id || null);
+        setSelectedLineKey(null);
+        setEditorOpen(false);
+        closeTrainControl();
+        onExpand?.();
+    };
+
     if (!open) return null;
+
+    if (!expanded) {
+        return (
+            <MiniMetroMap
+                map={miniMap}
+                layout={miniLayout}
+                selectedTrack={selectedTrack}
+                currentTrackTrainView={miniCurrentTrackTrainView}
+                onTrackSelect={onTrackSelect}
+                onExpand={expandSelectionMap}
+                onDismiss={onDismiss}
+                lang={lang}
+            />
+        );
+    }
 
     return (
         <div className="tm2-backdrop" role="presentation">
@@ -2244,6 +2568,7 @@ export default function TasteMapMetroStudio({
                                         dragSnapTarget={dragPosition?.snapTarget || null}
                                         dragMagnetStrength={dragPosition?.magnetStrength || 0}
                                         trainViews={trainViews}
+                                        currentTrackTrainView={fullCurrentTrackTrainView}
                                         selectedTrainId={resolvedSelectedTrainId}
                                         routePreview={trainPanelOpen && trainComposerOpen ? trainDraftRoute : null}
                                         routeDraftStationIds={trainPanelOpen && trainComposerOpen ? activeDraftStationIds : []}

@@ -1,6 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useTasteData } from '../context/TasteDataContext';
-import TasteMapSubwayGenerator from './TasteMapSubwayGenerator';
 import TasteMapMetroStudio from './TasteMapMetroStudio';
 import './TasteMapPage.css';
 
@@ -336,8 +335,6 @@ const MAP_VIEW_DEFINITIONS = [
     { id: 'field', label: 'Taste Field', available: true, showInNavigation: false },
     { id: 'spotify', label: 'Spotify Field', available: true },
     { id: 'constellation', label: 'Constellation', available: true },
-    { id: 'metro', label: 'Metro Map', available: true },
-    { id: 'metro2', label: 'Metro Map 2', navLabel: 'Metro 2', available: true },
 ];
 
 // ─── Clustering helpers ────────────────────────────────────────────────────────
@@ -1879,7 +1876,6 @@ export default function TasteMapPage() {
     const [shareMessage, setShareMessage] = useState(null);
     const [showUtilityControls, setShowUtilityControls] = useState(false);
     const [dashboardOpen, setDashboardOpen] = useState(false);
-    const [subwayGeneratorOpen, setSubwayGeneratorOpen] = useState(false);
     const [metroStudioOpen, setMetroStudioOpen] = useState(false);
     const [ambientUiVisible, setAmbientUiVisible] = useState(false);
     const [formationPhase, setFormationPhase] = useState('idle'); // idle | dark | seed | organize | labels | settled
@@ -1959,16 +1955,6 @@ export default function TasteMapPage() {
     }, []);
 
     const handleMapViewChange = useCallback((nextView) => {
-        if (nextView === 'metro') {
-            setSubwayGeneratorOpen(true);
-            setMetroStudioOpen(false);
-            return;
-        }
-        if (nextView === 'metro2') {
-            setMetroStudioOpen(true);
-            setSubwayGeneratorOpen(false);
-            return;
-        }
         if (nextView === activeMapView) return;
         bubbleAutoCenteredRef.current = false;
         pendingBubbleFocusRef.current = nextView === 'spotify'
@@ -4377,6 +4363,7 @@ export default function TasteMapPage() {
     const openTrackCard = useCallback((track, source = 'library') => {
         if (!track?.id) return;
         setSelectedTrackCard({ track, source });
+        setNowPlayingTrackId(track.id);
         setBubbleContextMenu(null);
         setHoveredBubbleId(source === 'library' ? track.id : null);
     }, []);
@@ -4587,7 +4574,7 @@ export default function TasteMapPage() {
     }, [bubbleContextMenu]);
 
     useEffect(() => {
-        if (!selectedTrackCard) return undefined;
+        if (!selectedTrackCard || metroStudioOpen) return undefined;
         const handleKeyDown = (event) => {
             if (event.key !== 'Escape') return;
             setSelectedTrackCard(null);
@@ -4595,7 +4582,7 @@ export default function TasteMapPage() {
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [selectedTrackCard]);
+    }, [metroStudioOpen, selectedTrackCard]);
 
     const toggleShareTrack = useCallback((track) => {
         if (!track?.id) return;
@@ -4941,36 +4928,6 @@ export default function TasteMapPage() {
             alreadyInField: knownTrackIds.has(track.id) || Boolean(savedFromRecIds[track.id]),
         };
     }, [selectedTrackCard, assignmentByTrackId, clusterById, xAxis, yAxis, knownTrackIds, savedFromRecIds]);
-    const selectedTrackCardPosition = useMemo(() => {
-        if (!selectedTrackDetails || !bubbleFieldSize.w || !bubbleFieldSize.h) return null;
-        const trackId = selectedTrackDetails.track.id;
-        const libraryItem = bubbleRenderItems.find((item) => item.node.track.id === trackId);
-        const recItem = exploreRenderItems.find((item) => item.track.id === trackId && item.inView);
-        const item = selectedTrackDetails.source === 'recommendation' ? recItem : libraryItem;
-        if (!item) return null;
-
-        const targetX = clamp01(item.xPercent / 100) * bubbleFieldSize.w;
-        const targetY = clamp01(item.yPercent / 100) * bubbleFieldSize.h;
-        const targetRadius = (item.sizePx || 52) / 2;
-        const cardW = 370;
-        const cardH = 352;
-        const placeRight = targetX < bubbleFieldSize.w * 0.58;
-        const rawLeft = placeRight
-            ? targetX + targetRadius + 24
-            : targetX - cardW - targetRadius - 24;
-        const left = Math.min(
-            Math.max(18, rawLeft),
-            Math.max(18, bubbleFieldSize.w - cardW - 18),
-        );
-        const maxTop = Math.max(90, bubbleFieldSize.h - cardH - 88);
-        const top = Math.min(Math.max(90, targetY - 104), maxTop);
-        return {
-            left,
-            top,
-            side: placeRight ? 'right' : 'left',
-            tailY: Math.min(cardH - 30, Math.max(34, targetY - top)),
-        };
-    }, [selectedTrackDetails, bubbleFieldSize.w, bubbleFieldSize.h, bubbleRenderItems, exploreRenderItems]);
     const followedArtistPreview = useMemo(
         () => (librarySummary?.followedArtists || []),
         [librarySummary],
@@ -5503,20 +5460,8 @@ export default function TasteMapPage() {
                                     type="button"
                                     role="tab"
                                     data-map-view={definition.id}
-                                    className={`tm-view-option${(
-                                        definition.id === 'metro'
-                                            ? subwayGeneratorOpen
-                                            : definition.id === 'metro2'
-                                                ? metroStudioOpen
-                                                : activeMapView === definition.id
-                                    ) ? ' active' : ''}`}
-                                    aria-selected={
-                                        definition.id === 'metro'
-                                            ? subwayGeneratorOpen
-                                            : definition.id === 'metro2'
-                                                ? metroStudioOpen
-                                                : activeMapView === definition.id
-                                    }
+                                    className={`tm-view-option${activeMapView === definition.id ? ' active' : ''}`}
+                                    aria-selected={activeMapView === definition.id}
                                     disabled={!definition.available}
                                     onClick={() => handleMapViewChange(definition.id)}
                                     aria-label={definition.label}
@@ -5705,14 +5650,6 @@ export default function TasteMapPage() {
                                         title={shareMode ? '선택 모드 종료' : '드래그로 곡 선택'}
                                     >
                                         {shareMode ? copy.shareOn : copy.share}
-                                    </button>
-                                    <button
-                                        className={`tm-dashboard-toggle${subwayGeneratorOpen ? ' active' : ''}`}
-                                        onClick={() => setSubwayGeneratorOpen(true)}
-                                        title="지하철 노선도 생성기 열기"
-                                        disabled={tracks.length < 20}
-                                    >
-                                        {copy.subwayGenerator}
                                     </button>
                                 </div>
                                 <button
@@ -6166,98 +6103,6 @@ export default function TasteMapPage() {
                                             aria-hidden
                                         />
                                     )}
-                                    {selectedTrackDetails && selectedTrackCardPosition && (
-                                        <aside
-                                            className={`tm-track-detail-card side-${selectedTrackCardPosition.side}`}
-                                            style={{
-                                                left: `${selectedTrackCardPosition.left}px`,
-                                                top: `${selectedTrackCardPosition.top}px`,
-                                                '--tm-detail-tail-y': `${selectedTrackCardPosition.tailY}px`,
-                                            }}
-                                            role="dialog"
-                                            aria-label={`${selectedTrackDetails.track.name} details`}
-                                            onPointerDown={(event) => event.stopPropagation()}
-                                        >
-                                            <button
-                                                type="button"
-                                                className="tm-track-detail-close"
-                                                onClick={() => {
-                                                    setSelectedTrackCard(null);
-                                                    setHoveredBubbleId(null);
-                                                }}
-                                                aria-label={lang === 'en' ? 'Close track details' : '곡 상세 닫기'}
-                                            >
-                                                ×
-                                            </button>
-                                            <div className="tm-track-detail-head">
-                                                <div
-                                                    className={`tm-track-detail-cover${selectedTrackDetails.track.coverUrl ? ' has-image' : ''}`}
-                                                    style={selectedTrackDetails.track.coverUrl
-                                                        ? { backgroundImage: `url(${selectedTrackDetails.track.coverUrl})` }
-                                                        : undefined}
-                                                    aria-hidden
-                                                >
-                                                    {!selectedTrackDetails.track.coverUrl && <span>♪</span>}
-                                                </div>
-                                                <div className="tm-track-detail-heading">
-                                                    <span className={`tm-track-detail-source ${selectedTrackDetails.source}`}>
-                                                        {selectedTrackDetails.source === 'recommendation'
-                                                            ? copy.discoveryRecommendation
-                                                            : copy.discoveryMyBubble}
-                                                    </span>
-                                                    <h3>{selectedTrackDetails.track.name}</h3>
-                                                    <p>{selectedTrackDetails.track.artists}</p>
-                                                </div>
-                                            </div>
-                                            <div className="tm-track-detail-context">
-                                                <span>{selectedTrackDetails.cluster?.label?.name || (lang === 'en' ? 'New territory' : '새로운 영역')}</span>
-                                                <b>{xMeta.short} {selectedTrackDetails.xValue}</b>
-                                                <b>{yMeta.short} {selectedTrackDetails.yValue}</b>
-                                            </div>
-                                            {selectedTrackDetails.genres.length > 0 && (
-                                                <div className="tm-track-detail-tags">
-                                                    {selectedTrackDetails.genres.map((genre) => (
-                                                        <span key={`detail-${selectedTrackDetails.track.id}-${genre}`}>{getGenreIdentity(genre).short}</span>
-                                                    ))}
-                                                </div>
-                                            )}
-                                            <div className="tm-track-detail-primary-actions">
-                                                {selectedTrackDetails.cluster ? (
-                                                    <button
-                                                        type="button"
-                                                        className="tm-track-detail-primary"
-                                                        onClick={() => applySpectraExpandByTrackId(selectedTrackDetails.track.id)}
-                                                    >
-                                                        <span aria-hidden>◎</span>{copy.trackExploreAction}
-                                                    </button>
-                                                ) : (
-                                                    <button
-                                                        type="button"
-                                                        className="tm-track-detail-primary"
-                                                        disabled={selectedTrackDetails.alreadyInField}
-                                                        onClick={() => saveTrackToMyBubble(selectedTrackDetails.track)}
-                                                    >
-                                                        <span aria-hidden>{selectedTrackDetails.alreadyInField ? '✓' : '+'}</span>
-                                                        {selectedTrackDetails.alreadyInField ? copy.recAdded : copy.trackAddAction}
-                                                    </button>
-                                                )}
-                                            </div>
-                                            <div className="tm-track-detail-external">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => openTrackExternal(selectedTrackDetails.track, 'spotify')}
-                                                >
-                                                    {copy.spotifySearch}<span aria-hidden>↗</span>
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => openTrackExternal(selectedTrackDetails.track, 'youtube')}
-                                                >
-                                                    {copy.youtubeSearch}<span aria-hidden>↗</span>
-                                                </button>
-                                            </div>
-                                        </aside>
-                                    )}
                                     {bubbleContextMenu && (
                                         <div
                                             className="tm-bubble-context-menu"
@@ -6583,26 +6428,21 @@ export default function TasteMapPage() {
                 </>
             )}
 
-            <TasteMapSubwayGenerator
-                open={subwayGeneratorOpen}
-                onClose={() => setSubwayGeneratorOpen(false)}
-                baseMapView={activeMapView === 'spotify' ? 'spotify' : 'field'}
-                onNavigateView={(nextView) => {
-                    setSubwayGeneratorOpen(false);
-                    handleMapViewChange(nextView);
-                }}
-                tracks={tracks}
-                activeTrackIds={activeTrackIds}
-                assignmentByTrackId={assignmentByTrackId}
-                clusterById={clusterById}
-                xAxis={xAxis}
-                yAxis={yAxis}
-                lang={lang}
-            />
-
             <TasteMapMetroStudio
-                open={metroStudioOpen}
+                open={Boolean(selectedTrackDetails) || metroStudioOpen}
+                expanded={metroStudioOpen}
                 onClose={() => setMetroStudioOpen(false)}
+                onExpand={() => setMetroStudioOpen(true)}
+                onDismiss={() => {
+                    setMetroStudioOpen(false);
+                    setSelectedTrackCard(null);
+                    setHoveredBubbleId(null);
+                }}
+                onTrackSelect={(track) => openTrackCard(
+                    track,
+                    knownTrackIds.has(track.id) ? 'library' : 'recommendation',
+                )}
+                selectedTrack={selectedTrackDetails?.track || null}
                 tracks={tracks}
                 activeTrackIds={activeTrackIds}
                 assignmentByTrackId={assignmentByTrackId}
