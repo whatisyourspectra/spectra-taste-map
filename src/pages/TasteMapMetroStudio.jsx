@@ -1028,8 +1028,12 @@ function MiniMetroMap({
     map,
     layout,
     selectedTrack,
+    trackContext,
     currentTrackTrainView,
     onTrackSelect,
+    onExploreTrack,
+    onAddTrack,
+    onOpenTrack,
     onExpand,
     onDismiss,
     lang,
@@ -1043,6 +1047,7 @@ function MiniMetroMap({
         y: (layout?.height || METRO_MAP_HEIGHT) / 2,
     };
     const [view, setView] = useState(() => ({ x: initialCenter.x, y: initialCenter.y, zoom: 1 }));
+    const [detailsOpen, setDetailsOpen] = useState(false);
     const viewRef = useRef(view);
     const dragRef = useRef(null);
     const cameraAnimationRef = useRef(null);
@@ -1207,16 +1212,58 @@ function MiniMetroMap({
                     <button type="button" className="value" onClick={resetView}>{Math.round(view.zoom * 100)}%</button>
                     <button type="button" onClick={() => updateZoom(view.zoom + 0.16)} aria-label="zoom in">＋</button>
                 </div>
+                {detailsOpen && trackContext ? (
+                    <section className="tm2-mini-details" onPointerDown={(event) => event.stopPropagation()}>
+                        <div className="tm2-mini-details-head">
+                            <div>
+                                <span>{trackContext.source === 'recommendation'
+                                    ? (lang === 'en' ? 'RECOMMENDATION' : '추천 곡')
+                                    : (lang === 'en' ? 'MY TASTE FIELD' : '내 취향 필드')}</span>
+                                <strong>{trackContext.cluster?.label?.name || (lang === 'en' ? 'New territory' : '새로운 영역')}</strong>
+                            </div>
+                            <button type="button" onClick={() => setDetailsOpen(false)} aria-label={lang === 'en' ? 'Close track info' : '곡 정보 닫기'}>×</button>
+                        </div>
+                        <div className="tm2-mini-detail-values">
+                            <b>{trackContext.xLabel} {trackContext.xValue}</b>
+                            <b>{trackContext.yLabel} {trackContext.yValue}</b>
+                        </div>
+                        {trackContext.genres?.length ? (
+                            <div className="tm2-mini-detail-tags">
+                                {trackContext.genres.map((genre) => <span key={`${selectedTrack?.id}-${genre}`}>{genre}</span>)}
+                            </div>
+                        ) : null}
+                    </section>
+                ) : null}
             </div>
 
-            <footer className="tm2-mini-now">
-                {selectedTrack?.coverUrl ? <img src={selectedTrack.coverUrl} alt="" /> : <span className="tm2-mini-cover-fallback">♪</span>}
-                <div>
-                    <span>{lang === 'en' ? 'TRAIN AT CURRENT TRACK' : '현재 곡 위치의 열차'}</span>
-                    <strong>{selectedTrack?.name || (lang === 'en' ? 'Select a track' : '곡을 선택하세요')}</strong>
-                    <small>{selectedTrack?.artists || currentLine?.label || '-'}</small>
+            <footer className="tm2-mini-footer">
+                <div className="tm2-mini-now">
+                    {selectedTrack?.coverUrl ? <img src={selectedTrack.coverUrl} alt="" /> : <span className="tm2-mini-cover-fallback">♪</span>}
+                    <div>
+                        <span>{lang === 'en' ? 'TRAIN AT CURRENT TRACK' : '현재 곡 위치의 열차'}</span>
+                        <strong>{selectedTrack?.name || (lang === 'en' ? 'Select a track' : '곡을 선택하세요')}</strong>
+                        <small>{selectedTrack?.artists || currentLine?.label || '-'}</small>
+                    </div>
+                    <b style={{ '--tm2-current-line': currentLine?.color || '#78a8ff' }}>{currentLine?.label || (lang === 'en' ? 'Metro' : '메트로')}</b>
                 </div>
-                <b style={{ '--tm2-current-line': currentLine?.color || '#78a8ff' }}>{currentLine?.label || (lang === 'en' ? 'Metro' : '메트로')}</b>
+                <nav className="tm2-mini-actions" aria-label={lang === 'en' ? 'Track actions' : '곡 기능'}>
+                    <button type="button" disabled={!trackContext?.cluster} onClick={onExploreTrack}>
+                        <span aria-hidden>◎</span>{lang === 'en' ? 'Explore' : '탐색'}
+                    </button>
+                    <button type="button" disabled={!trackContext?.track || trackContext.alreadyInField} onClick={onAddTrack}>
+                        <span aria-hidden>{trackContext?.alreadyInField ? '✓' : '+'}</span>
+                        {trackContext?.alreadyInField ? (lang === 'en' ? 'Added' : '추가됨') : (lang === 'en' ? 'Add' : '추가')}
+                    </button>
+                    <button type="button" disabled={!selectedTrack} onClick={() => onOpenTrack?.('spotify')}>
+                        <span aria-hidden>S</span>Spotify
+                    </button>
+                    <button type="button" disabled={!selectedTrack} onClick={() => onOpenTrack?.('youtube')}>
+                        <span aria-hidden>▶</span>YouTube
+                    </button>
+                    <button type="button" className={detailsOpen ? 'active' : ''} disabled={!trackContext} onClick={() => setDetailsOpen((current) => !current)}>
+                        <span aria-hidden>i</span>{lang === 'en' ? 'Info' : '정보'}
+                    </button>
+                </nav>
             </footer>
         </aside>
     );
@@ -1258,6 +1305,10 @@ export default function TasteMapMetroStudio({
     onExpand,
     onDismiss,
     onTrackSelect,
+    trackContext = null,
+    onExploreTrack,
+    onAddTrack,
+    onOpenTrack,
     selectedTrack = null,
     tracks,
     activeTrackIds,
@@ -2508,8 +2559,12 @@ export default function TasteMapMetroStudio({
                 map={miniMap}
                 layout={miniLayout}
                 selectedTrack={selectedTrack}
+                trackContext={trackContext}
                 currentTrackTrainView={miniCurrentTrackTrainView}
                 onTrackSelect={onTrackSelect}
+                onExploreTrack={onExploreTrack}
+                onAddTrack={onAddTrack}
+                onOpenTrack={onOpenTrack}
                 onExpand={expandSelectionMap}
                 onDismiss={onDismiss}
                 lang={lang}

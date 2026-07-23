@@ -4923,11 +4923,13 @@ export default function TasteMapPage() {
             source: selectedTrackCard.source,
             cluster,
             genres: getTrackGenres(track).slice(0, 4),
+            xLabel: xMeta.short,
             xValue: Math.round(clamp01(getTrackFeature(track, xAxis)) * 100),
+            yLabel: yMeta.short,
             yValue: Math.round(clamp01(getTrackFeature(track, yAxis)) * 100),
             alreadyInField: knownTrackIds.has(track.id) || Boolean(savedFromRecIds[track.id]),
         };
-    }, [selectedTrackCard, assignmentByTrackId, clusterById, xAxis, yAxis, knownTrackIds, savedFromRecIds]);
+    }, [selectedTrackCard, assignmentByTrackId, clusterById, xAxis, xMeta.short, yAxis, yMeta.short, knownTrackIds, savedFromRecIds]);
     const followedArtistPreview = useMemo(
         () => (librarySummary?.followedArtists || []),
         [librarySummary],
@@ -6442,6 +6444,18 @@ export default function TasteMapPage() {
                     track,
                     knownTrackIds.has(track.id) ? 'library' : 'recommendation',
                 )}
+                trackContext={selectedTrackDetails}
+                onExploreTrack={() => {
+                    if (selectedTrackDetails?.cluster) {
+                        applySpectraExpandByTrackId(selectedTrackDetails.track.id);
+                    }
+                }}
+                onAddTrack={() => {
+                    if (selectedTrackDetails?.track) saveTrackToMyBubble(selectedTrackDetails.track);
+                }}
+                onOpenTrack={(service) => {
+                    if (selectedTrackDetails?.track) openTrackExternal(selectedTrackDetails.track, service);
+                }}
                 selectedTrack={selectedTrackDetails?.track || null}
                 tracks={tracks}
                 activeTrackIds={activeTrackIds}
