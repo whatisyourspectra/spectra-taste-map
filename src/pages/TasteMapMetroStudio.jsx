@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import './TasteMapMetroStudio.css';
+import MetroYouTubePlayer from './MetroYouTubePlayer';
 import {
     buildMetroMapLayout,
     buildMetroTrainRoute,
@@ -135,9 +136,13 @@ const COPY = {
         dragTrainHint: '열차를 잡아 다른 노선이나 위치로 옮겨보세요.',
         dropTrainHint: '놓으면 가장 가까운 노선에 붙습니다.',
         trainMoved: '열차가 새 노선으로 이동했습니다.',
+        youtubeNoVideos: '이 노선에서 재생 가능한 YouTube 영상을 찾지 못했습니다.',
+        previousTrack: '이전 곡',
+        nextTrack: '다음 곡',
+        seekPlayback: '곡 재생 위치 이동',
+        routeProgress: '전체 노선 진행률',
+        oneTrainOnly: '이 지도에는 열차 한 대만 운행할 수 있습니다.',
         myGroup: '내 그룹',
-        exportPlaylist: '내보내기',
-        exportSoon: '플레이리스트 내보내기는 준비 중입니다.',
     },
     en: {
         studio: 'METRO MAP 2 · STUDIO',
@@ -232,9 +237,13 @@ const COPY = {
         dragTrainHint: 'Grab a train and move it to another line or position.',
         dropTrainHint: 'It snaps to the nearest line when dropped.',
         trainMoved: 'Train moved to a new line.',
+        youtubeNoVideos: 'No playable YouTube videos were found on this route.',
+        previousTrack: 'Previous track',
+        nextTrack: 'Next track',
+        seekPlayback: 'Seek track playback',
+        routeProgress: 'Full route progress',
+        oneTrainOnly: 'Only one train can run on this map.',
         myGroup: 'My group',
-        exportPlaylist: 'Export',
-        exportSoon: 'Playlist export is coming soon.',
     },
 };
 
@@ -701,12 +710,10 @@ function MetroTrainGlyph({ trainView, selected, dragging, onSelect, onDragStart,
                 onSelect(train.id);
             }}
         >
-            <ellipse cx="0" cy="5" rx="27" ry="15" fill="#05090d" opacity="0.48" />
-            {selected || dragging ? <rect x="-30" y="-18" width="60" height="36" rx="13" fill={color} opacity={dragging ? 0.24 : 0.14} /> : null}
-            <rect x="-23" y="-11" width="46" height="22" rx="7" fill={color} stroke="#071015" strokeWidth="4" />
-            <rect x="-13" y="-5" width="26" height="10" rx="3" fill="#13202a" opacity="0.88" />
-            <circle cx="-13" cy="12" r="3" fill="#071015" />
-            <circle cx="13" cy="12" r="3" fill="#071015" />
+            {selected || dragging ? <rect x="-29" y="-16" width="58" height="32" rx="12" fill="#ffffff" opacity={dragging ? 0.24 : 0.16} /> : null}
+            <rect x="-23" y="-11" width="46" height="22" rx="7" fill={color} stroke="#f7fbfd" strokeWidth="3" />
+            <rect x="-12" y="-4" width="21" height="8" rx="2" fill="#17242b" />
+            <circle cx="17" cy="0" r="2.5" fill="#f7fbfd" />
         </g>
     );
 }
@@ -1010,6 +1017,30 @@ function getTrainJourneyState(route, runtime) {
     };
 }
 
+function buildTrainPlaybackStops(stationIds) {
+    const forward = Array.isArray(stationIds) ? stationIds.filter(Boolean) : [];
+    if (forward.length < 2) return forward;
+    return [...forward, ...forward.slice(1, -1).reverse()];
+}
+
+function getNearestTrainStop(route, rawProgress) {
+    if (!route?.valid || !route.stationIds?.length || !route.totalLength) return null;
+    const targetDistance = Math.min(1, Math.max(0, Number(rawProgress) || 0)) * route.totalLength;
+    let nearestIndex = 0;
+    let nearestDistance = Number.POSITIVE_INFINITY;
+    route.stationOffsets.forEach((offset, index) => {
+        const distance = Math.abs(offset - targetDistance);
+        if (distance >= nearestDistance) return;
+        nearestDistance = distance;
+        nearestIndex = index;
+    });
+    return {
+        stationId: route.stationIds[nearestIndex],
+        stationIndex: nearestIndex,
+        progress: route.stationOffsets[nearestIndex] / route.totalLength,
+    };
+}
+
 export default function TasteMapMetroStudio({
     open,
     onClose,
@@ -1045,6 +1076,9 @@ export default function TasteMapMetroStudio({
     const [trainDraftLineKey, setTrainDraftLineKey] = useState(null);
     const [trainDraftStationIds, setTrainDraftStationIds] = useState([]);
     const [trainRouteError, setTrainRouteError] = useState('');
+    const [youtubeSession, setYoutubeSession] = useState(null);
+    const [youtubePlaybackError, setYoutubePlaybackError] = useState('');
+    const [youtubeProgress, setYoutubeProgress] = useState({ positionMs: 0, durationMs: 0 });
     const [trainRuntimeById, setTrainRuntimeById] = useState({});
     const [trainDrag, setTrainDrag] = useState(null);
     const [trackSearch, setTrackSearch] = useState('');
@@ -1059,12 +1093,46 @@ export default function TasteMapMetroStudio({
     const panDragRef = useRef(null);
     const suppressStationClickRef = useRef(null);
     const suppressTrainClickRef = useRef(null);
+    const youtubePlayerRef = useRef(null);
+    const youtubeSessionCounterRef = useRef(0);
+
+    const closeStudio = useCallback(() => {
+        const trainId = youtubeSession?.trainId;
+        if (trainId) {
+            setMaps((current) => {
+                const next = current.map((map) => ({
+                    ...map,
+                    trains: (map.trains || []).map((train) => (
+                        train.id === trainId ? { ...train, running: false } : train
+                    )),
+                }));
+                persistMaps(storageKey, next);
+                return next;
+            });
+        }
+        setYoutubeSession(null);
+        setYoutubePlaybackError('');
+        setYoutubeProgress({ positionMs: 0, durationMs: 0 });
+        onClose();
+    }, [onClose, storageKey, youtubeSession?.trainId]);
 
     useEffect(() => {
         if (!open) return undefined;
         const previousOverflow = document.body.style.overflow;
         const handleKeyDown = (event) => {
-            if (event.key === 'Escape') onClose();
+            if (event.key === 'Escape') {
+                closeStudio();
+                return;
+            }
+            if (event.code !== 'Space' || event.repeat || !youtubeSession?.trainId) return;
+            const target = event.target;
+            if (
+                target instanceof Element
+                && target.closest('input, textarea, select, button, [contenteditable="true"], [role="slider"]')
+            ) return;
+            event.preventDefault();
+            setYoutubeSession((current) => current ? { ...current, playRequested: true } : current);
+            youtubePlayerRef.current?.toggle();
         };
         document.body.style.overflow = 'hidden';
         window.addEventListener('keydown', handleKeyDown);
@@ -1072,7 +1140,7 @@ export default function TasteMapMetroStudio({
             document.body.style.overflow = previousOverflow;
             window.removeEventListener('keydown', handleKeyDown);
         };
-    }, [open, onClose]);
+    }, [closeStudio, open, youtubeSession?.trainId]);
 
     const libraryTracks = useMemo(
         () => (Array.isArray(tracks) ? tracks : []).filter((track) => track?.id && track?.name),
@@ -1135,6 +1203,10 @@ export default function TasteMapMetroStudio({
     const trainRoutes = useMemo(() => new Map(
         activeTrains.map((train) => [train.id, buildMetroTrainRoute(layout, train.routeStationIds)]),
     ), [activeTrains, layout]);
+    const layoutStationById = useMemo(
+        () => new Map(layout.stations.map((station) => [station.trackId, station])),
+        [layout.stations],
+    );
     const lineTrainRoutes = useMemo(() => new Map(
         layout.lines.map((line) => [line.key, buildMetroTrainRoute(layout, line.stationIds)]),
     ), [layout]);
@@ -1164,7 +1236,11 @@ export default function TasteMapMetroStudio({
                     let changed = false;
                     const next = { ...current };
                     activeTrains.forEach((train) => {
-                        if (train.running === false || trainDrag?.trainId === train.id) return;
+                        if (
+                            train.running === false
+                            || trainDrag?.trainId === train.id
+                            || youtubeSession?.trainId === train.id
+                        ) return;
                         const route = trainRoutes.get(train.id);
                         if (!route?.valid || !route.totalLength) return;
                         const previous = current[train.id] || { progress: 0, direction: 1, dwellRemaining: TRAIN_DWELL_SECONDS };
@@ -1215,12 +1291,16 @@ export default function TasteMapMetroStudio({
         return () => {
             if (animationFrame) window.cancelAnimationFrame(animationFrame);
         };
-    }, [activeTrains, creating, open, trainDrag?.trainId, trainRoutes]);
+    }, [activeTrains, creating, open, trainDrag?.trainId, trainRoutes, youtubeSession?.trainId]);
 
     const trainViews = activeTrains.map((train) => {
         const route = trainRoutes.get(train.id);
         const runtime = trainRuntimeById[train.id] || { progress: 0, direction: 1 };
-        const routePosition = getMetroTrainPosition(route, runtime.progress);
+        const fallbackStation = (train.routeStationIds || [])
+            .map((stationId) => layoutStationById.get(stationId))
+            .find(Boolean);
+        const routePosition = getMetroTrainPosition(route, runtime.progress)
+            || (fallbackStation ? { x: fallbackStation.x, y: fallbackStation.y, angle: 0 } : null);
         const position = trainDrag?.trainId === train.id && trainDrag.position
             ? trainDrag.position
             : routePosition;
@@ -1246,6 +1326,26 @@ export default function TasteMapMetroStudio({
     const activeTrainNextTrack = activeTrainView?.journey
         ? trackById.get(activeTrainView.journey.nextStationId)
         : null;
+    const youtubeTrainView = youtubeSession
+        ? trainViews.find((view) => view.train.id === youtubeSession.trainId) || null
+        : null;
+    const youtubeStopIds = youtubeSession?.stopIds || [];
+    const youtubeStep = youtubeStopIds.length ? youtubeSession.step % youtubeStopIds.length : 0;
+    const youtubeCurrentStationId = youtubeStopIds[youtubeStep] || null;
+    const youtubeNextStationId = youtubeStopIds.length
+        ? youtubeStopIds[(youtubeStep + 1) % youtubeStopIds.length]
+        : null;
+    const youtubeCurrentTrack = youtubeCurrentStationId ? trackById.get(youtubeCurrentStationId) : null;
+    const youtubeNextTrack = youtubeNextStationId ? trackById.get(youtubeNextStationId) : null;
+    const activeTrainHasYoutube = Boolean(
+        youtubeSession && activeTrainView && youtubeSession.trainId === activeTrainView.train.id,
+    );
+    const youtubeProgressPercent = youtubeProgress.durationMs > 0
+        ? Math.min(100, Math.max(0, (youtubeProgress.positionMs / youtubeProgress.durationMs) * 100))
+        : 0;
+    const routeProgressPercent = activeTrainHasYoutube && youtubeStopIds.length
+        ? Math.min(100, ((youtubeStep + (youtubeProgressPercent / 100)) / youtubeStopIds.length) * 100)
+        : Math.min(100, Math.max(0, (activeTrainView?.journey?.progress || 0) * 100));
     useEffect(() => {
         if (!open || creating || !activeMapId) return undefined;
         let measureFrame = null;
@@ -1394,6 +1494,7 @@ export default function TasteMapMetroStudio({
     };
 
     const startTrainComposer = () => {
+        if (activeTrains.length) return;
         setTrainComposerOpen(true);
         setTrainRouteError('');
         setSelectedLineKey(trainDraftMode === 'line' ? resolvedTrainDraftLineKey : null);
@@ -1405,7 +1506,30 @@ export default function TasteMapMetroStudio({
         setTrainRouteError('');
     };
 
+    const updateTrain = (trainId, patch) => {
+        updateActiveMap((map) => ({
+            ...map,
+            trains: (map.trains || []).map((train) => train.id === trainId ? { ...train, ...patch } : train),
+        }));
+    };
+
+    const setTrainRunning = (trainId, running) => {
+        const train = activeTrains.find((item) => item.id === trainId);
+        if (!train || (train.running !== false) === running) return;
+        updateTrain(trainId, { running });
+    };
+
     const toggleTrain = (trainId) => {
+        if (youtubeSession?.trainId === trainId) {
+            setYoutubeSession((current) => current ? { ...current, playRequested: true } : current);
+            youtubePlayerRef.current?.toggle();
+            return;
+        }
+        const train = activeTrains.find((item) => item.id === trainId);
+        if (train?.running === false) {
+            startYoutubeJourney(trainId);
+            return;
+        }
         updateActiveMap((map) => ({
             ...map,
             trains: (map.trains || []).map((train) => train.id === trainId
@@ -1414,11 +1538,132 @@ export default function TasteMapMetroStudio({
         }));
     };
 
-    const updateTrain = (trainId, patch) => {
-        updateActiveMap((map) => ({
-            ...map,
-            trains: (map.trains || []).map((train) => train.id === trainId ? { ...train, ...patch } : train),
+    const syncYoutubeLegProgress = (session, rawRatio) => {
+        if (!session?.trainId || !session.stopIds?.length) return;
+        const route = trainRoutes.get(session.trainId);
+        if (!route?.valid || !route.totalLength) return;
+        const step = session.step % session.stopIds.length;
+        const fromStationId = session.stopIds[step];
+        const toStationId = session.stopIds[(step + 1) % session.stopIds.length];
+        const fromIndex = route.stationIds.indexOf(fromStationId);
+        const toIndex = route.stationIds.indexOf(toStationId);
+        if (fromIndex < 0 || toIndex < 0) return;
+        const fromOffset = route.stationOffsets[fromIndex];
+        const toOffset = route.stationOffsets[toIndex];
+        const ratio = Math.min(1, Math.max(0, Number(rawRatio) || 0));
+        const distance = fromOffset + ((toOffset - fromOffset) * ratio);
+        setTrainRuntimeById((current) => ({
+            ...current,
+            [session.trainId]: {
+                progress: distance / route.totalLength,
+                direction: toOffset >= fromOffset ? 1 : -1,
+                dwellRemaining: 0,
+            },
         }));
+    };
+
+    const closeYoutubePlayback = () => {
+        const trainId = youtubeSession?.trainId;
+        setYoutubeSession(null);
+        setYoutubePlaybackError('');
+        setYoutubeProgress({ positionMs: 0, durationMs: 0 });
+        if (trainId) setTrainRunning(trainId, false);
+    };
+
+    const startYoutubeJourney = (trainId = activeTrainView?.train.id) => {
+        const journeyView = trainViews.find((view) => view.train.id === trainId) || null;
+        const route = journeyView?.route;
+        if (!journeyView || !route?.valid || route.stationIds.length < 2) return;
+        if (youtubeSession?.trainId && youtubeSession.trainId !== journeyView.train.id) {
+            setTrainRunning(youtubeSession.trainId, false);
+        }
+        const stopIds = buildTrainPlaybackStops(route.stationIds);
+        youtubeSessionCounterRef.current += 1;
+        const session = {
+            id: `${journeyView.train.id}-${youtubeSessionCounterRef.current}`,
+            trainId: journeyView.train.id,
+            stopIds,
+            step: 0,
+            consecutiveSkips: 0,
+            playRequested: true,
+        };
+        setYoutubePlaybackError('');
+        setYoutubeProgress({ positionMs: 0, durationMs: 0 });
+        setSelectedTrainId(journeyView.train.id);
+        setTrainRunning(journeyView.train.id, false);
+        syncYoutubeLegProgress(session, 0);
+        setYoutubeSession(session);
+    };
+
+    const handleYoutubePlaybackState = (state) => {
+        const trainId = youtubeSession?.trainId;
+        if (!trainId) return;
+        setTrainRunning(trainId, state === 'playing');
+        if (state === 'playing' && youtubeSession.consecutiveSkips) {
+            setYoutubeSession((current) => current ? { ...current, consecutiveSkips: 0 } : current);
+        }
+    };
+
+    const handleYoutubeProgress = ({ positionMs, durationMs }) => {
+        if (!youtubeSession || durationMs <= 0) return;
+        setYoutubeProgress({ positionMs, durationMs });
+        syncYoutubeLegProgress(youtubeSession, positionMs / durationMs);
+    };
+
+    const handleYoutubeEnded = () => {
+        if (!youtubeSession) return;
+        syncYoutubeLegProgress(youtubeSession, 1);
+        setYoutubeProgress({ positionMs: 0, durationMs: 0 });
+        setYoutubeSession((current) => current ? {
+            ...current,
+            step: (current.step + 1) % current.stopIds.length,
+            consecutiveSkips: 0,
+        } : current);
+    };
+
+    const handleYoutubePrevious = () => {
+        if (!youtubeSession?.stopIds?.length) return;
+        const nextStep = (youtubeSession.step - 1 + youtubeSession.stopIds.length)
+            % youtubeSession.stopIds.length;
+        const nextSession = {
+            ...youtubeSession,
+            step: nextStep,
+            consecutiveSkips: 0,
+        };
+        setYoutubeProgress({ positionMs: 0, durationMs: 0 });
+        syncYoutubeLegProgress(nextSession, 0);
+        setYoutubeSession(nextSession);
+    };
+
+    const handleYoutubeNext = () => {
+        if (!youtubeSession?.stopIds?.length) return;
+        syncYoutubeLegProgress(youtubeSession, 1);
+        const nextSession = {
+            ...youtubeSession,
+            step: (youtubeSession.step + 1) % youtubeSession.stopIds.length,
+            consecutiveSkips: 0,
+        };
+        setYoutubeProgress({ positionMs: 0, durationMs: 0 });
+        syncYoutubeLegProgress(nextSession, 0);
+        setYoutubeSession(nextSession);
+    };
+
+    const handleYoutubeUnavailable = () => {
+        if (!youtubeSession) return;
+        const nextSkipCount = youtubeSession.consecutiveSkips + 1;
+        setYoutubeProgress({ positionMs: 0, durationMs: 0 });
+        syncYoutubeLegProgress(youtubeSession, 1);
+        if (nextSkipCount >= youtubeSession.stopIds.length) {
+            setTrainRunning(youtubeSession.trainId, false);
+            setYoutubeSession(null);
+            setYoutubePlaybackError(copy.youtubeNoVideos);
+            return;
+        }
+        setYoutubeSession((current) => current ? {
+            ...current,
+            step: (current.step + 1) % current.stopIds.length,
+            consecutiveSkips: nextSkipCount,
+        } : current);
     };
 
     const resetTrain = (trainId) => {
@@ -1426,6 +1671,21 @@ export default function TasteMapMetroStudio({
             ...current,
             [trainId]: { progress: 0, direction: 1, dwellRemaining: TRAIN_DWELL_SECONDS },
         }));
+        if (youtubeSession?.trainId === trainId) {
+            setTrainRunning(trainId, false);
+            setYoutubeProgress({ positionMs: 0, durationMs: 0 });
+            youtubeSessionCounterRef.current += 1;
+            setYoutubeSession((current) => current ? {
+                ...current,
+                id: `${trainId}-${youtubeSessionCounterRef.current}`,
+                step: 0,
+                consecutiveSkips: 0,
+            } : current);
+        }
+    };
+
+    const seekYoutubePlayback = (event) => {
+        youtubePlayerRef.current?.seekTo(Number(event.target.value));
     };
 
     const removeTrain = (trainId) => {
@@ -1438,10 +1698,19 @@ export default function TasteMapMetroStudio({
             delete next[trainId];
             return next;
         });
+        if (youtubeSession?.trainId === trainId) {
+            setYoutubeSession(null);
+            setYoutubePlaybackError('');
+        }
         if (selectedTrainId === trainId) setSelectedTrainId(null);
     };
 
     const addTrain = () => {
+        if (activeTrains.length) {
+            setTrainRouteError(copy.oneTrainOnly);
+            setTrainComposerOpen(false);
+            return;
+        }
         const routeStationIds = [...activeDraftStationIds];
         const route = buildMetroTrainRoute(layout, routeStationIds);
         if (!route.valid || routeStationIds.length < 2) {
@@ -1464,7 +1733,7 @@ export default function TasteMapMetroStudio({
             lineKey: trainDraftMode === 'line' ? resolvedTrainDraftLineKey : null,
             routeLabel,
             routeStationIds,
-            running: true,
+            running: false,
             createdAt,
             playlist: {
                 name: `${activeMap.name} · ${routeLabel}`,
@@ -1477,6 +1746,17 @@ export default function TasteMapMetroStudio({
             ...current,
             [trainId]: { progress: 0, direction: 1, dwellRemaining: TRAIN_DWELL_SECONDS },
         }));
+        youtubeSessionCounterRef.current += 1;
+        setYoutubeProgress({ positionMs: 0, durationMs: 0 });
+        setYoutubePlaybackError('');
+        setYoutubeSession({
+            id: `${trainId}-${youtubeSessionCounterRef.current}`,
+            trainId,
+            stopIds: buildTrainPlaybackStops(routeStationIds),
+            step: 0,
+            consecutiveSkips: 0,
+            playRequested: false,
+        });
         setSelectedTrainId(trainId);
         setTrainDraftName('');
         setTrainDraftStationIds([]);
@@ -1585,6 +1865,10 @@ export default function TasteMapMetroStudio({
         if (!drag || drag.trainId !== trainId || drag.pointerId !== event.pointerId) return;
         const distance = Math.hypot(event.clientX - drag.startClientX, event.clientY - drag.startClientY);
         if (!drag.moved && distance < 4) return;
+        if (!drag.moved) {
+            if (youtubeSession?.trainId === trainId) youtubePlayerRef.current?.pause();
+            setTrainRunning(trainId, false);
+        }
         const point = getPointerMapPosition(event);
         if (!point) return;
         event.preventDefault();
@@ -1612,6 +1896,7 @@ export default function TasteMapMetroStudio({
                 removeTrain(trainId);
             } else {
                 const previousRuntime = trainRuntimeById[trainId] || { progress: 0, direction: 1 };
+                const nearestStop = getNearestTrainStop(target.route, target.progress);
                 if (target.kind === 'line') {
                     const lineLayout = layout.lines.find((line) => line.key === target.lineKey);
                     const lineDefinition = activeMap.lines.find((line) => line.key === target.lineKey);
@@ -1635,8 +1920,39 @@ export default function TasteMapMetroStudio({
                 }
                 setTrainRuntimeById((current) => ({
                     ...current,
-                    [trainId]: { progress: target.progress, direction: previousRuntime.direction, dwellRemaining: 0 },
+                    [trainId]: {
+                        progress: nearestStop?.progress ?? target.progress,
+                        direction: previousRuntime.direction,
+                        dwellRemaining: 0,
+                    },
                 }));
+                if (nearestStop) {
+                    const stopIds = buildTrainPlaybackStops(target.route.stationIds);
+                    let step = previousRuntime.direction < 0
+                        ? stopIds.lastIndexOf(nearestStop.stationId)
+                        : stopIds.indexOf(nearestStop.stationId);
+                    if (step < 0) step = 0;
+                    if (youtubeSession?.trainId !== trainId) youtubeSessionCounterRef.current += 1;
+                    setYoutubeProgress({ positionMs: 0, durationMs: 0 });
+                    setYoutubePlaybackError('');
+                    setYoutubeSession({
+                        id: youtubeSession?.trainId === trainId
+                            ? youtubeSession.id
+                            : `${trainId}-${youtubeSessionCounterRef.current}`,
+                        trainId,
+                        stopIds,
+                        step,
+                        consecutiveSkips: 0,
+                        playRequested: true,
+                    });
+                    if (
+                        youtubeSession?.trainId === trainId
+                        && youtubeCurrentStationId === nearestStop.stationId
+                    ) {
+                        youtubePlayerRef.current?.seekTo(0);
+                        youtubePlayerRef.current?.play();
+                    }
+                }
             }
         }
         if (drag.moved) {
@@ -2016,7 +2332,7 @@ export default function TasteMapMetroStudio({
                         canCancel={maps.length > 0}
                         onCancel={() => {
                             if (maps.length) setCreating(false);
-                            else onClose();
+                            else closeStudio();
                         }}
                         onCreate={handleCreate}
                     />
@@ -2133,8 +2449,39 @@ export default function TasteMapMetroStudio({
                             >
                                 {copy.saveSvg}
                             </button>
-                            <button type="button" className="tm2-close" onClick={onClose} aria-label={copy.close}>×</button>
+                            <button type="button" className="tm2-close" onClick={closeStudio} aria-label={copy.close}>×</button>
                         </div>
+
+                        {youtubeSession ? (
+                            <MetroYouTubePlayer
+                                key={youtubeSession.id}
+                                ref={youtubePlayerRef}
+                                track={youtubeCurrentTrack}
+                                nextTrack={youtubeNextTrack}
+                                trainName={youtubeTrainView?.train.name || copy.trains}
+                                color={youtubeTrainView ? getTrainColor(youtubeTrainView.train) : TRAIN_COLORS[0]}
+                                lang={lang}
+                                panelShifted={trainPanelOpen}
+                                autoplayRequested={youtubeSession.playRequested}
+                                queuePosition={youtubeStep + 1}
+                                queueLength={youtubeStopIds.length}
+                                onPlaybackState={handleYoutubePlaybackState}
+                                onProgress={handleYoutubeProgress}
+                                onEnded={handleYoutubeEnded}
+                                onPrevious={handleYoutubePrevious}
+                                onNext={handleYoutubeNext}
+                                onUnavailable={handleYoutubeUnavailable}
+                                onClose={closeYoutubePlayback}
+                            />
+                        ) : null}
+
+                        {youtubePlaybackError ? (
+                            <div className="tm2-youtube-notice" role="status">
+                                <span>!</span>
+                                <strong>{youtubePlaybackError}</strong>
+                                <button type="button" onClick={() => setYoutubePlaybackError('')} aria-label={copy.close}>×</button>
+                            </div>
+                        ) : null}
 
                         <nav className="tm2-line-rail" aria-label={copy.lines}>
                             <span>{copy.lines}</span>
@@ -2213,7 +2560,9 @@ export default function TasteMapMetroStudio({
                                             const routeValid = trainRoutes.get(train.id)?.valid;
                                             return (
                                                 <div key={train.id} className={`tm2-train-card${resolvedSelectedTrainId === train.id ? ' active' : ''}${routeValid ? '' : ' invalid'}`}>
-                                                    <button type="button" className="tm2-train-card-main" onClick={() => setSelectedTrainId(train.id)}>
+                                                    <button type="button" className="tm2-train-card-main" onClick={() => {
+                                                        setSelectedTrainId(train.id);
+                                                    }}>
                                                         <span className="tm2-train-type-mark" style={{ '--tm2-train-color': getTrainColor(train) }}><i /></span>
                                                         <span>
                                                             <strong>{train.name}</strong>
@@ -2266,11 +2615,11 @@ export default function TasteMapMetroStudio({
                                 ) : null}
                             </section>
 
-                            {!trainComposerOpen ? (
+                            {!activeTrains.length && !trainComposerOpen ? (
                                 <button type="button" className="tm2-open-train-composer" onClick={startTrainComposer}>＋ {copy.newTrain}</button>
                             ) : null}
 
-                            {trainComposerOpen ? (
+                            {!activeTrains.length && trainComposerOpen ? (
                             <section className="tm2-train-panel-section tm2-new-train">
                                 <div className="tm2-train-section-title">
                                     <h3>{copy.newTrain}</h3>
@@ -2518,26 +2867,66 @@ export default function TasteMapMetroStudio({
                                     <strong>{activeTrainView.train.playlist?.trackIds?.length || activeTrainView.train.routeStationIds.length}</strong>
                                     <small>{copy.songs}</small>
                                 </div>
-                                <div className="tm2-status-progress" aria-hidden>
-                                    <i style={{ width: `${Math.round((activeTrainView.journey?.progress || 0) * 100)}%` }} />
+                                <div className={`tm2-status-progress${activeTrainHasYoutube ? ' interactive' : ''}`}>
+                                    {activeTrainHasYoutube ? (
+                                        <input
+                                            type="range"
+                                            min="0"
+                                            max={Math.max(1, youtubeProgress.durationMs)}
+                                            step="250"
+                                            value={Math.min(youtubeProgress.positionMs, Math.max(1, youtubeProgress.durationMs))}
+                                            disabled={youtubeProgress.durationMs <= 0}
+                                            onChange={seekYoutubePlayback}
+                                            aria-label={copy.seekPlayback}
+                                            style={{ '--tm2-status-play-progress': `${youtubeProgressPercent}%` }}
+                                        />
+                                    ) : (
+                                        <i
+                                            aria-hidden
+                                            style={{ width: `${Math.round((activeTrainView.journey?.progress || 0) * 100)}%` }}
+                                        />
+                                    )}
                                 </div>
-                                <button
-                                    type="button"
-                                    className="tm2-status-export"
-                                    disabled
-                                    title={copy.exportSoon}
+                                <div
+                                    className="tm2-status-route-progress"
+                                    role="progressbar"
+                                    aria-label={copy.routeProgress}
+                                    aria-valuemin="0"
+                                    aria-valuemax="100"
+                                    aria-valuenow={Math.round(routeProgressPercent)}
                                 >
-                                    <span aria-hidden>↗</span>{copy.exportPlaylist}
-                                </button>
-                                <button type="button" className="tm2-status-action" onClick={() => toggleTrain(activeTrainView.train.id)} aria-label={activeTrainView.train.running === false ? copy.resume : copy.pause}>
-                                    {activeTrainView.train.running === false ? '▶' : 'Ⅱ'}
-                                </button>
+                                    <span>{copy.routeProgress}</span>
+                                    <i><b style={{ width: `${routeProgressPercent}%` }} /></i>
+                                </div>
+                                <div className="tm2-status-player-controls">
+                                    <button
+                                        type="button"
+                                        disabled={!activeTrainHasYoutube}
+                                        onClick={handleYoutubePrevious}
+                                        aria-label={copy.previousTrack}
+                                    >‹</button>
+                                    <button
+                                        type="button"
+                                        className="tm2-status-action"
+                                        onClick={() => toggleTrain(activeTrainView.train.id)}
+                                        aria-label={activeTrainView.train.running === false ? copy.resume : copy.pause}
+                                        aria-keyshortcuts="Space"
+                                    >
+                                        {activeTrainView.train.running === false ? '▶' : 'Ⅱ'}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        disabled={!activeTrainHasYoutube}
+                                        onClick={handleYoutubeNext}
+                                        aria-label={copy.nextTrack}
+                                    >›</button>
+                                </div>
                                 <button type="button" className="tm2-status-action" onClick={() => resetTrain(activeTrainView.train.id)} aria-label={copy.resetTrain}>↺</button>
                             </section>
                         ) : null}
 
                         <div className="tm2-bottom-dock">
-                            <button type="button" className="tm2-field-return" onClick={onClose}>← {lang === 'en' ? 'Taste Field' : '취향 필드'}</button>
+                            <button type="button" className="tm2-field-return" onClick={closeStudio}>← {lang === 'en' ? 'Taste Field' : '취향 필드'}</button>
                             <span className="tm2-dock-divider" aria-hidden />
                             <nav className="tm2-map-tabs" aria-label="Metro maps">
                                 {maps.map((map, index) => (
@@ -2546,6 +2935,7 @@ export default function TasteMapMetroStudio({
                                         type="button"
                                         className={activeMap.id === map.id ? 'active' : ''}
                                         onClick={() => {
+                                            closeYoutubePlayback();
                                             setActiveMapId(map.id);
                                             setSelectedStationId(null);
                                             setSelectedLineKey(null);

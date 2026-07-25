@@ -18,6 +18,10 @@ import {
     getTagTopTracks,
     isLastfmConfigured,
 } from './src/server/lastfm.js';
+import {
+    isYouTubeConfigured,
+    searchYouTubeTrack,
+} from './src/server/youtube.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -149,6 +153,38 @@ function externalSearchUrl(artist, title) {
     const q = encodeURIComponent(`${artist} ${title}`.trim());
     return `https://open.spotify.com/search/${q}`;
 }
+
+// ---------- GET /api/youtube/search — server-side video resolution ----------
+//
+// Query: ?artist=...&title=...
+// Returns one embeddable YouTube video candidate. The API key stays server-side.
+
+app.get('/api/youtube/search', asyncRoute(async (req, res) => {
+    if (!isYouTubeConfigured()) {
+        return res.status(503).json({
+            code: 'YOUTUBE_NOT_CONFIGURED',
+            error: 'YOUTUBE_API_KEY is not configured on the server.',
+        });
+    }
+    const artist = String(req.query.artist || '').trim();
+    const title = String(req.query.title || '').trim();
+    if (!artist || !title) {
+        return res.status(400).json({
+            code: 'INVALID_TRACK',
+            error: 'artist and title are required.',
+        });
+    }
+    try {
+        const video = await searchYouTubeTrack(artist, title);
+        return res.json({ video });
+    } catch (error) {
+        const status = Number.isInteger(error?.status) ? error.status : 502;
+        return res.status(status).json({
+            code: error?.code || 'YOUTUBE_SEARCH_FAILED',
+            error: error?.message || 'YouTube search failed.',
+        });
+    }
+}));
 
 // ---------- POST /api/taste/enrich — core taste-map data source ----------
 //
@@ -550,6 +586,9 @@ if (!isSpotifyConfigured()) {
 }
 if (!isLastfmConfigured()) {
     console.warn('[Last.fm] LASTFM_API_KEY not set — Taste Field enrichment and discovery will return 503. Add it to .env.');
+}
+if (!isYouTubeConfigured()) {
+    console.warn('[YouTube] YOUTUBE_API_KEY not set — Metro video playback will ask for configuration.');
 }
 
 if (isDirectRun) {
