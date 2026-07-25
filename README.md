@@ -32,6 +32,9 @@ Development Mode app.
   `/taste-map/mobile`.
 - **Digging** — Last.fm similar/tag discovery in Taste Field and Spotify
   artist/genre discovery in Spotify Field.
+- **Metro live playback** — a visible YouTube mini player can resolve a train's
+  route tracks, keep playing through the stations, and drive train
+  play/pause/progress from the actual video state.
 - Track clicks open the song on an external service (Spotify/YouTube search).
 
 ## Tech stack
@@ -46,12 +49,14 @@ Development Mode app.
   [Spotify Developer Dashboard](https://developer.spotify.com/dashboard).
 - A free Last.fm API key from
   [last.fm/api/account/create](https://www.last.fm/api/account/create).
+- For Metro live playback, a YouTube Data API v3 key from the
+  [Google Cloud Console](https://console.cloud.google.com/apis/library/youtube.googleapis.com).
 
 ## Setup
 
 ```bash
 npm install
-cp .env.example .env   # then set Spotify credentials and LASTFM_API_KEY
+cp .env.example .env   # then set Spotify, Last.fm, and optional YouTube credentials
 ```
 
 See `.env.example` for every supported variable. To try the app without
@@ -91,10 +96,12 @@ src/
   context/TasteDataContext    Imported + enriched taste (sessionStorage backed)
   server/spotify.js           Spotify catalog client (Client Credentials + cache/mock)
   server/lastfm.js            Last.fm tag/similar-track client (cache/mock)
+  server/youtube.js           Server-only YouTube video resolver + cache
   utils/parseTrackList.js     CSV / "Artist - Title" list parser
   pages/
     TasteMapPage.jsx          Desktop taste map
     TasteMapMobilePage.jsx    Touch-first view using the current browser session
+    MetroYouTubePlayer.jsx    Visible IFrame player for Metro journeys
   workers/
     kmeansWorker.js           Clustering
     bubbleLayoutWorker.js     Bubble packing / layout
@@ -105,7 +112,9 @@ docs/TASTE_MAP_SPEC_KO.md     Feature spec (Korean)
 
 - `POST /api/taste/enrich` — `{ tracks:[{artist,title}] }` → enriched taste
 - `GET  /api/discover` — source-aware discovery (`source=lastfm|spotify`)
+- `GET  /api/youtube/search` — resolves `artist` + `title` to an embeddable video
 
 On Vercel, set `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`, and
-`LASTFM_API_KEY`; the files under `api/` expose both endpoints as Vercel
-Functions while the Vite app remains a static deployment.
+`LASTFM_API_KEY`. Set `YOUTUBE_API_KEY` to enable Metro live playback. The
+files under `api/` expose the endpoints as Vercel Functions while the Vite app
+remains a static deployment.
