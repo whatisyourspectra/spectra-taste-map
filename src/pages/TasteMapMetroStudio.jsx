@@ -23,6 +23,7 @@ import {
 
 const STORAGE_VERSION = 1;
 const EMPTY_TRAINS = [];
+const HISTORY_LIMIT = 80;
 const METRO_MIN_ZOOM = 0.5;
 const TRAIN_COLORS = ['#f4d35e', '#70d6ff', '#ff7c8b', '#8ee3a8', '#b79cff', '#f7a65a'];
 const DEFAULT_TRAIN_SPEED = 96;
@@ -100,8 +101,6 @@ const COPY = {
         songs: '곡',
         zoom: '배율',
         stationRemoved: '중심역은 삭제할 수 없습니다.',
-        dragHint: '열차를 잡아 원하는 노선으로 옮길 수 있어요',
-        mapGestureHint: '역은 격자에 스냅 · 빈 공간 이동 · 휠 확대',
         resetLayout: '배치 초기화',
         trains: '열차',
         trainControl: '열차 운행',
@@ -143,6 +142,9 @@ const COPY = {
         routeProgress: '전체 노선 진행률',
         oneTrainOnly: '이 지도에는 열차 한 대만 운행할 수 있습니다.',
         myGroup: '내 그룹',
+        exportPlaylist: '내보내기',
+        exportSoon: '플레이리스트 내보내기는 준비 중입니다.',
+        nowPassing: '지나는 곡',
     },
     en: {
         studio: 'METRO MAP 2 · STUDIO',
@@ -201,8 +203,6 @@ const COPY = {
         songs: 'tracks',
         zoom: 'Zoom',
         stationRemoved: 'The seed station cannot be removed.',
-        dragHint: 'Grab a train and move it onto any line',
-        mapGestureHint: 'Stations snap to grid · drag map · wheel to zoom',
         resetLayout: 'Reset layout',
         trains: 'Trains',
         trainControl: 'Train service',
@@ -244,6 +244,9 @@ const COPY = {
         routeProgress: 'Full route progress',
         oneTrainOnly: 'Only one train can run on this map.',
         myGroup: 'My group',
+        exportPlaylist: 'Export',
+        exportSoon: 'Playlist export is coming soon.',
+        nowPassing: 'Now passing',
     },
 };
 
@@ -295,6 +298,35 @@ function persistMaps(storageKey, maps) {
     } catch {
         // Local storage can be unavailable or full. The in-memory studio still works.
     }
+}
+
+function cloneMetroHistoryValue(value) {
+    if (typeof structuredClone === 'function') return structuredClone(value);
+    return JSON.parse(JSON.stringify(value));
+}
+
+function trimHistoryStack(stack) {
+    return stack.length > HISTORY_LIMIT ? stack.slice(stack.length - HISTORY_LIMIT) : stack;
+}
+
+function sanitizeEditorState(nextMaps, nextActiveMapId, nextCreating) {
+    const safeMaps = Array.isArray(nextMaps) ? nextMaps : [];
+    const resolvedActiveMapId = nextActiveMapId && safeMaps.some((map) => map.id === nextActiveMapId)
+        ? nextActiveMapId
+        : (safeMaps[0]?.id || null);
+    return {
+        maps: safeMaps,
+        activeMapId: resolvedActiveMapId,
+        creating: typeof nextCreating === 'boolean' ? nextCreating : safeMaps.length === 0,
+    };
+}
+
+function isEditableShortcutTarget(target) {
+    const element = target instanceof HTMLElement ? target : null;
+    if (!element) return false;
+    if (element.isContentEditable) return true;
+    const tagName = element.tagName?.toLowerCase();
+    return tagName === 'input' || tagName === 'textarea' || tagName === 'select';
 }
 
 function downloadSvg(svgNode, filename) {
@@ -718,6 +750,25 @@ function MetroTrainGlyph({ trainView, selected, dragging, onSelect, onDragStart,
     );
 }
 
+function CurrentTrackTrainGlyph({ trainView }) {
+    if (!trainView?.position) return null;
+    const color = getTrainColor(trainView.train);
+    return (
+        <g
+            className="tm2-svg-current-train"
+            transform={`translate(${trainView.position.x} ${trainView.position.y}) rotate(${trainView.position.angle || 0})`}
+            aria-label={trainView.train.name}
+        >
+            <circle r="37" fill={color} opacity="0.12" />
+            <circle r="29" fill="none" stroke={color} strokeWidth="3" opacity="0.7" />
+            <rect x="-24" y="-12" width="48" height="24" rx="8" fill={color} stroke="#071015" strokeWidth="4" />
+            <rect x="-14" y="-6" width="28" height="11" rx="3" fill="#13202a" />
+            <circle cx="-14" cy="13" r="3.5" fill="#071015" />
+            <circle cx="14" cy="13" r="3.5" fill="#071015" />
+        </g>
+    );
+}
+
 function MetroMapSvg({
     map,
     layout,
@@ -729,6 +780,7 @@ function MetroMapSvg({
     dragSnapTarget = null,
     dragMagnetStrength = 0,
     trainViews = [],
+    currentTrackTrainView = null,
     selectedTrainId = null,
     routePreview = null,
     routeDraftStationIds = [],
@@ -751,6 +803,8 @@ function MetroMapSvg({
     onCanvasSelect,
     svgRef,
     interactive = true,
+    compact = false,
+    viewport = null,
 }) {
     const lineByKey = new Map(layout.lines.map((line) => [line.key, line]));
     const safeMapId = String(map.id || 'preview').replace(/[^a-zA-Z0-9_-]/g, '');
@@ -760,8 +814,8 @@ function MetroMapSvg({
     return (
         <svg
             ref={svgRef}
-            className={`tm2-map-svg${routePicking ? ' route-picking' : ''}${draggingTrainId ? ' train-dragging' : ''}`}
-            viewBox={`0 0 ${layout.width} ${layout.height}`}
+            className={`tm2-map-svg${compact ? ' compact' : ''}${routePicking ? ' route-picking' : ''}${draggingTrainId ? ' train-dragging' : ''}`}
+            viewBox={viewport || `0 0 ${layout.width} ${layout.height}`}
             role="img"
             aria-label={`${map.name} metro map`}
             xmlns="http://www.w3.org/2000/svg"
@@ -984,7 +1038,253 @@ function MetroMapSvg({
                     onDragEnd={onTrainDragEnd}
                 />
             ))}
+            {currentTrackTrainView ? <CurrentTrackTrainGlyph trainView={currentTrackTrainView} /> : null}
         </svg>
+    );
+}
+
+function MiniMetroMap({
+    map,
+    layout,
+    selectedTrack,
+    trackContext,
+    currentTrackTrainView,
+    onTrackSelect,
+    onExploreTrack,
+    onAddTrack,
+    onOpenTrack,
+    onExpand,
+    onDismiss,
+    lang,
+}) {
+    const baseViewportWidth = 720;
+    const baseViewportHeight = 400;
+    const currentStation = layout?.stations.find((station) => station.trackId === selectedTrack?.id) || null;
+    const currentLine = map?.lines.find((line) => currentStation?.lineKeys.includes(line.key)) || null;
+    const initialCenter = currentStation || {
+        x: (layout?.width || METRO_MAP_WIDTH) / 2,
+        y: (layout?.height || METRO_MAP_HEIGHT) / 2,
+    };
+    const [view, setView] = useState(() => ({ x: initialCenter.x, y: initialCenter.y, zoom: 1 }));
+    const [detailsOpen, setDetailsOpen] = useState(false);
+    const viewRef = useRef(view);
+    const dragRef = useRef(null);
+    const cameraAnimationRef = useRef(null);
+    const previousTrackIdRef = useRef(selectedTrack?.id || null);
+    const viewportWidth = baseViewportWidth / view.zoom;
+    const viewportHeight = baseViewportHeight / view.zoom;
+    const viewport = `${view.x - (viewportWidth / 2)} ${view.y - (viewportHeight / 2)} ${viewportWidth} ${viewportHeight}`;
+
+    useEffect(() => {
+        viewRef.current = view;
+    }, [view]);
+
+    useEffect(() => {
+        const nextTrackId = selectedTrack?.id || null;
+        if (!currentStation || previousTrackIdRef.current === nextTrackId) return undefined;
+        previousTrackIdRef.current = nextTrackId;
+        if (cameraAnimationRef.current) window.cancelAnimationFrame(cameraAnimationRef.current);
+
+        const start = { ...viewRef.current };
+        const target = { x: currentStation.x, y: currentStation.y, zoom: start.zoom };
+        const startedAt = performance.now();
+        const duration = 560;
+        const animateCamera = (now) => {
+            const progress = Math.min(1, Math.max(0, (now - startedAt) / duration));
+            const eased = 1 - ((1 - progress) ** 3);
+            const next = {
+                x: start.x + ((target.x - start.x) * eased),
+                y: start.y + ((target.y - start.y) * eased),
+                zoom: start.zoom,
+            };
+            viewRef.current = next;
+            setView(next);
+            if (progress < 1) {
+                cameraAnimationRef.current = window.requestAnimationFrame(animateCamera);
+            } else {
+                cameraAnimationRef.current = null;
+            }
+        };
+        cameraAnimationRef.current = window.requestAnimationFrame(animateCamera);
+        return () => {
+            if (cameraAnimationRef.current) {
+                window.cancelAnimationFrame(cameraAnimationRef.current);
+                cameraAnimationRef.current = null;
+            }
+        };
+    }, [currentStation, selectedTrack?.id]);
+
+    const handlePointerDown = (event) => {
+        if (event.button !== undefined && event.button !== 0) return;
+        if (event.target?.closest?.('.tm2-svg-station')) return;
+        if (cameraAnimationRef.current) {
+            window.cancelAnimationFrame(cameraAnimationRef.current);
+            cameraAnimationRef.current = null;
+        }
+        const bounds = event.currentTarget.getBoundingClientRect();
+        dragRef.current = {
+            pointerId: event.pointerId,
+            x: event.clientX,
+            y: event.clientY,
+            centerX: view.x,
+            centerY: view.y,
+            viewportWidth,
+            viewportHeight,
+            clientWidth: Math.max(1, bounds.width),
+            clientHeight: Math.max(1, bounds.height),
+        };
+        event.currentTarget.setPointerCapture?.(event.pointerId);
+    };
+
+    const handlePointerMove = (event) => {
+        const drag = dragRef.current;
+        if (!drag || drag.pointerId !== event.pointerId) return;
+        const dx = ((event.clientX - drag.x) / drag.clientWidth) * drag.viewportWidth;
+        const dy = ((event.clientY - drag.y) / drag.clientHeight) * drag.viewportHeight;
+        setView((current) => ({
+            ...current,
+            x: drag.centerX - dx,
+            y: drag.centerY - dy,
+        }));
+    };
+
+    const handlePointerEnd = (event) => {
+        if (dragRef.current?.pointerId !== event.pointerId) return;
+        event.currentTarget.releasePointerCapture?.(event.pointerId);
+        dragRef.current = null;
+    };
+
+    const updateZoom = (nextZoom) => {
+        setView((current) => ({
+            ...current,
+            zoom: Math.min(2.5, Math.max(0.72, Number(nextZoom.toFixed(2)))),
+        }));
+    };
+
+    const resetView = () => {
+        const center = currentStation || initialCenter;
+        setView({ x: center.x, y: center.y, zoom: 1 });
+    };
+
+    return (
+        <aside className="tm2-mini" aria-label={lang === 'en' ? 'Now playing metro map' : '현재 곡 미니 메트로 맵'}>
+            <header className="tm2-mini-head">
+                <div>
+                    <span><i /> LIVE METRO</span>
+                    <strong>{map?.name || (lang === 'en' ? 'Taste Metro' : '취향 메트로')}</strong>
+                </div>
+                <div className="tm2-mini-head-actions">
+                    <button type="button" onClick={onExpand} aria-label={lang === 'en' ? 'Open full metro map' : '메트로 맵 전체 화면'}>
+                        <span aria-hidden>↗</span>
+                    </button>
+                    <button type="button" onClick={onDismiss} aria-label={lang === 'en' ? 'Close mini metro map' : '미니 메트로 맵 닫기'}>×</button>
+                </div>
+            </header>
+
+            <div
+                className="tm2-mini-canvas"
+                onPointerDown={handlePointerDown}
+                onPointerMove={handlePointerMove}
+                onPointerUp={handlePointerEnd}
+                onPointerCancel={handlePointerEnd}
+                onDoubleClick={resetView}
+                onWheel={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    updateZoom(view.zoom * Math.exp(-event.deltaY * 0.0015));
+                }}
+            >
+                {map && layout?.lines.length ? (
+                    <div className="tm2-mini-map-plane">
+                        <MetroMapSvg
+                            map={map}
+                            layout={layout}
+                            selectedStationId={selectedTrack?.id || null}
+                            selectedLineKey={map.mode === 'seed' ? null : (currentLine?.key || null)}
+                            currentTrackTrainView={currentTrackTrainView}
+                            onStationSelect={(trackId) => {
+                                const station = layout.stations.find((item) => item.trackId === trackId);
+                                if (!station?.track) return;
+                                const focusedView = {
+                                    ...viewRef.current,
+                                    x: station.x,
+                                    y: station.y,
+                                };
+                                viewRef.current = focusedView;
+                                setView(focusedView);
+                                onTrackSelect?.(station.track);
+                            }}
+                            onLineSelect={() => {}}
+                            interactive
+                            compact
+                            viewport={viewport}
+                        />
+                    </div>
+                ) : (
+                    <div className="tm2-mini-empty">
+                        <span>⌁</span>
+                        <strong>{lang === 'en' ? 'Build your first metro map' : '첫 노선도를 만들어 보세요'}</strong>
+                    </div>
+                )}
+                <div className="tm2-mini-zoom" onPointerDown={(event) => event.stopPropagation()}>
+                    <button type="button" onClick={() => updateZoom(view.zoom - 0.16)} aria-label="zoom out">−</button>
+                    <button type="button" className="value" onClick={resetView}>{Math.round(view.zoom * 100)}%</button>
+                    <button type="button" onClick={() => updateZoom(view.zoom + 0.16)} aria-label="zoom in">＋</button>
+                </div>
+                {detailsOpen && trackContext ? (
+                    <section className="tm2-mini-details" onPointerDown={(event) => event.stopPropagation()}>
+                        <div className="tm2-mini-details-head">
+                            <div>
+                                <span>{trackContext.source === 'recommendation'
+                                    ? (lang === 'en' ? 'RECOMMENDATION' : '추천 곡')
+                                    : (lang === 'en' ? 'MY TASTE FIELD' : '내 취향 필드')}</span>
+                                <strong>{trackContext.cluster?.label?.name || (lang === 'en' ? 'New territory' : '새로운 영역')}</strong>
+                            </div>
+                            <button type="button" onClick={() => setDetailsOpen(false)} aria-label={lang === 'en' ? 'Close track info' : '곡 정보 닫기'}>×</button>
+                        </div>
+                        <div className="tm2-mini-detail-values">
+                            <b>{trackContext.xLabel} {trackContext.xValue}</b>
+                            <b>{trackContext.yLabel} {trackContext.yValue}</b>
+                        </div>
+                        {trackContext.genres?.length ? (
+                            <div className="tm2-mini-detail-tags">
+                                {trackContext.genres.map((genre) => <span key={`${selectedTrack?.id}-${genre}`}>{genre}</span>)}
+                            </div>
+                        ) : null}
+                    </section>
+                ) : null}
+            </div>
+
+            <footer className="tm2-mini-footer">
+                <div className="tm2-mini-now">
+                    {selectedTrack?.coverUrl ? <img src={selectedTrack.coverUrl} alt="" /> : <span className="tm2-mini-cover-fallback">♪</span>}
+                    <div>
+                        <span>{lang === 'en' ? 'TRAIN AT CURRENT TRACK' : '현재 곡 위치의 열차'}</span>
+                        <strong>{selectedTrack?.name || (lang === 'en' ? 'Select a track' : '곡을 선택하세요')}</strong>
+                        <small>{selectedTrack?.artists || currentLine?.label || '-'}</small>
+                    </div>
+                    <b style={{ '--tm2-current-line': currentLine?.color || '#78a8ff' }}>{currentLine?.label || (lang === 'en' ? 'Metro' : '메트로')}</b>
+                </div>
+                <nav className="tm2-mini-actions" aria-label={lang === 'en' ? 'Track actions' : '곡 기능'}>
+                    <button type="button" disabled={!trackContext?.cluster} onClick={onExploreTrack}>
+                        <span aria-hidden>◎</span>{lang === 'en' ? 'Explore' : '탐색'}
+                    </button>
+                    <button type="button" disabled={!trackContext?.track || trackContext.alreadyInField} onClick={onAddTrack}>
+                        <span aria-hidden>{trackContext?.alreadyInField ? '✓' : '+'}</span>
+                        {trackContext?.alreadyInField ? (lang === 'en' ? 'Added' : '추가됨') : (lang === 'en' ? 'Add' : '추가')}
+                    </button>
+                    <button type="button" disabled={!selectedTrack} onClick={() => onOpenTrack?.('spotify')}>
+                        <span aria-hidden>S</span>Spotify
+                    </button>
+                    <button type="button" disabled={!selectedTrack} onClick={() => onOpenTrack?.('youtube')}>
+                        <span aria-hidden>▶</span>YouTube
+                    </button>
+                    <button type="button" className={detailsOpen ? 'active' : ''} disabled={!trackContext} onClick={() => setDetailsOpen((current) => !current)}>
+                        <span aria-hidden>i</span>{lang === 'en' ? 'Info' : '정보'}
+                    </button>
+                </nav>
+            </footer>
+        </aside>
     );
 }
 
@@ -1043,7 +1343,16 @@ function getNearestTrainStop(route, rawProgress) {
 
 export default function TasteMapMetroStudio({
     open,
+    expanded = false,
     onClose,
+    onExpand,
+    onDismiss,
+    onTrackSelect,
+    trackContext = null,
+    onExploreTrack,
+    onAddTrack,
+    onOpenTrack,
+    selectedTrack = null,
     tracks,
     activeTrackIds,
     assignmentByTrackId,
@@ -1095,6 +1404,7 @@ export default function TasteMapMetroStudio({
     const suppressTrainClickRef = useRef(null);
     const youtubePlayerRef = useRef(null);
     const youtubeSessionCounterRef = useRef(0);
+    const historyRef = useRef({ past: [], future: [] });
 
     const closeStudio = useCallback(() => {
         const trainId = youtubeSession?.trainId;
@@ -1116,10 +1426,80 @@ export default function TasteMapMetroStudio({
         onClose();
     }, [onClose, storageKey, youtubeSession?.trainId]);
 
+    const buildEditorSnapshot = useCallback((state = { maps, activeMapId, creating }) => {
+        const source = state || { maps: [], activeMapId: null, creating: true };
+        return {
+            maps: cloneMetroHistoryValue(source.maps || []),
+            activeMapId: source.activeMapId || null,
+            creating: Boolean(source.creating),
+        };
+    }, [activeMapId, creating, maps]);
+
+    const applyEditorState = useCallback((nextState) => {
+        const resolved = sanitizeEditorState(nextState.maps, nextState.activeMapId, nextState.creating);
+        setMaps(resolved.maps);
+        persistMaps(storageKey, resolved.maps);
+        setActiveMapId(resolved.activeMapId);
+        setCreating(resolved.creating);
+    }, [storageKey]);
+
+    const commitMaps = useCallback((nextMaps, options = {}) => {
+        const currentState = { maps, activeMapId, creating };
+        if (options.trackHistory !== false && currentState) {
+            historyRef.current = {
+                past: trimHistoryStack([...historyRef.current.past, buildEditorSnapshot(currentState)]),
+                future: [],
+            };
+        }
+        const resolved = sanitizeEditorState(
+            nextMaps,
+            Object.prototype.hasOwnProperty.call(options, 'activeMapId') ? options.activeMapId : currentState?.activeMapId,
+            Object.prototype.hasOwnProperty.call(options, 'creating') ? options.creating : currentState?.creating,
+        );
+        applyEditorState(resolved);
+    }, [activeMapId, applyEditorState, buildEditorSnapshot, creating, maps]);
+
+    const undoMapChange = useCallback(() => {
+        if (!historyRef.current.past.length) return;
+        const currentState = { maps, activeMapId, creating };
+        const previous = historyRef.current.past[historyRef.current.past.length - 1];
+        historyRef.current = {
+            past: historyRef.current.past.slice(0, -1),
+            future: trimHistoryStack([...historyRef.current.future, buildEditorSnapshot(currentState)]),
+        };
+        applyEditorState(previous);
+    }, [activeMapId, applyEditorState, buildEditorSnapshot, creating, maps]);
+
+    const redoMapChange = useCallback(() => {
+        if (!historyRef.current.future.length) return;
+        const currentState = { maps, activeMapId, creating };
+        const next = historyRef.current.future[historyRef.current.future.length - 1];
+        historyRef.current = {
+            past: trimHistoryStack([...historyRef.current.past, buildEditorSnapshot(currentState)]),
+            future: historyRef.current.future.slice(0, -1),
+        };
+        applyEditorState(next);
+    }, [activeMapId, applyEditorState, buildEditorSnapshot, creating, maps]);
+
     useEffect(() => {
-        if (!open) return undefined;
+        if (!open || !expanded) return undefined;
         const previousOverflow = document.body.style.overflow;
         const handleKeyDown = (event) => {
+            if ((event.metaKey || event.ctrlKey) && !event.altKey && !isEditableShortcutTarget(event.target)) {
+                const key = event.key.toLowerCase();
+                const redo = (key === 'z' && event.shiftKey) || (key === 'y' && event.ctrlKey && !event.metaKey);
+                const undo = key === 'z' && !event.shiftKey;
+                if (redo) {
+                    event.preventDefault();
+                    redoMapChange();
+                    return;
+                }
+                if (undo) {
+                    event.preventDefault();
+                    undoMapChange();
+                    return;
+                }
+            }
             if (event.key === 'Escape') {
                 closeStudio();
                 return;
@@ -1140,7 +1520,7 @@ export default function TasteMapMetroStudio({
             document.body.style.overflow = previousOverflow;
             window.removeEventListener('keydown', handleKeyDown);
         };
-    }, [closeStudio, open, youtubeSession?.trainId]);
+    }, [closeStudio, expanded, open, redoMapChange, undoMapChange, youtubeSession?.trainId]);
 
     const libraryTracks = useMemo(
         () => (Array.isArray(tracks) ? tracks : []).filter((track) => track?.id && track?.name),
@@ -1160,7 +1540,12 @@ export default function TasteMapMetroStudio({
         )),
         [libraryTracks, activeTrackIds, customGroupTrackIds],
     );
-    const trackById = useMemo(() => new Map(sourceTracks.map((track) => [track.id, track])), [sourceTracks]);
+    const displayTracks = useMemo(() => (
+        selectedTrack?.id && !sourceTracks.some((track) => track.id === selectedTrack.id)
+            ? [...sourceTracks, selectedTrack]
+            : sourceTracks
+    ), [selectedTrack, sourceTracks]);
+    const trackById = useMemo(() => new Map(displayTracks.map((track) => [track.id, track])), [displayTracks]);
     const lineOptions = useMemo(() => {
         const sourceTrackIds = new Set(sourceTracks.map((track) => track.id));
         const customLines = (Array.isArray(customGroups) ? customGroups : [])
@@ -1185,6 +1570,32 @@ export default function TasteMapMetroStudio({
         return [...customLines, ...tasteLines];
     }, [sourceTracks, tasteLineTracks, assignmentByTrackId, clusterById, customGroups]);
     const activeMap = maps.find((map) => map.id === activeMapId) || maps[0] || null;
+    const miniMap = useMemo(() => {
+        if (!selectedTrack?.id || !displayTracks.length) return null;
+        const existingSeedMap = maps.find((map) => (
+            map.selectionDriven && map.mode === 'seed' && map.seedTrackId === selectedTrack.id
+        ));
+        if (existingSeedMap) return existingSeedMap;
+        const seedLines = buildSeedGenreLines(selectedTrack, displayTracks, 4);
+        const selectedLines = seedLines.length ? seedLines : lineOptions.slice(0, 4);
+        if (!selectedLines.length) return null;
+        const definition = createMetroMapDefinition({
+            name: `${selectedTrack.name} · Metro`,
+            mode: 'seed',
+            selectedLines,
+            tracks: displayTracks,
+            maxPerLine: 8,
+            maxTotal: 32,
+            transferMode: 'none',
+            transferCount: 0,
+            seedTrackId: selectedTrack.id,
+        });
+        return { ...definition, selectionDriven: true };
+    }, [displayTracks, lineOptions, maps, selectedTrack]);
+    const miniLayout = useMemo(
+        () => buildMetroMapLayout(miniMap, displayTracks),
+        [displayTracks, miniMap],
+    );
     const mapForLayout = useMemo(() => {
         if (!activeMap || !dragPosition) return activeMap;
         return {
@@ -1196,8 +1607,8 @@ export default function TasteMapMetroStudio({
         };
     }, [activeMap, dragPosition]);
     const layout = useMemo(
-        () => buildMetroMapLayout(mapForLayout, sourceTracks, { transientStationId: draggingStationId }),
-        [mapForLayout, sourceTracks, draggingStationId],
+        () => buildMetroMapLayout(mapForLayout, displayTracks, { transientStationId: draggingStationId }),
+        [mapForLayout, displayTracks, draggingStationId],
     );
     const activeTrains = Array.isArray(activeMap?.trains) ? activeMap.trains : EMPTY_TRAINS;
     const trainRoutes = useMemo(() => new Map(
@@ -1315,6 +1726,24 @@ export default function TasteMapMetroStudio({
             journey: getTrainJourneyState(route, runtime),
         };
     }).filter(Boolean);
+    const miniCurrentStation = miniLayout.stations.find((station) => station.trackId === selectedTrack?.id)
+        || miniLayout.stations[0]
+        || null;
+    const fullCurrentStation = layout.stations.find((station) => station.trackId === selectedTrack?.id)
+        || layout.stations[0]
+        || null;
+    const makeCurrentTrackTrainView = (station) => station && selectedTrack ? {
+        train: {
+            id: `current-track-${selectedTrack.id}`,
+            name: `${selectedTrack.name} · ${lang === 'en' ? 'current track' : '현재 곡'}`,
+            color: station.lineKeys
+                .map((lineKey) => miniMap?.lines.find((line) => line.key === lineKey)?.color)
+                .find(Boolean) || TRAIN_COLORS[0],
+        },
+        position: { x: station.x, y: station.y, angle: 0 },
+    } : null;
+    const miniCurrentTrackTrainView = makeCurrentTrackTrainView(miniCurrentStation);
+    const fullCurrentTrackTrainView = makeCurrentTrackTrainView(fullCurrentStation);
     const resolvedSelectedTrainId = activeTrains.some((train) => train.id === selectedTrainId)
         ? selectedTrainId
         : (activeTrains[0]?.id || null);
@@ -1326,6 +1755,12 @@ export default function TasteMapMetroStudio({
     const activeTrainNextTrack = activeTrainView?.journey
         ? trackById.get(activeTrainView.journey.nextStationId)
         : null;
+    const activeTrainSongCount = activeTrainView
+        ? (activeTrainView.train.playlist?.trackIds?.length || activeTrainView.train.routeStationIds.length)
+        : 0;
+    const activeTrainProgressPercent = activeTrainView?.journey
+        ? Math.round((activeTrainView.journey.progress || 0) * 100)
+        : 0;
     const youtubeTrainView = youtubeSession
         ? trainViews.find((view) => view.train.id === youtubeSession.trainId) || null
         : null;
@@ -1343,9 +1778,6 @@ export default function TasteMapMetroStudio({
     const youtubeProgressPercent = youtubeProgress.durationMs > 0
         ? Math.min(100, Math.max(0, (youtubeProgress.positionMs / youtubeProgress.durationMs) * 100))
         : 0;
-    const routeProgressPercent = activeTrainHasYoutube && youtubeStopIds.length
-        ? Math.min(100, ((youtubeStep + (youtubeProgressPercent / 100)) / youtubeStopIds.length) * 100)
-        : Math.min(100, Math.max(0, (activeTrainView?.journey?.progress || 0) * 100));
     useEffect(() => {
         if (!open || creating || !activeMapId) return undefined;
         let measureFrame = null;
@@ -1354,6 +1786,17 @@ export default function TasteMapMetroStudio({
                 const stage = canvasStageRef.current;
                 const svg = svgRef.current;
                 if (!stage || !svg) return;
+                const focusStation = layout.stations.find((station) => station.trackId === selectedTrack?.id);
+                if (focusStation) {
+                    const currentZoom = zoomRef.current || 1;
+                    const gutter = METRO_GRID_SIZE * 10;
+                    stage.scrollTo({
+                        left: Math.max(0, ((gutter + focusStation.x) * currentZoom) - (stage.clientWidth / 2)),
+                        top: Math.max(0, ((gutter + focusStation.y) * currentZoom) - (stage.clientHeight / 2)),
+                        behavior: 'smooth',
+                    });
+                    return;
+                }
                 const stationRects = [...svg.querySelectorAll('.tm2-svg-station')]
                     .map((station) => station.getBoundingClientRect())
                     .filter((rect) => rect.width > 0 && rect.height > 0);
@@ -1377,7 +1820,7 @@ export default function TasteMapMetroStudio({
             window.cancelAnimationFrame(frame);
             if (measureFrame) window.cancelAnimationFrame(measureFrame);
         };
-    }, [open, creating, activeMapId]);
+    }, [open, creating, activeMapId, layout.stations, selectedTrack?.id]);
     useEffect(() => {
         zoomRef.current = zoom;
     }, [zoom]);
@@ -1455,11 +1898,6 @@ export default function TasteMapMetroStudio({
             return !query || `${track.name} ${track.artists || ''}`.toLowerCase().includes(query);
         })
         .slice(0, 28);
-
-    const commitMaps = (nextMaps) => {
-        setMaps(nextMaps);
-        persistMaps(storageKey, nextMaps);
-    };
 
     const updateActiveMap = (updater) => {
         if (!activeMap) return;
@@ -1705,38 +2143,41 @@ export default function TasteMapMetroStudio({
         if (selectedTrainId === trainId) setSelectedTrainId(null);
     };
 
-    const addTrain = () => {
+    const createTrain = ({
+        routeStationIds,
+        routeMode = 'line',
+        lineKey = null,
+        routeLabel,
+        name = '',
+        color = TRAIN_COLORS[activeTrains.length % TRAIN_COLORS.length] || TRAIN_COLORS[0],
+        speed = DEFAULT_TRAIN_SPEED,
+    }) => {
         if (activeTrains.length) {
             setTrainRouteError(copy.oneTrainOnly);
             setTrainComposerOpen(false);
-            return;
+            return null;
         }
-        const routeStationIds = [...activeDraftStationIds];
         const route = buildMetroTrainRoute(layout, routeStationIds);
         if (!route.valid || routeStationIds.length < 2) {
             setTrainRouteError(copy.selectAtLeastTwo);
-            return;
+            return null;
         }
         const trainNumber = (activeMap?.trains?.length || 0) + 1;
         const createdAt = new Date().toISOString();
         const trainId = `${activeMap.id}-train-${Date.now().toString(36)}`;
-        const line = activeMap.lines.find((item) => item.key === resolvedTrainDraftLineKey);
-        const routeLabel = trainDraftMode === 'line'
-            ? (line?.label || copy.lineRoute)
-            : (lang === 'en' ? 'Custom journey' : '직접 선택 경로');
         const train = {
             id: trainId,
-            name: trainDraftName.trim() || (lang === 'en' ? `Train ${trainNumber}` : `${trainNumber}호 열차`),
-            color: trainDraftColor,
-            speed: trainDraftSpeed,
-            routeMode: trainDraftMode,
-            lineKey: trainDraftMode === 'line' ? resolvedTrainDraftLineKey : null,
-            routeLabel,
+            name: name.trim() || (lang === 'en' ? `Train ${trainNumber}` : `${trainNumber}호 열차`),
+            color,
+            speed,
+            routeMode,
+            lineKey,
+            routeLabel: routeLabel || copy.lineRoute,
             routeStationIds,
             running: false,
             createdAt,
             playlist: {
-                name: `${activeMap.name} · ${routeLabel}`,
+                name: `${activeMap.name} · ${routeLabel || copy.lineRoute}`,
                 trackIds: [...routeStationIds],
                 createdAt,
             },
@@ -1758,11 +2199,56 @@ export default function TasteMapMetroStudio({
             playRequested: false,
         });
         setSelectedTrainId(trainId);
+        return trainId;
+    };
+
+    const addTrain = () => {
+        const routeStationIds = [...activeDraftStationIds];
+        const line = activeMap.lines.find((item) => item.key === resolvedTrainDraftLineKey);
+        const routeLabel = trainDraftMode === 'line'
+            ? (line?.label || copy.lineRoute)
+            : (lang === 'en' ? 'Custom journey' : '직접 선택 경로');
+        const createdTrainId = createTrain({
+            routeStationIds,
+            routeMode: trainDraftMode,
+            lineKey: trainDraftMode === 'line' ? resolvedTrainDraftLineKey : null,
+            routeLabel,
+            name: trainDraftName,
+            color: trainDraftColor,
+            speed: trainDraftSpeed,
+        });
+        if (!createdTrainId) return;
         setTrainDraftName('');
         setTrainDraftStationIds([]);
         setTrainRouteError('');
         setTrainComposerOpen(false);
         setSelectedLineKey(null);
+    };
+
+    const createDefaultTrainForActiveMap = () => {
+        if (!activeMap) return null;
+        const candidateLineKeys = [
+            selectedLineKey,
+            resolvedTrainDraftLineKey,
+            ...activeMap.lines.map((line) => line.key),
+        ].filter((value, index, list) => value && list.indexOf(value) === index);
+        const targetLineKey = candidateLineKeys.find((lineKey) => {
+            const route = lineTrainRoutes.get(lineKey);
+            const stationIds = layout.lines.find((line) => line.key === lineKey)?.stationIds || [];
+            return route?.valid && stationIds.length >= 2;
+        });
+        if (!targetLineKey) {
+            setTrainRouteError(copy.selectAtLeastTwo);
+            return null;
+        }
+        const targetLine = activeMap.lines.find((line) => line.key === targetLineKey);
+        const routeStationIds = [...(layout.lines.find((line) => line.key === targetLineKey)?.stationIds || [])];
+        return createTrain({
+            routeStationIds,
+            routeMode: 'line',
+            lineKey: targetLineKey,
+            routeLabel: targetLine?.label || copy.lineRoute,
+        });
     };
 
     const getPointerMapPosition = (event) => {
@@ -2138,7 +2624,9 @@ export default function TasteMapMetroStudio({
             });
             return;
         }
-        setSelectedStationId((current) => current === trackId ? null : trackId);
+        const track = trackById.get(trackId);
+        setSelectedStationId(trackId);
+        if (track) onTrackSelect?.(track);
     };
 
     const handleCanvasPointerDown = (event) => {
@@ -2176,9 +2664,7 @@ export default function TasteMapMetroStudio({
 
     const handleCreate = (map) => {
         const nextMaps = [...maps, { ...map, trains: [] }];
-        commitMaps(nextMaps);
-        setActiveMapId(map.id);
-        setCreating(false);
+        commitMaps(nextMaps, { activeMapId: map.id, creating: false });
         setSelectedStationId(null);
         setSelectedLineKey(null);
         setEditorOpen(false);
@@ -2192,9 +2678,10 @@ export default function TasteMapMetroStudio({
     const handleDeleteMap = () => {
         if (!activeMap) return;
         const nextMaps = maps.filter((map) => map.id !== activeMap.id);
-        commitMaps(nextMaps);
-        setActiveMapId(nextMaps[0]?.id || null);
-        setCreating(nextMaps.length === 0);
+        commitMaps(nextMaps, {
+            activeMapId: nextMaps[0]?.id || null,
+            creating: nextMaps.length === 0,
+        });
         setSelectedStationId(null);
         setSelectedLineKey(null);
         setEditorOpen(false);
@@ -2222,8 +2709,7 @@ export default function TasteMapMetroStudio({
             })),
         };
         const nextMaps = [...maps, duplicate];
-        commitMaps(nextMaps);
-        setActiveMapId(duplicate.id);
+        commitMaps(nextMaps, { activeMapId: duplicate.id });
         setSelectedStationId(null);
         setSelectedTrainId(null);
         setTrainPanelOpen(false);
@@ -2247,6 +2733,11 @@ export default function TasteMapMetroStudio({
             }],
         }));
         setSelectedLineKey(option.key);
+    };
+
+    const handleAddLineClick = (event) => {
+        const option = addableLines.find((line) => line.key === event.currentTarget.dataset.lineKey);
+        addLine(option);
     };
 
     const addTrack = (trackId) => {
@@ -2318,7 +2809,82 @@ export default function TasteMapMetroStudio({
         }));
     };
 
+    const openMapTab = (mapId) => {
+        closeYoutubePlayback();
+        setActiveMapId(mapId);
+        setSelectedStationId(null);
+        setSelectedLineKey(null);
+        setEditorOpen(false);
+        setTrainPanelOpen(false);
+        setTrainComposerOpen(false);
+        setZoom(1);
+    };
+
+    const toggleTrainPanel = () => {
+        if (trainPanelOpen) {
+            closeTrainControl();
+            return;
+        }
+        if (!activeTrains.length) {
+            const createdTrainId = createDefaultTrainForActiveMap();
+            if (createdTrainId) {
+                setTrainPanelOpen(false);
+                setTrainComposerOpen(false);
+                setEditorOpen(false);
+                setSelectedStationId(null);
+                setSelectedLineKey(null);
+                return;
+            }
+        }
+        openTrainControl();
+    };
+
+    const toggleEditorPanel = () => {
+        closeTrainControl();
+        setEditorOpen((current) => !current);
+    };
+
+    const expandSelectionMap = () => {
+        if (!miniMap) {
+            onExpand?.();
+            return;
+        }
+        const mapAlreadyStored = maps.some((map) => map.id === miniMap.id);
+        commitMaps(
+            mapAlreadyStored ? maps : [miniMap, ...maps],
+            {
+                activeMapId: miniMap.id,
+                creating: false,
+                trackHistory: false,
+            },
+        );
+        setSelectedStationId(selectedTrack?.id || null);
+        setSelectedLineKey(null);
+        setEditorOpen(false);
+        closeTrainControl();
+        onExpand?.();
+    };
+
     if (!open) return null;
+
+    if (!expanded) {
+        return (
+            <MiniMetroMap
+                map={miniMap}
+                layout={miniLayout}
+                selectedTrack={selectedTrack}
+                trackContext={trackContext}
+                currentTrackTrainView={miniCurrentTrackTrainView}
+                onTrackSelect={onTrackSelect}
+                onExploreTrack={onExploreTrack}
+                onAddTrack={onAddTrack}
+                onOpenTrack={onOpenTrack}
+                onExpand={expandSelectionMap}
+                onDismiss={onDismiss}
+                lang={lang}
+            />
+        );
+    }
 
     return (
         <div className="tm2-backdrop" role="presentation">
@@ -2371,6 +2937,7 @@ export default function TasteMapMetroStudio({
                                         dragSnapTarget={dragPosition?.snapTarget || null}
                                         dragMagnetStrength={dragPosition?.magnetStrength || 0}
                                         trainViews={trainViews}
+                                        currentTrackTrainView={fullCurrentTrackTrainView}
                                         selectedTrainId={resolvedSelectedTrainId}
                                         routePreview={trainPanelOpen && trainComposerOpen ? trainDraftRoute : null}
                                         routeDraftStationIds={trainPanelOpen && trainComposerOpen ? activeDraftStationIds : []}
@@ -2437,9 +3004,120 @@ export default function TasteMapMetroStudio({
                             </p>
                         </header>
 
-                        <div className="tm2-interaction-hint">
-                            <strong>{copy.dragHint}</strong>
-                            <span>{copy.mapGestureHint}</span>
+                        {activeTrainView && activeTrainCurrentTrack && !trainDrag ? (
+                            <section
+                                className="tm2-train-marquee"
+                                aria-live="polite"
+                                style={{ '--tm2-train-color': getTrainColor(activeTrainView.train) }}
+                            >
+                                <button type="button" className="tm2-train-marquee-train" onClick={openTrainControl}>
+                                    <span className="tm2-train-marquee-mark"><i /></span>
+                                    <span className="tm2-train-marquee-train-copy">
+                                        <small>{copy.nowPassing}</small>
+                                        <strong>{activeTrainView.train.name}</strong>
+                                    </span>
+                                </button>
+                                {activeTrainCurrentTrack.coverUrl ? (
+                                    <img src={activeTrainCurrentTrack.coverUrl} alt="" className="tm2-train-marquee-cover" />
+                                ) : <span className="tm2-train-marquee-fallback" aria-hidden>♪</span>}
+                                <div className="tm2-train-marquee-current">
+                                    <span>{copy.currentLocation}</span>
+                                    <strong>{activeTrainCurrentTrack.name}</strong>
+                                    <small>{activeTrainCurrentTrack.artists || '-'}</small>
+                                </div>
+                                <div className="tm2-train-marquee-next">
+                                    <span>{copy.nextStation}</span>
+                                    <strong>{activeTrainNextTrack?.name || activeTrainCurrentTrack.name}</strong>
+                                    <small>{activeTrainView.train.routeLabel}</small>
+                                </div>
+                                <div className={`tm2-train-marquee-progress${activeTrainHasYoutube ? ' interactive' : ''}`}>
+                                    {activeTrainHasYoutube ? (
+                                        <input
+                                            type="range"
+                                            min="0"
+                                            max={Math.max(1, youtubeProgress.durationMs)}
+                                            step="250"
+                                            value={Math.min(youtubeProgress.positionMs, Math.max(1, youtubeProgress.durationMs))}
+                                            disabled={youtubeProgress.durationMs <= 0}
+                                            onChange={seekYoutubePlayback}
+                                            aria-label={copy.seekPlayback}
+                                            style={{ '--tm2-marquee-play-progress': `${youtubeProgressPercent}%` }}
+                                        />
+                                    ) : (
+                                        <i style={{ width: `${activeTrainProgressPercent}%` }} />
+                                    )}
+                                </div>
+                                <div className="tm2-train-marquee-side">
+                                    <div className="tm2-train-marquee-state">
+                                        <b>{activeTrainView.train.running === false ? copy.paused : copy.running}</b>
+                                        <strong>{activeTrainSongCount}</strong>
+                                        <small>{copy.songs}</small>
+                                    </div>
+                                    <div className="tm2-train-marquee-actions">
+                                        <button
+                                            type="button"
+                                            className="tm2-status-action"
+                                            disabled={!activeTrainHasYoutube}
+                                            onClick={handleYoutubePrevious}
+                                            aria-label={copy.previousTrack}
+                                        >
+                                            ‹
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="tm2-status-action"
+                                            onClick={() => toggleTrain(activeTrainView.train.id)}
+                                            aria-label={activeTrainView.train.running === false ? copy.resume : copy.pause}
+                                            aria-keyshortcuts="Space"
+                                        >
+                                            {activeTrainView.train.running === false ? '▶' : 'Ⅱ'}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="tm2-status-action"
+                                            disabled={!activeTrainHasYoutube}
+                                            onClick={handleYoutubeNext}
+                                            aria-label={copy.nextTrack}
+                                        >
+                                            ›
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="tm2-status-action"
+                                            onClick={() => resetTrain(activeTrainView.train.id)}
+                                            aria-label={copy.resetTrain}
+                                        >
+                                            ↺
+                                        </button>
+                                    </div>
+                                </div>
+                            </section>
+                        ) : null}
+
+                        <div className="tm2-bottom-dock">
+                            <button type="button" className="tm2-field-return" onClick={closeStudio}>← {lang === 'en' ? 'Taste Field' : '취향 필드'}</button>
+                            <span className="tm2-dock-divider" aria-hidden />
+                            <nav className="tm2-map-tabs" aria-label="Metro maps">
+                                {maps.map((map, index) => (
+                                    <button
+                                        key={map.id}
+                                        type="button"
+                                        className={activeMap.id === map.id ? 'active' : ''}
+                                        onClick={() => openMapTab(map.id)}
+                                    >
+                                        <span>{String(index + 1).padStart(2, '0')}</span>{map.name}
+                                    </button>
+                                ))}
+                                <button type="button" className="tm2-new-tab" onClick={() => setCreating(true)}>＋ {copy.newMetro}</button>
+                            </nav>
+                            <span className="tm2-dock-divider" aria-hidden />
+                            <div className="tm2-map-toolbar">
+                                <button type="button" onClick={() => setZoom((value) => Math.max(METRO_MIN_ZOOM, value - 0.12))}>−</button>
+                                <button type="button" className="value" onClick={() => setZoom(1)}>{Math.round(zoom * 100)}%</button>
+                                <button type="button" onClick={() => setZoom((value) => Math.min(1.6, value + 0.12))}>＋</button>
+                            </div>
+                            <button type="button" className={`tm2-train-toggle${trainPanelOpen ? ' active' : ''}`} onClick={toggleTrainPanel}>▰ {copy.trainControl}</button>
+                            <button type="button" className={`tm2-edit-toggle${editorOpen ? ' active' : ''}`} onClick={toggleEditorPanel}>＋ {copy.editMap}</button>
                         </div>
 
                         <div className="tm2-map-actions">
@@ -2815,7 +3493,13 @@ export default function TasteMapMetroStudio({
                                 {editorMode === 'line' ? (
                                     <div className="tm2-add-list">
                                         {addableLines.length ? addableLines.map((line) => (
-                                            <button type="button" key={line.key} className="tm2-add-line" onClick={() => addLine(line)}>
+                                            <button
+                                                type="button"
+                                                key={line.key}
+                                                className="tm2-add-line"
+                                                data-line-key={line.key}
+                                                onClick={handleAddLineClick}
+                                            >
                                                 <span style={{ background: line.color }} />
                                                 <strong>{line.label}</strong>
                                                 <small>{line.count} {copy.songs}</small>
@@ -2844,127 +3528,6 @@ export default function TasteMapMetroStudio({
                             </div>
                         </aside>
 
-                        {activeTrainView && activeTrainCurrentTrack && !trainDrag ? (
-                            <section className="tm2-train-status" aria-live="polite">
-                                <button type="button" className="tm2-status-train" onClick={openTrainControl} style={{ '--tm2-train-color': getTrainColor(activeTrainView.train) }}>
-                                    <span><i /></span>
-                                    <small>{activeTrainView.train.name}</small>
-                                </button>
-                                {activeTrainCurrentTrack.coverUrl ? (
-                                    <img src={activeTrainCurrentTrack.coverUrl} alt="" />
-                                ) : <span className="tm2-status-cover-fallback" aria-hidden>♪</span>}
-                                <div className="tm2-status-current">
-                                    <span>{copy.currentLocation}</span>
-                                    <strong>{activeTrainCurrentTrack.name}</strong>
-                                    <small>{activeTrainCurrentTrack.artists || '-'}</small>
-                                </div>
-                                <div className="tm2-status-next">
-                                    <span>{copy.nextStation}</span>
-                                    <strong>{activeTrainNextTrack?.name || activeTrainCurrentTrack.name}</strong>
-                                </div>
-                                <div className="tm2-status-playlist">
-                                    <span>♫</span>
-                                    <strong>{activeTrainView.train.playlist?.trackIds?.length || activeTrainView.train.routeStationIds.length}</strong>
-                                    <small>{copy.songs}</small>
-                                </div>
-                                <div className={`tm2-status-progress${activeTrainHasYoutube ? ' interactive' : ''}`}>
-                                    {activeTrainHasYoutube ? (
-                                        <input
-                                            type="range"
-                                            min="0"
-                                            max={Math.max(1, youtubeProgress.durationMs)}
-                                            step="250"
-                                            value={Math.min(youtubeProgress.positionMs, Math.max(1, youtubeProgress.durationMs))}
-                                            disabled={youtubeProgress.durationMs <= 0}
-                                            onChange={seekYoutubePlayback}
-                                            aria-label={copy.seekPlayback}
-                                            style={{ '--tm2-status-play-progress': `${youtubeProgressPercent}%` }}
-                                        />
-                                    ) : (
-                                        <i
-                                            aria-hidden
-                                            style={{ width: `${Math.round((activeTrainView.journey?.progress || 0) * 100)}%` }}
-                                        />
-                                    )}
-                                </div>
-                                <div
-                                    className="tm2-status-route-progress"
-                                    role="progressbar"
-                                    aria-label={copy.routeProgress}
-                                    aria-valuemin="0"
-                                    aria-valuemax="100"
-                                    aria-valuenow={Math.round(routeProgressPercent)}
-                                >
-                                    <span>{copy.routeProgress}</span>
-                                    <i><b style={{ width: `${routeProgressPercent}%` }} /></i>
-                                </div>
-                                <div className="tm2-status-player-controls">
-                                    <button
-                                        type="button"
-                                        disabled={!activeTrainHasYoutube}
-                                        onClick={handleYoutubePrevious}
-                                        aria-label={copy.previousTrack}
-                                    >‹</button>
-                                    <button
-                                        type="button"
-                                        className="tm2-status-action"
-                                        onClick={() => toggleTrain(activeTrainView.train.id)}
-                                        aria-label={activeTrainView.train.running === false ? copy.resume : copy.pause}
-                                        aria-keyshortcuts="Space"
-                                    >
-                                        {activeTrainView.train.running === false ? '▶' : 'Ⅱ'}
-                                    </button>
-                                    <button
-                                        type="button"
-                                        disabled={!activeTrainHasYoutube}
-                                        onClick={handleYoutubeNext}
-                                        aria-label={copy.nextTrack}
-                                    >›</button>
-                                </div>
-                                <button type="button" className="tm2-status-action" onClick={() => resetTrain(activeTrainView.train.id)} aria-label={copy.resetTrain}>↺</button>
-                            </section>
-                        ) : null}
-
-                        <div className="tm2-bottom-dock">
-                            <button type="button" className="tm2-field-return" onClick={closeStudio}>← {lang === 'en' ? 'Taste Field' : '취향 필드'}</button>
-                            <span className="tm2-dock-divider" aria-hidden />
-                            <nav className="tm2-map-tabs" aria-label="Metro maps">
-                                {maps.map((map, index) => (
-                                    <button
-                                        key={map.id}
-                                        type="button"
-                                        className={activeMap.id === map.id ? 'active' : ''}
-                                        onClick={() => {
-                                            closeYoutubePlayback();
-                                            setActiveMapId(map.id);
-                                            setSelectedStationId(null);
-                                            setSelectedLineKey(null);
-                                            setEditorOpen(false);
-                                            setTrainPanelOpen(false);
-                                            setTrainComposerOpen(false);
-                                            setZoom(1);
-                                        }}
-                                    >
-                                        <span>{String(index + 1).padStart(2, '0')}</span>{map.name}
-                                    </button>
-                                ))}
-                                <button type="button" className="tm2-new-tab" onClick={() => setCreating(true)}>＋ {copy.newMetro}</button>
-                            </nav>
-                            <span className="tm2-dock-divider" aria-hidden />
-                            <div className="tm2-map-toolbar">
-                                <button type="button" onClick={() => setZoom((value) => Math.max(METRO_MIN_ZOOM, value - 0.12))}>−</button>
-                                <button type="button" className="value" onClick={() => setZoom(1)}>{Math.round(zoom * 100)}%</button>
-                                <button type="button" onClick={() => setZoom((value) => Math.min(1.6, value + 0.12))}>＋</button>
-                            </div>
-                            <button type="button" className={`tm2-train-toggle${trainPanelOpen ? ' active' : ''}`} onClick={() => {
-                                if (trainPanelOpen) closeTrainControl();
-                                else openTrainControl();
-                            }}>▰ {copy.trainControl}</button>
-                            <button type="button" className={`tm2-edit-toggle${editorOpen ? ' active' : ''}`} onClick={() => {
-                                closeTrainControl();
-                                setEditorOpen((current) => !current);
-                            }}>＋ {copy.editMap}</button>
-                        </div>
                     </div>
                 ) : null}
             </section>
