@@ -6013,3 +6013,89 @@
         font-size: 24px;
     }
 }
+
+/* One shared grid keeps video, transport, and metro aligned in normal flow. */
+.tm-playback-dock-expanded {
+    display: contents;
+}
+
+.tm-playback-dock {
+    position: fixed;
+    z-index: 860;
+    top: 64px;
+    right: 16px;
+    width: min(368px, calc(100vw - 32px));
+    max-height: calc(100dvh - 80px);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-auto-rows: max-content;
+    overflow: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    border: 1px solid #34434b;
+    border-radius: 16px;
+    background: #0d151a;
+    box-shadow: 0 20px 56px rgb(0 0 0 / 45%);
+}
+
+.tm-playback-dock:empty {
+    display: none;
+}
+
+.tm-playback-dock > .tm2-youtube-player,
+.tm-playback-dock > .tm2-mini {
+    position: relative;
+    inset: auto;
+    width: 100%;
+    min-width: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    animation: none;
+}
+
+.tm-playback-dock > .tm2-mini {
+    height: clamp(280px, 38dvh, 360px);
+    grid-template-rows: 48px minmax(0, 1fr) 106px;
+}
+
+.tm-playback-dock.has-video > .tm2-mini {
+    border-top: 1px solid #34434b;
+}
+
+.tm-playback-dock .tm2-youtube-player > header {
+    min-height: 56px;
+    padding: 10px 12px;
+    cursor: default;
+    touch-action: auto;
+}
+
+.tm-playback-dock .tm2-youtube-player > header::before {
+    display: none;
+}
+
+.tm-playback-dock .tm2-youtube-frame {
+    min-height: 0;
+    aspect-ratio: 16 / 9;
+}
+
+.tm-playback-dock .tm2-youtube-now {
+    padding: 12px;
+}
+
+.tm-playback-dock .tm2-youtube-transport {
+    padding: 0 12px 12px;
+}
+
+.tm-playback-dock .tm2-mini-head {
+    padding: 8px 12px;
+}
+
+@media (max-width: 600px) {
+    .tm-playback-dock {
+        top: 56px;
+        right: 8px;
+        width: min(352px, calc(100vw - 16px));
+        max-height: calc(100dvh - 64px);
+    }
+}

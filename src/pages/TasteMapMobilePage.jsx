@@ -1,382 +1,194 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTasteData } from '../context/TasteDataContext';
+import { buildTasteState, describeTasteState, getTasteGenres, uniqueTracks } from '../taste/buildTasteState';
+import { hash01 } from '../taste/constellationTopology';
+import { getGenreIdentity, titleizeGenre } from '../taste/genreIdentity';
+import { buildAvatarState, buildAvatarReaction } from '../avatar/buildAvatarState';
+import LivingConstellationAvatar from '../avatar/LivingConstellationAvatar';
 import './TasteMapMobilePage.css';
-
-function openExternal(track) {
-  const query = `${track?.artists || ''} ${track?.name || ''}`.trim();
-  const url = track?.externalUrl
-    || (query ? `https://open.spotify.com/search/${encodeURIComponent(query)}` : null);
-  if (url && typeof window !== 'undefined') {
-    window.open(url, '_blank', 'noopener,noreferrer');
-  }
-}
+import AccountButton from '../auth/AccountButton';
 
 const API_BASE = import.meta?.env?.VITE_API_BASE || '';
-const api = (path) => `${API_BASE}${path}`;
+const EMPTY_TRACKS = [];
 
-function normalizeGenre(value) {
-  return String(value || '').trim().toLowerCase();
+function ArrowIcon() {
+    return <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 18 18 6M6 6h12v12" /></svg>;
 }
 
-function formatGenre(value) {
-  return String(value || '')
-    .split(/[\s-]+/)
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ');
+function ActionIcon({ action }) {
+    return <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        {action === 'absorb' ? <><circle cx="12" cy="12" r="3" /><path d="M12 2v4m0 12v4M2 12h4m12 0h4M5 5l3 3m8 8 3 3M5 19l3-3M16 8l3-3" /></>
+            : action === 'dig' ? <><ellipse cx="12" cy="12" rx="10" ry="5" transform="rotate(-35 12 12)" /><circle cx="12" cy="12" r="2" /><circle cx="19" cy="6" r="2" fill="currentColor" /></>
+                : <><path d="m8 8 8 8m0-8-8 8M12 2v2m0 16v2M2 12h2m16 0h2" /></>}
+    </svg>;
 }
 
-function shortGenreLabel(value) {
-  const label = String(value || '').trim();
-  if (!label) return 'Genre';
-  if (label.length > 18) return `${label.slice(0, 18)}…`;
-  return label;
+function openExternal(track) {
+    const query = `${track?.artists || ''} ${track?.name || ''}`.trim();
+    const candidate = track?.externalUrl || `https://open.spotify.com/search/${encodeURIComponent(query)}`;
+    try {
+        const url = new URL(candidate);
+        if (url.protocol === 'https:' || url.protocol === 'http:') window.open(url.href, '_blank', 'noopener,noreferrer');
+    } catch { /* Incomplete metadata should not interrupt Taste Drop. */ }
 }
 
-const GENRE_FAMILY_TONES = {
-  house: { rgb: '116, 154, 255', text: '#e4eeff' },
-  disco: { rgb: '255, 163, 112', text: '#ffe8d8' },
-  bass: { rgb: '115, 223, 235', text: '#dbfcff' },
-  ambient: { rgb: '158, 181, 255', text: '#e7efff' },
-  pop: { rgb: '232, 137, 204', text: '#ffe6f7' },
-  indie: { rgb: '155, 197, 255', text: '#e5f3ff' },
-  rock: { rgb: '144, 167, 232', text: '#e8efff' },
-  soul: { rgb: '255, 201, 112', text: '#fff0d3' },
-  cinematic: { rgb: '188, 174, 255', text: '#f0ebff' },
-  alt: { rgb: '167, 198, 255', text: '#eaf3ff' },
-  default: { rgb: '182, 206, 248', text: '#edf5ff' },
-};
-
-const GENRE_IDENTITY_RULES = [
-  { test: /(lo[\s-]?fi\s+house)/i, short: 'Velvet Lo-Fi House', family: 'house' },
-  { test: /(french\s+house)/i, short: 'Chrome French House', family: 'house' },
-  { test: /(nu\s*disco)/i, short: 'Neon Nu Disco', family: 'disco' },
-  { test: /(disco\s+house)/i, short: 'Solar Disco House', family: 'disco' },
-  { test: /(stutter\s+house)/i, short: 'Stutter House', family: 'house' },
-  { test: /(tech\s*house)/i, short: 'Pulse Tech House', family: 'house' },
-  { test: /(\bhouse\b)/i, short: 'Pulse House', family: 'house' },
-  { test: /(drum\s*(?:and|&)\s*bass|dnb|drum[\s-]?n[\s-]?bass)/i, short: 'Aero Drum & Bass', family: 'bass' },
-  { test: /(garage)/i, short: 'Night Garage', family: 'bass' },
-  { test: /(techno)/i, short: 'Neon Techno', family: 'bass' },
-  { test: /(ambient|chillwave|downtempo)/i, short: 'Cloud Ambient', family: 'ambient' },
-  { test: /(dream\s*pop)/i, short: 'Halo Dream Pop', family: 'pop' },
-  { test: /(hyperpop)/i, short: 'Hyperpop Flux', family: 'pop' },
-  { test: /(k[\s-]?pop)/i, short: 'K-Pop Prism', family: 'pop' },
-  { test: /(\bpop\b)/i, short: 'Prism Pop', family: 'pop' },
-  { test: /(bedroom\s*pop)/i, short: 'Bedroom Pop', family: 'indie' },
-  { test: /(taiwanese\s+indie|indie)/i, short: 'Indie Haze', family: 'indie' },
-  { test: /(rock)/i, short: 'Granite Rock', family: 'rock' },
-  { test: /(r[\s&/]*b|soul|funk)/i, short: 'Velvet Soul', family: 'soul' },
-  { test: /(jazz)/i, short: 'Noir Jazz', family: 'soul' },
-  { test: /(soundtrack|score|cinematic)/i, short: 'Cinematic Score', family: 'cinematic' },
-  { test: /(ballad)/i, short: 'Lumen Ballad', family: 'alt' },
-  { test: /(electronic|idm|electronica)/i, short: 'Signal Electronic', family: 'alt' },
-];
-
-function getGenreIdentity(genre) {
-  const normalized = normalizeGenre(genre);
-  if (!normalized) {
-    return {
-      key: '',
-      short: 'Untitled Genre',
-      display: 'Untitled Genre',
-      family: 'default',
-      tone: GENRE_FAMILY_TONES.default,
+function MobileConstellation({ tracks, status, progress }) {
+    const navigate = useNavigate();
+    const [lang, setLang] = useState(() => {
+        try { return localStorage.getItem('spectra-tastemap-lang-v1') === 'en' ? 'en' : 'ko'; }
+        catch { return 'ko'; }
+    });
+    const [now] = useState(() => Date.now());
+    const [session, setSession] = useState({ decisions: [], active: null, count: 0 });
+    const [discovery, setDiscovery] = useState({ key: '', tracks: [], status: 'loading' });
+    const [retry, setRetry] = useState(0);
+    const en = lang === 'en';
+    const library = useMemo(() => uniqueTracks(tracks), [tracks]);
+    const baseTaste = useMemo(() => buildTasteState(library, { now }), [library, now]);
+    const taste = useMemo(() => buildTasteState(library, { decisions: session.decisions, now }), [library, session.decisions, now]);
+    const avatar = useMemo(() => buildAvatarState(taste, library, session.decisions), [taste, library, session.decisions]);
+    const reaction = session.active ? {
+        ...buildAvatarReaction(session.active.action, session.active.track, avatar), id: session.count,
+    } : null;
+    const anchor = useMemo(() => [...library].sort((a, b) => hash01(a.id) - hash01(b.id))[0], [library]);
+    const discoveryQuery = useMemo(() => {
+        if (!anchor) return '';
+        const params = new URLSearchParams({
+            seedGenres: getTasteGenres(anchor).slice(0, 2).join(','),
+            valence: String(typeof anchor.valence === 'number' ? anchor.valence : 0.5),
+            energy: String(typeof anchor.energy === 'number' ? anchor.energy : 0.5),
+            limit: '12',
+        });
+        if (anchor.artists && anchor.name) params.set('seedTracks', `${String(anchor.artists).split(',')[0].trim()}|${anchor.name}`);
+        return params.toString();
+    }, [anchor]);
+    const discoveryKey = `${discoveryQuery}:${retry}`;
+    useEffect(() => {
+        if (!discoveryQuery) return undefined;
+        const controller = new AbortController();
+        let disposed = false;
+        const timeout = window.setTimeout(() => controller.abort(), 12000);
+        // Let React's development effect cleanup cancel before sending a request.
+        const start = window.setTimeout(() => {
+            fetch(`${API_BASE}/api/discover?${discoveryQuery}`, { signal: controller.signal })
+                .then(async (response) => {
+                    if (!response.ok) throw new Error('discovery unavailable');
+                    const data = await response.json();
+                    if (!disposed) setDiscovery({ key: discoveryKey, tracks: uniqueTracks(Array.isArray(data?.tracks) ? data.tracks : []), status: 'ready' });
+                })
+                .catch(() => {
+                    if (!disposed) setDiscovery({ key: discoveryKey, tracks: [], status: 'unavailable' });
+                })
+                .finally(() => window.clearTimeout(timeout));
+        }, 0);
+        return () => { disposed = true; controller.abort(); window.clearTimeout(start); window.clearTimeout(timeout); };
+    }, [discoveryKey, discoveryQuery]);
+    useEffect(() => {
+        if (!session.active) return undefined;
+        const timer = window.setTimeout(() => setSession((current) => ({ ...current, active: null })), 1150);
+        return () => window.clearTimeout(timer);
+    }, [session.active]);
+    const recommended = discovery.key === discoveryKey ? discovery.tracks : EMPTY_TRACKS;
+    const candidates = useMemo(() => {
+        const strength = new Map(baseTaste.coreGenres.map((item) => [item.genre, item.strength]));
+        const weight = (track) => Math.max(0, ...getTasteGenres(track).map((genre) => strength.get(genre) || 0));
+        const fallback = [...library].sort((a, b) => weight(a) - weight(b) || hash01(a.id) - hash01(b.id));
+        return uniqueTracks([...recommended, ...fallback]);
+    }, [recommended, library, baseTaste]);
+    const decided = new Set(session.decisions.map((decision) => decision.track.id));
+    const track = session.active?.track || candidates.find((candidate) => !decided.has(candidate.id)) || null;
+    const fromLibrary = track && library.some((item) => item.id === track.id);
+    const genre = getTasteGenres(track)[0];
+    const cover = track?.coverUrl || track?.imageUrl || track?.album?.images?.[0]?.url;
+    const explanation = describeTasteState(taste, lang);
+    const decide = (action) => {
+        if (!track || session.active) return;
+        setSession((current) => current.active ? current : ({
+            decisions: [...current.decisions.filter((item) => item.track.id !== track.id), { action, track }],
+            active: { action, track }, count: current.count + 1,
+        }));
     };
-  }
-  const base = formatGenre(normalized);
-  const matched = GENRE_IDENTITY_RULES.find((rule) => rule.test.test(normalized));
-  const short = matched?.short || base;
-  const family = matched?.family || 'default';
-  return {
-    key: normalized,
-    short,
-    display: short === base ? short : `${short} · ${base}`,
-    family,
-    tone: GENRE_FAMILY_TONES[family] || GENRE_FAMILY_TONES.default,
-  };
-}
-
-function getGenreSymbol(genre) {
-  const identity = getGenreIdentity(genre);
-  switch (identity.family) {
-    case 'house': return 'orbit';
-    case 'disco': return 'flare';
-    case 'bass': return 'pulse';
-    case 'ambient': return 'mist';
-    case 'pop': return 'prism';
-    case 'indie': return 'veil';
-    case 'rock': return 'dusk';
-    case 'soul': return 'halo';
-    case 'cinematic': return 'reverb';
-    case 'alt': return 'drift';
-    default: return 'headset';
-  }
-}
-
-function buildGenreStats(tracks) {
-  const map = new Map();
-  for (const track of tracks) {
-    const genres = Array.isArray(track?.genres) ? track.genres : [];
-    for (const genre of genres) {
-      const key = normalizeGenre(genre);
-      if (!key) continue;
-      const identity = getGenreIdentity(genre);
-      const entry = map.get(key) || {
-        key,
-        label: identity.short,
-        family: identity.family,
-        symbol: getGenreSymbol(genre),
-        tone: identity.tone,
-        count: 0,
-        tracks: [],
-      };
-      entry.count += 1;
-      entry.tracks.push(track);
-      map.set(key, entry);
-    }
-  }
-  return [...map.values()].sort((a, b) => b.count - a.count);
-}
-
-function getTrackCoverUrl(track) {
-  return track?.coverUrl
-    || track?.imageUrl
-    || track?.albumImage
-    || track?.album?.images?.[0]?.url
-    || null;
-}
-
-function calcExpandSeedStats(genreEntry) {
-  const list = Array.isArray(genreEntry?.tracks) ? genreEntry.tracks : [];
-  if (!list.length) return { valence: 0.5, energy: 0.5 };
-  const energy = list.reduce((acc, track) => acc + (Number(track?.energy) || 0), 0) / list.length;
-  const valence = list.reduce((acc, track) => acc + (Number(track?.valence) || 0), 0) / list.length;
-  return {
-    valence: Number.isFinite(valence) ? valence.toFixed(2) : '0.50',
-    energy: Number.isFinite(energy) ? energy.toFixed(2) : '0.50',
-  };
+    const feedback = session.active ? {
+        absorb: en ? `${track.name} is joining your constellation.` : `${track.name}, 별자리에 스며드는 중.`,
+        dig: en ? `${track.name} is entering your orbit.` : `${track.name}, 새로운 궤도로.`,
+        pop: en ? `${track.name} is drifting away.` : `${track.name}, 가볍게 흘려보내요.`,
+    }[session.active.action] : '';
+    return (
+        <main className="tmm-root">
+            <div className="tmm-shell">
+                <header className="tmm-appbar">
+                    <a href="/taste-map/mobile" className="tmm-brand" aria-label="SPECTRA home"><span className="tmm-brand-mark" aria-hidden="true" />SPECTRA</a>
+                    <div className="tmm-account-actions">
+                    <AccountButton lang={lang} />
+                    <button type="button" className="tmm-language" onClick={() => setLang(en ? 'ko' : 'en')}
+                        aria-label={en ? '한국어로 전환' : 'Switch to English'}>{en ? 'KO' : 'EN'}</button>
+                    </div>
+                </header>
+                <section className="tmm-living" aria-labelledby="tmm-living-title">
+                    <div className="tmm-living-heading">
+                        <span className="tmm-eyebrow">YOUR LIVING CONSTELLATION</span>
+                        <h1 id="tmm-living-title">{en ? 'A shape only you make.' : '당신만의 형태로.'}</h1>
+                        <p>{en ? 'Every sound leaves a little of you.' : '당신이 머문 음악이 하나의 별자리로.'}</p>
+                    </div>
+                    <div className="tmm-avatar-stage"><LivingConstellationAvatar avatar={avatar} reaction={reaction} lang={lang} /></div>
+                    <div className="tmm-region-signals" aria-label={en ? 'Core taste regions' : '중심 취향 영역'}>
+                        {taste.coreGenres.slice(0, 3).map((signal) => <span key={signal.genre}
+                            style={{ '--tmm-region': `rgb(${getGenreIdentity(signal.genre).tone.rgb})` }}>
+                            <i aria-hidden="true" />{titleizeGenre(signal.genre)}
+                        </span>)}
+                    </div>
+                </section>
+                <p className="tmm-taste-sentence" aria-live="polite">{explanation}</p>
+                <section className="tmm-drop" aria-labelledby="tmm-drop-title" aria-busy={Boolean(session.active)}>
+                    <div className="tmm-drop-header">
+                        <h2 id="tmm-drop-title">TASTE DROP <span aria-hidden="true">/</span> <small>{String(session.count + 1).padStart(2, '0')}</small></h2>
+                        <span>{en ? 'Let your taste take shape' : '지금 끌리는 방향으로'}</span>
+                    </div>
+                    {track ? <>
+                        <article className={`tmm-track-card${session.active ? ' is-deciding' : ''}`}>
+                            <button className="tmm-track-cover" type="button" onClick={() => openExternal(track)}
+                                aria-label={en ? `Listen to ${track.name} on an external service` : `${track.name} 외부 서비스에서 듣기`}>
+                                {cover && <img key={cover} src={cover} alt="" onError={(event) => { event.currentTarget.style.visibility = 'hidden'; }} />}
+                                <span className="tmm-cover-play" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m9 6 10 6-10 6Z" /></svg></span>
+                            </button>
+                            <div className="tmm-track-info">
+                                <span className="tmm-track-origin">{fromLibrary ? (en ? 'FROM YOUR LIBRARY' : '내 라이브러리에서') : (en ? 'A NEW DIRECTION' : '새로운 방향')}</span>
+                                <h3>{track.name}</h3><p>{track.artists || (en ? 'Unknown artist' : '아티스트 정보 없음')}</p>
+                                {genre && <span className="tmm-track-genre">{titleizeGenre(genre)}</span>}
+                            </div>
+                        </article>
+                        <div className="tmm-drop-actions">
+                            {[
+                                { action: 'absorb', label: 'Absorb', meaning: en ? 'Feels like me' : '나를 닮은 음악' },
+                                { action: 'dig', label: 'Dig', meaning: en ? 'Explore this' : '더 알고 싶은 방향' },
+                                { action: 'pop', label: 'Pop', meaning: en ? 'Let it go' : '가볍게 흘려보내기' },
+                            ].map(({ action, label, meaning }) => <button key={action} type="button"
+                                className={`tmm-drop-action ${action}`} disabled={Boolean(session.active)} onClick={() => decide(action)}
+                                aria-label={`${label} · ${meaning}`}>
+                                <ActionIcon action={action} /><strong>{label}</strong><span>{meaning}</span>
+                            </button>)}
+                        </div>
+                    </> : <div className="tmm-drop-empty"><p>{en ? 'Every drop has found its place.' : '오늘의 음악이 모두 자리를 찾았어요.'}</p>
+                        <button type="button" onClick={() => { setSession({ decisions: [], active: null, count: 0 }); setRetry((value) => value + 1); }}>
+                            {en ? 'Start a new session' : '새로운 세션 시작'}</button></div>}
+                    <div className="tmm-drop-status" role="status">{feedback || (discovery.key === discoveryKey && discovery.status === 'unavailable'
+                        ? (en ? 'Discovery is resting. Explore your library for now.' : '추천 연결을 쉬는 동안, 내 라이브러리를 탐색해요.')
+                        : status === 'enriching' ? (en ? `More stars arriving · ${progress.done}/${progress.total}` : `별을 더 불러오는 중 · ${progress.done}/${progress.total}`)
+                            : (en ? 'A small choice. A changing constellation.' : '작은 선택 하나, 조금 달라지는 별자리.'))}</div>
+                </section>
+                <footer className="tmm-footer">
+                    <button type="button" onClick={() => navigate('/taste-map?view=constellation')}>
+                        <span>{en ? 'Explore my taste universe' : '나의 취향 우주 펼쳐보기'}</span><ArrowIcon />
+                    </button>
+                    <span>{en ? 'Taste Drop choices stay in this session.' : 'Taste Drop 선택은 이번 세션에 머물러요.'}</span>
+                </footer>
+            </div>
+        </main>
+    );
 }
 
 export default function TasteMapMobilePage() {
-  const navigate = useNavigate();
-  const { tracks } = useTasteData();
-  const [selectedGenreKey, setSelectedGenreKey] = useState(null);
-  const [selectedTrackId, setSelectedTrackId] = useState(null);
-  const [expandRecs, setExpandRecs] = useState([]);
-  const [expandRecsLoading, setExpandRecsLoading] = useState(false);
-  const [expandRecsError, setExpandRecsError] = useState(null);
-  const [expandDecisions, setExpandDecisions] = useState({});
-  const [mapAcceptedTracks, setMapAcceptedTracks] = useState([]);
-  const [savingTrackId] = useState(null); // async library save removed; kept for UI parity.
-  const [currentExpandIdx, setCurrentExpandIdx] = useState(0);
-
-  const genreStats = useMemo(() => buildGenreStats(tracks), [tracks]);
-  const expandGenres = useMemo(() => {
-    if (genreStats.length <= 6) return genreStats.slice(0, 10);
-    return genreStats.slice(4).sort((a, b) => a.count - b.count).slice(0, 10);
-  }, [genreStats]);
-  const activeGenres = expandGenres;
-
-  const selectedGenre = useMemo(
-    () => activeGenres.find((g) => g.key === selectedGenreKey) || activeGenres[0] || null,
-    [activeGenres, selectedGenreKey],
-  );
-  const activeTrackPool = useMemo(
-    () => {
-      const base = selectedGenre?.tracks || [];
-      if (!mapAcceptedTracks.length) return base;
-      const merged = [...mapAcceptedTracks, ...base];
-      const seen = new Set();
-      return merged.filter((track) => {
-        if (!track?.id || seen.has(track.id)) return false;
-        seen.add(track.id);
-        return true;
-      });
-    },
-    [selectedGenre, mapAcceptedTracks],
-  );
-
-  const selectedTrack = useMemo(() => {
-    if (!activeTrackPool.length) return null;
-    return activeTrackPool.find((track) => track.id === selectedTrackId) || activeTrackPool[0];
-  }, [activeTrackPool, selectedTrackId]);
-  const expandAnchorTrack = selectedTrack || activeTrackPool[0] || null;
-  const currentExpandTrack = useMemo(() => {
-    if (!expandRecs.length) return null;
-    const safeIndex = ((currentExpandIdx % expandRecs.length) + expandRecs.length) % expandRecs.length;
-    return expandRecs[safeIndex] || null;
-  }, [expandRecs, currentExpandIdx]);
-
-  const playTrack = (track) => {
-    // No Spotify playback — open the track on an external service instead.
-    const resolved = typeof track === 'object'
-      ? track
-      : tracks.find((t) => t.id === track) || expandRecs.find((t) => t.id === track);
-    openExternal(resolved);
-  };
-
-  useEffect(() => {
-    if (!selectedGenre?.key) return undefined;
-
-    let cancelled = false;
-    const run = async () => {
-      setExpandRecsLoading(true);
-      setExpandRecsError(null);
-      try {
-        const seed = calcExpandSeedStats(selectedGenre);
-        const params = new URLSearchParams({
-          seedGenres: selectedGenre.key,
-          valence: String(seed.valence),
-          energy: String(seed.energy),
-          limit: '12',
-        });
-        if (expandAnchorTrack?.artists && expandAnchorTrack?.name) {
-          const seedArtist = String(expandAnchorTrack.artists).split(',')[0].trim();
-          params.set('seedTracks', `${seedArtist}|${expandAnchorTrack.name}`);
-        }
-        const res = await fetch(api(`/api/discover?${params.toString()}`));
-        if (!res.ok) {
-          const txt = await res.text();
-          throw new Error(txt || `HTTP ${res.status}`);
-        }
-        const data = await res.json();
-        const candidates = Array.isArray(data?.tracks) ? data.tracks.filter((track) => track?.id && track?.name) : [];
-        if (!cancelled) {
-          setCurrentExpandIdx(0);
-          setExpandRecs(candidates.slice(0, 12));
-        }
-      } catch (e) {
-        if (!cancelled) {
-          setCurrentExpandIdx(0);
-          setExpandRecs([]);
-          setExpandRecsError(e?.message || '확장 추천곡을 가져오지 못했어요.');
-        }
-      } finally {
-        if (!cancelled) setExpandRecsLoading(false);
-      }
-    };
-
-    run();
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedGenre, expandAnchorTrack?.artists, expandAnchorTrack?.name]);
-
-  const handleExpandListen = (track) => {
-    playTrack(track);
-    setSelectedTrackId(track?.id || null);
-  };
-
-  const handleExpandDecision = (track, decision) => {
-    if (!track?.id) return;
-    if (decision === 'accepted') {
-      // Keep accepted recommendations in this browser session.
-      setMapAcceptedTracks((prev) => {
-        const seen = new Set(prev.map((item) => item.id));
-        if (seen.has(track.id)) return prev;
-        return [track, ...prev];
-      });
-    }
-    setExpandDecisions((prev) => ({ ...prev, [track.id]: decision }));
-  };
-
-  const handleExpandNext = () => {
-    if (!expandRecs.length) return;
-    if (currentExpandIdx >= expandRecs.length - 1) {
-      setCurrentExpandIdx(0);
-      return;
-    }
-    setCurrentExpandIdx((prev) => prev + 1);
-  };
-
-  return (
-    <div className="tmm-root tmm-root-compact">
-      <header className="tmm-appbar">
-        <div className="tmm-appbar-left">
-          <span className="tmm-brand">SPECTRA</span>
-        </div>
-        <div className="tmm-appbar-right">
-          <button type="button" className="tmm-icon-btn" onClick={() => navigate('/taste-map')}>
-            ↗
-          </button>
-        </div>
-      </header>
-
-      <section className="tmm-panel tmm-glass">
-          <div className="tmm-compact-genre-row">
-            {activeGenres.slice(0, 8).map((genre) => (
-              <button
-                key={genre.key}
-                type="button"
-                className={`tmm-compact-genre-chip ${selectedGenre?.key === genre.key ? 'active' : ''}`}
-                onClick={() => setSelectedGenreKey(genre.key)}
-              >
-                {shortGenreLabel(genre.label)}
-              </button>
-            ))}
-          </div>
-
-          <div className="tmm-expand-flow">
-            <div className="tmm-expand-head">
-              <strong>{selectedGenre?.label || '확장 공간'}</strong>
-            </div>
-            {expandRecsLoading && <p className="tmm-expand-empty">…</p>}
-            {expandRecsError && <p className="tmm-expand-empty">×</p>}
-            {!expandRecsLoading && !expandRecsError && !currentExpandTrack && (
-              <p className="tmm-expand-empty">-</p>
-            )}
-            {currentExpandTrack && (() => {
-              const track = currentExpandTrack;
-              const coverUrl = getTrackCoverUrl(track);
-              const decision = expandDecisions[track.id] || null;
-              const accepted = decision === 'accepted';
-              const rejected = decision === 'rejected';
-              return (
-                <div className="tmm-expand-list">
-                  <article className={`tmm-expand-card ${accepted ? 'accepted' : ''} ${rejected ? 'rejected' : ''}`}>
-                    <button
-                      type="button"
-                      className="tmm-expand-cover"
-                      style={{
-                        backgroundImage: coverUrl ? `url(${coverUrl})` : undefined,
-                      }}
-                      onClick={() => handleExpandListen(track)}
-                      aria-label={`${track.name} 재생`}
-                    >
-                      {!coverUrl && <span>♪</span>}
-                    </button>
-                    <div className="tmm-expand-info">
-                      <strong>{track.name}</strong>
-                      {track.artists && <span>{track.artists}</span>}
-                    </div>
-                    <div className="tmm-expand-actions">
-                      <button
-                        type="button"
-                        className={`tmm-expand-choice add ${accepted ? 'active' : ''}`}
-                        disabled={savingTrackId === track.id}
-                        onClick={() => handleExpandDecision(track, 'accepted')}
-                      >
-                        나의 spectra에 추가
-                      </button>
-                      <button
-                        type="button"
-                        className={`tmm-expand-choice burst ${rejected ? 'active' : ''}`}
-                        onClick={() => {
-                          handleExpandDecision(track, 'rejected');
-                          handleExpandNext();
-                        }}
-                      >
-                        버블 터뜨리기
-                      </button>
-                    </div>
-                  </article>
-                </div>
-              );
-            })()}
-          </div>
-      </section>
-    </div>
-  );
+    const { tracks, mapId, status, progress } = useTasteData();
+    return <MobileConstellation key={mapId || 'guest'} tracks={tracks} status={status} progress={progress} />;
 }

@@ -1729,9 +1729,6 @@ export default function TasteMapMetroStudio({
     const miniCurrentStation = miniLayout.stations.find((station) => station.trackId === selectedTrack?.id)
         || miniLayout.stations[0]
         || null;
-    const fullCurrentStation = layout.stations.find((station) => station.trackId === selectedTrack?.id)
-        || layout.stations[0]
-        || null;
     const makeCurrentTrackTrainView = (station) => station && selectedTrack ? {
         train: {
             id: `current-track-${selectedTrack.id}`,
@@ -1743,16 +1740,15 @@ export default function TasteMapMetroStudio({
         position: { x: station.x, y: station.y, angle: 0 },
     } : null;
     const miniCurrentTrackTrainView = makeCurrentTrackTrainView(miniCurrentStation);
-    const fullCurrentTrackTrainView = makeCurrentTrackTrainView(fullCurrentStation);
-    const resolvedSelectedTrainId = activeTrains.some((train) => train.id === selectedTrainId)
+    const resolvedSelectedTrainId = youtubeSession?.trainId || (activeTrains.some((train) => train.id === selectedTrainId)
         ? selectedTrainId
-        : (activeTrains[0]?.id || null);
+        : (activeTrains[0]?.id || null));
     const selectedTrainDefinition = activeTrains.find((train) => train.id === resolvedSelectedTrainId) || null;
     const activeTrainView = trainViews.find((view) => view.train.id === resolvedSelectedTrainId) || trainViews[0] || null;
-    const activeTrainCurrentTrack = activeTrainView?.journey
+    const journeyCurrentTrack = activeTrainView?.journey
         ? trackById.get(activeTrainView.journey.currentStationId)
         : null;
-    const activeTrainNextTrack = activeTrainView?.journey
+    const journeyNextTrack = activeTrainView?.journey
         ? trackById.get(activeTrainView.journey.nextStationId)
         : null;
     const activeTrainSongCount = activeTrainView
@@ -1775,11 +1771,13 @@ export default function TasteMapMetroStudio({
     const activeTrainHasYoutube = Boolean(
         youtubeSession && activeTrainView && youtubeSession.trainId === activeTrainView.train.id,
     );
+    const activeTrainCurrentTrack = activeTrainHasYoutube ? youtubeCurrentTrack : journeyCurrentTrack;
+    const activeTrainNextTrack = activeTrainHasYoutube ? youtubeNextTrack : journeyNextTrack;
     const youtubeProgressPercent = youtubeProgress.durationMs > 0
         ? Math.min(100, Math.max(0, (youtubeProgress.positionMs / youtubeProgress.durationMs) * 100))
         : 0;
     useEffect(() => {
-        if (!open || creating || !activeMapId) return undefined;
+        if (!open || creating || !activeMapId || youtubeSession?.trainId) return undefined;
         let measureFrame = null;
         const frame = window.requestAnimationFrame(() => {
             measureFrame = window.requestAnimationFrame(() => {
@@ -1820,7 +1818,20 @@ export default function TasteMapMetroStudio({
             window.cancelAnimationFrame(frame);
             if (measureFrame) window.cancelAnimationFrame(measureFrame);
         };
-    }, [open, creating, activeMapId, layout.stations, selectedTrack?.id]);
+    }, [open, creating, activeMapId, layout.stations, selectedTrack?.id, youtubeSession?.trainId]);
+    const playbackTrainX = youtubeTrainView?.position.x;
+    const playbackTrainY = youtubeTrainView?.position.y;
+    useEffect(() => {
+        if (!open || creating || trainDrag || playbackTrainX == null || playbackTrainY == null) return;
+        const stage = canvasStageRef.current;
+        if (!stage || panDragRef.current || wheelAnchorRef.current) return;
+        const gutter = METRO_GRID_SIZE * 10;
+        stage.scrollTo({
+            left: Math.max(0, ((gutter + playbackTrainX) * zoom) - (stage.clientWidth / 2)),
+            top: Math.max(0, ((gutter + playbackTrainY) * zoom) - (stage.clientHeight / 2)),
+            behavior: 'smooth',
+        });
+    }, [open, creating, trainDrag, playbackTrainX, playbackTrainY, zoom]);
     useEffect(() => {
         zoomRef.current = zoom;
     }, [zoom]);
@@ -2049,14 +2060,7 @@ export default function TasteMapMetroStudio({
     };
 
     const handleYoutubeEnded = () => {
-        if (!youtubeSession) return;
-        syncYoutubeLegProgress(youtubeSession, 1);
-        setYoutubeProgress({ positionMs: 0, durationMs: 0 });
-        setYoutubeSession((current) => current ? {
-            ...current,
-            step: (current.step + 1) % current.stopIds.length,
-            consecutiveSkips: 0,
-        } : current);
+        handleYoutubeNext();
     };
 
     const handleYoutubePrevious = () => {
@@ -2936,8 +2940,7 @@ export default function TasteMapMetroStudio({
                                         draggingStationId={draggingStationId}
                                         dragSnapTarget={dragPosition?.snapTarget || null}
                                         dragMagnetStrength={dragPosition?.magnetStrength || 0}
-                                        trainViews={trainViews}
-                                        currentTrackTrainView={fullCurrentTrackTrainView}
+                                        trainViews={activeTrainView ? [activeTrainView] : []}
                                         selectedTrainId={resolvedSelectedTrainId}
                                         routePreview={trainPanelOpen && trainComposerOpen ? trainDraftRoute : null}
                                         routeDraftStationIds={trainPanelOpen && trainComposerOpen ? activeDraftStationIds : []}

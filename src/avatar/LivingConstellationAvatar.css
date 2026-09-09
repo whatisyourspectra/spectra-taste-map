@@ -1,0 +1,39 @@
+.lc-avatar { display: block; width: 100%; height: 100%; overflow: visible; }
+.lc-body { transform-origin: 180px 166px; animation: lc-breathe var(--lc-drift) ease-in-out infinite alternate; }
+.lc-connections line { stroke-width: .8; stroke-linecap: round; opacity: .34; }
+.lc-connections line.secondary { stroke-width: .65; opacity: .18; }
+.lc-star { animation: lc-glimmer var(--lc-pulse) ease-in-out infinite alternate; }
+.lc-star:nth-child(3n) { animation-delay: -2s; }
+.lc-star:nth-child(3n + 1) { animation-delay: -4s; }
+.lc-orbit-guide { fill: none; stroke: #a3bfeb; stroke-width: .6; stroke-dasharray: 2 10; opacity: .18; }
+.lc-orbit { transform-origin: 180px 166px; animation: lc-orbit-turn 55s linear infinite; }
+.lc-drop-thread { stroke: #a3bfeb; stroke-width: .7; opacity: .25; }
+.lc-reaction { animation: lc-arrive 1100ms cubic-bezier(.25,.75,.3,1) both; }
+.lc-reaction-pop { animation-name: lc-depart; }
+.lc-reaction-dig { animation-name: lc-explore; }
+@keyframes lc-breathe { from { transform: translateY(2px) rotate(-1deg) scale(.99); } to { transform: translateY(-2px) rotate(1deg) scale(1.01); } }
+@keyframes lc-glimmer { from { opacity: calc(var(--lc-star-opacity) * .72); } to { opacity: var(--lc-star-opacity); } }
+@keyframes lc-orbit-turn { to { transform: rotate(360deg); } }
+@keyframes lc-arrive {
+    0% { transform: translate(180px, 326px) scale(.6); opacity: .2; }
+    25% { opacity: 1; }
+    80% { transform: translate(var(--lc-target-x), var(--lc-target-y)) scale(1.6); opacity: 1; }
+    100% { transform: translate(var(--lc-target-x), var(--lc-target-y)) scale(1); opacity: .6; }
+}
+@keyframes lc-explore {
+    0% { transform: translate(180px, 326px) scale(.7); opacity: .2; }
+    40% { transform: translate(304px, 280px); opacity: 1; }
+    100% { transform: translate(var(--lc-target-x), var(--lc-target-y)); opacity: 1; }
+}
+@keyframes lc-depart {
+    0% { transform: translate(180px, 326px); opacity: 1; }
+    30% { transform: translate(204px, 312px) scale(1.6); opacity: .9; }
+    100% { transform: translate(340px, 292px) scale(.1); opacity: 0; }
+}
+.lc-avatar.is-paused * { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) {
+    .lc-body, .lc-star, .lc-orbit, .lc-reaction { animation: none; }
+    .lc-star { opacity: var(--lc-star-opacity); }
+    .lc-reaction { transform: translate(var(--lc-target-x), var(--lc-target-y)); }
+    .lc-reaction-pop { opacity: 0; }
+}
