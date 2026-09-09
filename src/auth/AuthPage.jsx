@@ -16,8 +16,8 @@ function AuthSurface({ children }) {
     </div></main>;
 }
 
-export function AuthLoading() {
-    return <AuthSurface><h1>계정을 확인하고 있어요</h1><p role="status">잠시만 기다려 주세요.</p></AuthSurface>;
+export function AuthLoading({ title = '계정을 확인하고 있어요', message = '잠시만 기다려 주세요.' } = {}) {
+    return <AuthSurface><h1>{title}</h1><p role="status">{message}</p></AuthSurface>;
 }
 
 export function AuthCallback() {
