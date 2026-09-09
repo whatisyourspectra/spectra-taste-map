@@ -3,7 +3,7 @@ import React, { createContext, useContext, useState, useCallback, useEffect, use
 const API_BASE = import.meta?.env?.VITE_API_BASE || '';
 const api = (path) => `${API_BASE}${path}`;
 
-const STORAGE_KEY = 'spectra:taste:v5';
+import { loadLocalTaste, persistLocalTaste, tasteStorageKey } from '../taste/tasteStorage';
 const CHUNK_SIZE = 40;
 const PREVIEW_TRACK_COUNT = 32;
 const BACKGROUND_REQUEST_CONCURRENCY = 1;
@@ -13,25 +13,6 @@ const MIN_RECOVERY_CHUNK_SIZE = 10;
 
 const TasteDataContext = createContext(null);
 
-function loadPersisted() {
-    try {
-        const raw = sessionStorage.getItem(STORAGE_KEY);
-        if (!raw) return null;
-        const data = JSON.parse(raw);
-        if (!data || !Array.isArray(data.tracks)) return null;
-        return data;
-    } catch {
-        return null;
-    }
-}
-
-function persist(data) {
-    try {
-        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    } catch {
-        /* quota / disabled storage — non-fatal */
-    }
-}
 
 function newMapId() {
     if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
@@ -122,8 +103,8 @@ async function requestChunkWithRecovery(chunk, mergeResponse, isActive, attempt 
     }
 }
 
-export function TasteDataProvider({ children }) {
-    const [initial] = useState(loadPersisted);
+export function TasteDataProvider({ children, ownerId = null }) {
+    const [initial] = useState(() => loadLocalTaste(sessionStorage, ownerId));
     const importRunRef = useRef(0);
     const resumeImportRef = useRef(
         initial?.stats?.backgroundEnriching && Array.isArray(initial?.pendingSourceList)
@@ -201,7 +182,7 @@ export function TasteDataProvider({ children }) {
             setStatus(nextStatus);
             const pendingSourceList = nextStatus === 'enriching' ? list : null;
             activeSourceListRef.current = pendingSourceList;
-            persist({
+            persistLocalTaste(sessionStorage, ownerId, {
                 tracks: nextTracks,
                 featuresSource: source,
                 stats: nextStats,
@@ -283,7 +264,7 @@ export function TasteDataProvider({ children }) {
         if (importRunRef.current !== runId) return { ok: false, cancelled: true };
         publish('ready');
         return { ok: true, count: collectedById.size, failedCount };
-    }, []);
+    }, [ownerId]);
 
     useEffect(() => {
         const pendingSourceList = resumeImportRef.current;
@@ -308,16 +289,16 @@ export function TasteDataProvider({ children }) {
         resumeImportRef.current = null;
         activeSourceListRef.current = null;
         try {
-            sessionStorage.removeItem(STORAGE_KEY);
+            sessionStorage.removeItem(tasteStorageKey(ownerId));
             sessionStorage.removeItem('spectra:taste:v3');
             sessionStorage.removeItem('spectra:taste:v4');
         } catch { /* ignore */ }
-    }, []);
+    }, [ownerId]);
 
     // Keep sessionStorage in sync if tracks change after mount (e.g. re-import).
     useEffect(() => {
         if ((status === 'ready' || status === 'enriching') && tracks.length > 0) {
-            persist({
+            persistLocalTaste(sessionStorage, ownerId, {
                 tracks,
                 featuresSource,
                 stats,
@@ -327,7 +308,7 @@ export function TasteDataProvider({ children }) {
                     : null,
             });
         }
-    }, [status, tracks, featuresSource, stats, mapId]);
+    }, [status, tracks, featuresSource, stats, mapId, ownerId]);
 
     const value = {
         tracks,

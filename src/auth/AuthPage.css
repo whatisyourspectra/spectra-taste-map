@@ -1,0 +1,33 @@
+.sa-page { min-height: 100dvh; display: grid; place-items: center; padding: max(24px, env(safe-area-inset-top)) 24px max(24px, env(safe-area-inset-bottom)); color: #e7edf8; background: #080c13; }
+.sa-card { width: min(100%, 400px); text-align: center; }
+.sa-wordmark { display: inline-block; padding: 12px; color: #dbe5f5; text-decoration: none; font-size: 16px; font-weight: 650; }
+.sa-emblem { height: 150px; margin: 24px 0; display: grid; place-items: center; }
+.sa-emblem svg { width: 160px; height: 110px; }
+.sa-emblem path { stroke: #8facdc; stroke-width: .8; opacity: .6; }
+.sa-emblem circle { fill: #d1e3ff; filter: drop-shadow(0 0 5px #80a8e4); }
+.sa-eyebrow { color: #8da3c3; font-size: 10px; letter-spacing: .17em; }
+.sa-card h1 { margin: 12px 0; font-size: clamp(24px, 6vw, 28px); letter-spacing: -.045em; font-weight: 550; }
+.sa-card p { color: #9cacc2; font-size: 13px; line-height: 1.8; word-break: keep-all; }
+.sa-card button, .sa-card a { -webkit-tap-highlight-color: transparent; }
+.sa-google, .sa-primary, .sa-secondary { width: 100%; min-height: 50px; display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 24px; padding: 12px 18px; border-radius: 10px; text-decoration: none; font: inherit; font-size: 14px; cursor: pointer; }
+.sa-google { background: #f7f9fc; border: 1px solid #dce2e9; color: #242d3b; font-weight: 550; }
+.sa-google svg { width: 20px; height: 20px; flex: 0 0 auto; }
+.sa-google:disabled, .sa-secondary:disabled { opacity: .5; cursor: default; }
+.sa-primary { background: #253752; border: 1px solid #425d81; color: #e4efff; }
+.sa-secondary { margin-top: 12px; color: #a4b4cb; border: 1px solid #2f3d50; background: transparent; }
+.sa-back { display: inline-block; min-height: 44px; padding: 14px 10px; margin-top: 10px; color: #b2c4df; text-decoration: none; font-size: 12px; }
+.sa-card p.sa-notice { margin-top: 16px; color: #b1bfd2; font-size: 12px; }
+.sa-card p.sa-error { color: #f1b8b8; margin-top: 16px; font-size: 12px; }
+.sa-card p.sa-footnote { padding-top: 20px; margin-top: 24px; border-top: 1px solid #223045; font-size: 11px; color: #8091aa; }
+.sa-profile { display: flex; flex-direction: column; gap: 8px; margin: 24px 0 12px; padding: 20px; border: 1px solid #2a3a50; border-radius: 12px; overflow-wrap: anywhere; }
+.sa-profile strong { font-size: 16px; font-weight: 500; }
+.sa-profile span { color: #9badc7; font-size: 13px; }
+.sa-account-button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 40px; padding: 8px 12px; border: 1px solid #8197b438; border-radius: 24px; background: #0e1724; color: #c4d4ea; font-size: 12px; text-decoration: none; white-space: nowrap; }
+.sa-account-button svg { width: 16px; height: 16px; stroke: currentColor; stroke-width: 1.5; }
+.sa-account-initial { display: grid; place-items: center; width: 22px; height: 22px; background: #34496a; border-radius: 50%; font-size: 11px; }
+.sa-card a:focus-visible, .sa-card button:focus-visible, .sa-account-button:focus-visible { outline: 2px solid #b2d2ff; outline-offset: 4px; }
+.sa-import-account { position: absolute; right: 24px; top: max(20px, env(safe-area-inset-top)); z-index: 20; }
+.tmm-account-actions { display: flex; align-items: center; gap: 8px; }
+.tmm-account-actions .sa-account-button { min-width: 44px; min-height: 44px; padding: 8px; }
+.tmm-account-actions .sa-account-button > span:last-child { display: none; }
+@media (max-width: 600px) { .sa-import-account { right: 16px; top: max(12px, env(safe-area-inset-top)); } }

@@ -7,6 +7,7 @@ import { getGenreIdentity, titleizeGenre } from '../taste/genreIdentity';
 import { buildAvatarState, buildAvatarReaction } from '../avatar/buildAvatarState';
 import LivingConstellationAvatar from '../avatar/LivingConstellationAvatar';
 import './TasteMapMobilePage.css';
+import AccountButton from '../auth/AccountButton';
 
 const API_BASE = import.meta?.env?.VITE_API_BASE || '';
 const EMPTY_TRACKS = [];
@@ -118,8 +119,11 @@ function MobileConstellation({ tracks, status, progress }) {
             <div className="tmm-shell">
                 <header className="tmm-appbar">
                     <a href="/taste-map/mobile" className="tmm-brand" aria-label="SPECTRA home"><span className="tmm-brand-mark" aria-hidden="true" />SPECTRA</a>
+                    <div className="tmm-account-actions">
+                    <AccountButton lang={lang} />
                     <button type="button" className="tmm-language" onClick={() => setLang(en ? 'ko' : 'en')}
                         aria-label={en ? '한국어로 전환' : 'Switch to English'}>{en ? 'KO' : 'EN'}</button>
+                    </div>
                 </header>
                 <section className="tmm-living" aria-labelledby="tmm-living-title">
                     <div className="tmm-living-heading">

@@ -5,6 +5,9 @@ import { parseTrackList } from './utils/parseTrackList';
 import TasteMapPage from './pages/TasteMapPage';
 import TasteMapMobilePage from './pages/TasteMapMobilePage';
 import './LoginOverlay.css';
+import { AuthProvider, useAuth } from './auth/AuthContext';
+import AuthPage, { AuthCallback, AuthLoading } from './auth/AuthPage';
+import AccountButton from './auth/AccountButton';
 
 const TUNE_MY_MUSIC_URL = 'https://www.tunemymusic.com/transfer';
 
@@ -304,6 +307,7 @@ function ImportOverlay() {
 
   return (
     <div className="login-overlay taste">
+      <div className="sa-import-account"><AccountButton /></div>
       <TasteDepthScene />
       <div className="login-overlay__fog fog-a" aria-hidden />
       <div className="login-overlay__fog fog-b" aria-hidden />
@@ -513,13 +517,28 @@ function ResponsiveTasteMapRoute() {
   return isMobile && !openUniverse ? <TasteMapMobilePage /> : <TasteMapPage />;
 }
 
+function TasteSession() {
+  const { user, ready, error, retrySession } = useAuth();
+  if (!ready) return <AuthLoading />;
+  if (error) return <main className="sa-page"><div className="sa-card">
+    <h1>계정을 확인하지 못했어요</h1>
+    <p role="alert">연결을 확인한 뒤 다시 시도해 주세요.</p>
+    <button type="button" className="sa-primary" onClick={retrySession}>다시 시도</button>
+  </div></main>;
+  return <TasteDataProvider key={user?.id || 'guest'} ownerId={user?.id || null}><AppInner /></TasteDataProvider>;
+}
+
 function App() {
   return (
-    <TasteDataProvider>
-      <Router>
-        <AppInner />
-      </Router>
-    </TasteDataProvider>
+    <Router>
+      <AuthProvider>
+        <Routes>
+          <Route path="/auth/login" element={<AuthPage />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
+          <Route path="*" element={<TasteSession />} />
+        </Routes>
+      </AuthProvider>
+    </Router>
   );
 }
 

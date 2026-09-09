@@ -1,3 +1,4 @@
+import AccountButton from '../auth/AccountButton';
 import { buildConstellationTopology } from '../taste/constellationTopology';
 import { getGenreIdentity } from '../taste/genreIdentity';
 import React, { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo } from 'react';
@@ -4900,6 +4901,7 @@ export default function TasteMapPage() {
                     </div>
                 </div>
                 <div className="tm-header-side">
+                    <AccountButton lang={lang} />
                     <div className="tm-lang-toggle" role="tablist" aria-label="language toggle">
                         <button
                             type="button"
