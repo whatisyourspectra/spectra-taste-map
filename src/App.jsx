@@ -478,7 +478,11 @@ function ImportOverlay() {
 }
 
 function AppInner() {
-  const { hasTaste } = useTasteData();
+  const { hasTaste, cloudSyncing } = useTasteData();
+
+  if (cloudSyncing) {
+    return <AuthLoading title="취향 지도를 불러오고 있어요" message="저장된 나의 우주를 안전하게 연결하고 있습니다." />;
+  }
 
   if (!hasTaste) {
     return <ImportOverlay />;

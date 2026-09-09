@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { safeReturnTo, readAuthConfig, rememberReturnTo, consumeReturnTo, savedReturnTo } from '../src/auth/authRouting.js';
-import { loadLocalTaste, persistLocalTaste, tasteStorageKey, GUEST_TASTE_STORAGE_KEY } from '../src/taste/tasteStorage.js';
+import { loadLocalTaste, persistLocalTaste, clearLocalTaste, fetchCloudTaste, saveCloudTaste, deleteCloudTaste, tasteStorageKey, GUEST_TASTE_STORAGE_KEY } from '../src/taste/tasteStorage.js';
 const storage = () => {
     const values = new Map();
     return { getItem: (key) => values.get(key) ?? null, setItem: (key, value) => values.set(key, value), removeItem: (key) => values.delete(key) };
@@ -63,4 +63,48 @@ test('unavailable storage and corrupt data do not crash the app', () => {
     assert.doesNotThrow(() => persistLocalTaste(denied, 'a', {}));
     const store = storage(); store.setItem(GUEST_TASTE_STORAGE_KEY, '{invalid');
     assert.equal(loadLocalTaste(store), null);
+});
+
+test('cloud sync helpers handle saving, fetching and deleting gracefully', async () => {
+    let dbData = null;
+    const fakeSupabase = {
+        from: () => ({
+            select: () => ({
+                eq: (_col, id) => ({
+                    maybeSingle: async () => ({
+                        data: dbData ? { ...dbData, user_id: id } : null,
+                        error: null,
+                    }),
+                }),
+            }),
+            upsert: (payload) => ({
+                select: () => ({
+                    maybeSingle: async () => {
+                        dbData = payload;
+                        return { data: { updated_at: payload.updated_at }, error: null };
+                    },
+                }),
+            }),
+            delete: () => ({
+                eq: async () => {
+                    dbData = null;
+                    return { error: null };
+                },
+            }),
+        }),
+    };
+
+    assert.equal(await fetchCloudTaste(null, 'u1'), null);
+    assert.equal(await fetchCloudTaste(fakeSupabase, null), null);
+    assert.equal(await fetchCloudTaste(fakeSupabase, 'u1'), null);
+
+    const taste = { mapId: 'm1', tracks: [{ id: 't1' }], featuresSource: 'spotify' };
+    await saveCloudTaste(fakeSupabase, 'u1', taste);
+    const fetched = await fetchCloudTaste(fakeSupabase, 'u1');
+    assert.deepEqual(fetched.tracks, taste.tracks);
+    assert.equal(fetched.featuresSource, 'spotify');
+    assert.equal(fetched.mapId, 'm1');
+
+    await deleteCloudTaste(fakeSupabase, 'u1');
+    assert.equal(await fetchCloudTaste(fakeSupabase, 'u1'), null);
 });
