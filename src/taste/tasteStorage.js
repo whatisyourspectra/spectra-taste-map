@@ -125,12 +125,13 @@ export async function saveCloudTaste(supabase, ownerId, tasteData) {
             .maybeSingle();
 
         if (error) {
-            console.warn('[TasteStorage] Cloud sync skipped:', error.message);
+            console.error('[TasteStorage] Cloud sync failed:', error.message, error);
             return null;
         }
+        console.log('[TasteStorage] Taste map saved to Supabase cloud successfully!');
         return data;
     } catch (err) {
-        console.warn('[TasteStorage] Cloud save error:', err);
+        console.error('[TasteStorage] Cloud save error:', err);
         return null;
     }
 }
