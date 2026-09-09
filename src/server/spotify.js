@@ -15,6 +15,8 @@ const CACHE_TTL_MS = Number(process.env.SPOTIFY_CACHE_TTL_MS || 24 * 60 * 60 * 1
 const CACHE_MAX = Number(process.env.SPOTIFY_CACHE_MAX || 5000);
 const REQUEST_CONCURRENCY = Math.max(1, Number(process.env.SPOTIFY_REQUEST_CONCURRENCY || 3));
 const REQUEST_TIMEOUT_MS = Math.max(1000, Number(process.env.SPOTIFY_REQUEST_TIMEOUT_MS || 8000));
+const REQUEST_MIN_INTERVAL_MS = Math.max(0, Number(process.env.SPOTIFY_REQUEST_MIN_INTERVAL_MS || 220));
+const RATE_LIMIT_MAX_WAIT_MS = Math.max(1000, Number(process.env.SPOTIFY_RATE_LIMIT_MAX_WAIT_MS || 120_000));
 const CIRCUIT_FAILURE_THRESHOLD = Math.max(1, Number(process.env.SPOTIFY_CIRCUIT_FAILURE_THRESHOLD || 3));
 const CIRCUIT_COOLDOWN_MS = Math.max(1000, Number(process.env.SPOTIFY_CIRCUIT_COOLDOWN_MS || 20_000));
 
@@ -26,6 +28,8 @@ let activeRequests = 0;
 const requestWaiters = [];
 let consecutiveTransientFailures = 0;
 let circuitOpenUntil = 0;
+let rateLimitedUntil = 0;
+let nextRequestAt = 0;
 
 export function isSpotifyConfigured() {
     return SPOTIFY_MOCK || Boolean(SPOTIFY_CLIENT_ID && SPOTIFY_CLIENT_SECRET);
@@ -71,6 +75,29 @@ function markTransientFailure() {
     }
 }
 
+function registerRateLimit(response) {
+    const retryAfterSeconds = Number(response?.headers?.get('retry-after'));
+    const retryAfterMs = Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
+        ? retryAfterSeconds * 1000
+        : 5000;
+    const cooldownMs = Math.min(RATE_LIMIT_MAX_WAIT_MS, Math.max(1000, retryAfterMs));
+    rateLimitedUntil = Math.max(rateLimitedUntil, Date.now() + cooldownMs);
+    nextRequestAt = Math.max(nextRequestAt, rateLimitedUntil);
+}
+
+async function waitForRequestWindow() {
+    // Reserve start times synchronously so concurrent workers do not all wake
+    // and hit Spotify at the same instant after a 429 cooldown.
+    const now = Date.now();
+    const scheduledAt = Math.max(now, rateLimitedUntil, nextRequestAt);
+    nextRequestAt = scheduledAt + REQUEST_MIN_INTERVAL_MS;
+    if (scheduledAt > now) await wait(scheduledAt - now);
+
+    // A different in-flight request may have extended the shared cooldown
+    // while this request was sleeping.
+    if (Date.now() < rateLimitedUntil) await waitForRequestWindow();
+}
+
 async function acquireRequestSlot() {
     if (activeRequests < REQUEST_CONCURRENCY) {
         activeRequests += 1;
@@ -89,11 +116,13 @@ async function catalogFetch(url, options, label) {
     await acquireRequestSlot();
     try {
         assertCircuitAvailable(label);
+        await waitForRequestWindow();
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
         try {
             const response = await fetch(url, { ...options, signal: controller.signal });
             if (response.ok) markRequestHealthy();
+            else if (response.status === 429) registerRateLimit(response);
             else if (response.status >= 500) markTransientFailure();
             return response;
         } catch (error) {
@@ -200,7 +229,7 @@ async function getAccessToken({ force = false } = {}) {
     }
 }
 
-async function spotifyRequest(path, { retries = 1, label = path } = {}) {
+async function spotifyRequest(path, { retries = 2, label = path } = {}) {
     let lastError = null;
     let forceToken = false;
 
@@ -233,8 +262,8 @@ async function spotifyRequest(path, { retries = 1, label = path } = {}) {
             continue;
         }
         if (response.status === 429 && attempt < retries) {
-            const retryAfter = Math.max(1, Number(response.headers.get('retry-after')) || 1);
-            await wait(Math.min(10_000, retryAfter * 1000));
+            // catalogFetch registered a process-wide cooldown. The next
+            // attempt enters the same paced queue as every other request.
             continue;
         }
 

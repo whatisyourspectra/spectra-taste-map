@@ -140,6 +140,7 @@ const MetroYouTubePlayer = forwardRef(function MetroYouTubePlayer({
     color,
     lang = 'ko',
     panelShifted = false,
+    embedded = false,
     autoplayRequested = false,
     queuePosition = 0,
     queueLength = 0,
@@ -444,7 +445,7 @@ const MetroYouTubePlayer = forwardRef(function MetroYouTubePlayer({
     };
 
     const startWindowDrag = (event) => {
-        if (event.button !== 0 || event.target.closest('button')) return;
+        if (embedded || event.button !== 0 || event.target.closest('button')) return;
         const node = playerWindowRef.current;
         const container = node?.offsetParent;
         if (!node || !container) return;
@@ -556,7 +557,7 @@ const MetroYouTubePlayer = forwardRef(function MetroYouTubePlayer({
             }}
         >
             <header
-                title={copy.drag}
+                title={embedded ? undefined : copy.drag}
                 onPointerDown={startWindowDrag}
                 onPointerMove={moveWindow}
                 onPointerUp={endWindowDrag}
@@ -602,7 +603,7 @@ const MetroYouTubePlayer = forwardRef(function MetroYouTubePlayer({
                     >
                         {playbackState === 'playing' ? 'Ⅱ' : '▶'}
                     </button>
-                    <button type="button" onClick={onNext} aria-label={copy.nextTrack}>▶▶</button>
+                    <button type="button" onClick={onNext} disabled={!onNext} aria-label={copy.nextTrack}>▶▶</button>
                     <span aria-label={copy.playlist}>
                         {Math.max(0, queuePosition)} / {Math.max(0, queueLength)}
                     </span>
@@ -628,11 +629,11 @@ const MetroYouTubePlayer = forwardRef(function MetroYouTubePlayer({
                 </label>
             </div>
             {showStartAction ? <p className="tm2-youtube-start-hint">{copy.startHint}</p> : null}
-            <footer>
+            {nextTrack ? <footer>
                 <span>{copy.next}</span>
                 <strong>{nextTrack?.name || track?.name || '-'}</strong>
-            </footer>
-            <button
+            </footer> : null}
+            {!embedded ? <button
                 type="button"
                 className="tm2-youtube-resize-handle"
                 aria-label={copy.resize}
@@ -641,7 +642,7 @@ const MetroYouTubePlayer = forwardRef(function MetroYouTubePlayer({
                 onPointerMove={resizeWindow}
                 onPointerUp={endWindowResize}
                 onPointerCancel={endWindowResize}
-            />
+            /> : null}
         </aside>
     );
 });

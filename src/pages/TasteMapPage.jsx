@@ -1,6 +1,9 @@
+import { buildConstellationTopology } from '../taste/constellationTopology';
+import { getGenreIdentity } from '../taste/genreIdentity';
 import React, { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useTasteData } from '../context/TasteDataContext';
 import TasteMapMetroStudio from './TasteMapMetroStudio';
+import MetroYouTubePlayer from './MetroYouTubePlayer';
 import './TasteMapPage.css';
 
 const API_BASE = import.meta?.env?.VITE_API_BASE || '';
@@ -123,7 +126,7 @@ const TM_I18N = {
         recAddFail: '저장 실패',
         contextMenuExpand: '이 곡을 중심으로 spectra 확장',
         contextMenuFocus: '이 곡으로 이동',
-        contextMenuPlay: '외부에서 찾기',
+        contextMenuPlay: 'YouTube 재생',
         contextMenuSaved: '필드에 있음',
         contextMenuSave: '내 필드에 추가',
         contextMenuNoCluster: '클러스터 정보를 찾지 못했습니다.',
@@ -213,7 +216,7 @@ const TM_I18N = {
         recAddFail: 'Save failed',
         contextMenuExpand: 'Expand spectra around this track',
         contextMenuFocus: 'Focus this track',
-        contextMenuPlay: 'Open externally',
+        contextMenuPlay: 'Play on YouTube',
         contextMenuSaved: 'Already in field',
         contextMenuSave: 'Add to my field',
         contextMenuNoCluster: 'No cluster data for this track.',
@@ -455,142 +458,6 @@ function sampleTracksForBubbleView(list, maxCount) {
     return shuffled.slice(0, maxCount);
 }
 
-// Build a sparse, stable graph from the Taste Field layout. Kruskal's
-// algorithm runs over a local-neighbour candidate set, keeping the graph
-// connected inside each taste cluster without turning dense libraries into a
-// fully connected web.
-function buildConstellationTopology(nodes) {
-    if (nodes.length < 2) return [];
-
-    const groups = new Map();
-    nodes.forEach((node) => {
-        const clusterId = Number.isInteger(node.clusterId) ? node.clusterId : -1;
-        if (!groups.has(clusterId)) groups.set(clusterId, []);
-        groups.get(clusterId).push(node);
-    });
-
-    const topology = [];
-    groups.forEach((group, clusterId) => {
-        if (group.length < 2) return;
-
-        const sorted = [...group].sort((a, b) => (
-            a.nX - b.nX || a.nY - b.nY || String(a.id).localeCompare(String(b.id))
-        ));
-        const candidates = [];
-        const candidateKeys = new Set();
-        const neighbourWindow = Math.min(16, sorted.length - 1);
-
-        for (let i = 0; i < sorted.length; i++) {
-            for (let j = i + 1; j <= Math.min(sorted.length - 1, i + neighbourWindow); j++) {
-                const a = sorted[i];
-                const b = sorted[j];
-                const key = `${a.id}::${b.id}`;
-                if (candidateKeys.has(key)) continue;
-                candidateKeys.add(key);
-                candidates.push({
-                    from: a.id,
-                    to: b.id,
-                    distance: Math.hypot(a.nX - b.nX, a.nY - b.nY),
-                    color: a.color,
-                    clusterId,
-                });
-            }
-        }
-
-        candidates.sort((a, b) => (
-            a.distance - b.distance
-            || hash01(`${a.from}:${a.to}`) - hash01(`${b.from}:${b.to}`)
-        ));
-
-        const parent = new Map(sorted.map((node) => [node.id, node.id]));
-        const rank = new Map(sorted.map((node) => [node.id, 0]));
-        const degree = new Map(sorted.map((node) => [node.id, 0]));
-        const selectedKeys = new Set();
-
-        const find = (id) => {
-            let root = id;
-            while (parent.get(root) !== root) root = parent.get(root);
-            let cursor = id;
-            while (parent.get(cursor) !== cursor) {
-                const next = parent.get(cursor);
-                parent.set(cursor, root);
-                cursor = next;
-            }
-            return root;
-        };
-
-        const union = (a, b) => {
-            const rootA = find(a);
-            const rootB = find(b);
-            if (rootA === rootB) return false;
-            const rankA = rank.get(rootA) || 0;
-            const rankB = rank.get(rootB) || 0;
-            if (rankA < rankB) parent.set(rootA, rootB);
-            else if (rankA > rankB) parent.set(rootB, rootA);
-            else {
-                parent.set(rootB, rootA);
-                rank.set(rootA, rankA + 1);
-            }
-            return true;
-        };
-
-        for (const edge of candidates) {
-            if (!union(edge.from, edge.to)) continue;
-            topology.push(edge);
-            selectedKeys.add(`${edge.from}::${edge.to}`);
-            degree.set(edge.from, (degree.get(edge.from) || 0) + 1);
-            degree.set(edge.to, (degree.get(edge.to) || 0) + 1);
-            if (selectedKeys.size >= sorted.length - 1) break;
-        }
-
-        // A few short cross-links make the clusters read as constellations,
-        // while the degree cap preserves open negative space.
-        const extraLimit = Math.min(36, Math.floor(sorted.length * 0.1));
-        let extras = 0;
-        for (const edge of candidates) {
-            if (extras >= extraLimit) break;
-            if (selectedKeys.has(`${edge.from}::${edge.to}`)) continue;
-            if (edge.distance > 0.12) break;
-            if ((degree.get(edge.from) || 0) >= 3 || (degree.get(edge.to) || 0) >= 3) continue;
-            if (hash01(`${edge.from}:${edge.to}:extra`) > 0.32) continue;
-            topology.push({ ...edge, secondary: true });
-            degree.set(edge.from, (degree.get(edge.from) || 0) + 1);
-            degree.set(edge.to, (degree.get(edge.to) || 0) + 1);
-            extras += 1;
-        }
-    });
-
-    // A cluster can occasionally contain a single outlier. Give those points
-    // one faint bridge to their nearest neighbour so every star participates
-    // in the graph.
-    const connectedIds = new Set(topology.flatMap((edge) => [edge.from, edge.to]));
-    nodes.forEach((node) => {
-        if (connectedIds.has(node.id)) return;
-        let nearest = null;
-        let nearestDistance = Infinity;
-        nodes.forEach((candidate) => {
-            if (candidate.id === node.id) return;
-            const distance = Math.hypot(node.nX - candidate.nX, node.nY - candidate.nY);
-            if (distance >= nearestDistance) return;
-            nearest = candidate;
-            nearestDistance = distance;
-        });
-        if (!nearest) return;
-        topology.push({
-            from: node.id,
-            to: nearest.id,
-            distance: nearestDistance,
-            color: node.color,
-            clusterId: node.clusterId,
-            secondary: true,
-            bridge: true,
-        });
-        connectedIds.add(node.id);
-        connectedIds.add(nearest.id);
-    });
-
-    return topology;
-}
 
 function normalizeGenre(genre) {
     return String(genre || '').trim().toLowerCase();
@@ -625,78 +492,6 @@ function getRecommendationDedupKey(track) {
     return `${title}::${artists}::${durationBucket}`;
 }
 
-const GENRE_FAMILY_TONES = {
-    house: { rgb: '116, 154, 255', text: '#e4eeff' },
-    disco: { rgb: '255, 163, 112', text: '#ffe8d8' },
-    bass: { rgb: '115, 223, 235', text: '#dbfcff' },
-    ambient: { rgb: '158, 181, 255', text: '#e7efff' },
-    pop: { rgb: '232, 137, 204', text: '#ffe6f7' },
-    indie: { rgb: '155, 197, 255', text: '#e5f3ff' },
-    rock: { rgb: '144, 167, 232', text: '#e8efff' },
-    soul: { rgb: '255, 201, 112', text: '#fff0d3' },
-    global: { rgb: '168, 214, 255', text: '#eaf7ff' },
-    cinematic: { rgb: '188, 174, 255', text: '#f0ebff' },
-    alt: { rgb: '167, 198, 255', text: '#eaf3ff' },
-    default: { rgb: '182, 206, 248', text: '#edf5ff' },
-};
-
-const GENRE_IDENTITY_RULES = [
-    { test: /(lo[\s-]?fi\s+house)/i, short: 'Velvet Lo-Fi House', family: 'house' },
-    { test: /(french\s+house)/i, short: 'Chrome French House', family: 'house' },
-    { test: /(nu\s*disco)/i, short: 'Neon Nu Disco', family: 'disco' },
-    { test: /(disco\s+house)/i, short: 'Solar Disco House', family: 'disco' },
-    { test: /(stutter\s+house)/i, short: 'Stutter House', family: 'house' },
-    { test: /(tech\s*house)/i, short: 'Pulse Tech House', family: 'house' },
-    { test: /(\bhouse\b)/i, short: 'Pulse House', family: 'house' },
-    { test: /(drum\s*(?:and|&)\s*bass|dnb|drum[\s-]?n[\s-]?bass)/i, short: 'Aero Drum & Bass', family: 'bass' },
-    { test: /(garage)/i, short: 'Night Garage', family: 'bass' },
-    { test: /(techno)/i, short: 'Neon Techno', family: 'bass' },
-    { test: /(ambient|chillwave|downtempo)/i, short: 'Cloud Ambient', family: 'ambient' },
-    { test: /(dream\s*pop)/i, short: 'Halo Dream Pop', family: 'pop' },
-    { test: /(hyperpop)/i, short: 'Hyperpop Flux', family: 'pop' },
-    { test: /(k[\s-]?pop)/i, short: 'K-Pop Prism', family: 'pop' },
-    { test: /(\bpop\b)/i, short: 'Prism Pop', family: 'pop' },
-    { test: /(bedroom\s*pop)/i, short: 'Bedroom Pop', family: 'indie' },
-    { test: /(taiwanese\s+indie|indie)/i, short: 'Indie Haze', family: 'indie' },
-    { test: /(rock)/i, short: 'Granite Rock', family: 'rock' },
-    { test: /(r[\s&/]*b|soul|funk)/i, short: 'Velvet Soul', family: 'soul' },
-    { test: /(jazz)/i, short: 'Noir Jazz', family: 'soul' },
-    { test: /(soundtrack|score|cinematic)/i, short: 'Cinematic Score', family: 'cinematic' },
-    { test: /(ballad)/i, short: 'Lumen Ballad', family: 'alt' },
-    { test: /(electronic|idm|electronica)/i, short: 'Signal Electronic', family: 'alt' },
-];
-
-function titleizeGenre(genre) {
-    return String(genre || '')
-        .split(/[\s-]+/)
-        .filter(Boolean)
-        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-        .join(' ');
-}
-
-function getGenreIdentity(genre) {
-    const normalized = normalizeGenre(genre);
-    if (!normalized) {
-        return {
-            key: '',
-            short: 'Untitled Genre',
-            display: 'Untitled Genre',
-            family: 'default',
-            tone: GENRE_FAMILY_TONES.default,
-        };
-    }
-    const base = titleizeGenre(normalized);
-    const matched = GENRE_IDENTITY_RULES.find((rule) => rule.test.test(normalized));
-    const short = matched?.short || base;
-    const family = matched?.family || 'default';
-    return {
-        key: normalized,
-        short,
-        display: short === base ? short : `${short} · ${base}`,
-        family,
-        tone: GENRE_FAMILY_TONES[family] || GENRE_FAMILY_TONES.default,
-    };
-}
 
 function getGenreSymbol(genre) {
     const identity = getGenreIdentity(genre);
@@ -1755,6 +1550,8 @@ export default function TasteMapPage() {
         tracks: importedTracks,
         stats: importedStats,
         mapId,
+        status: importStatus,
+        progress: importProgress,
         reset,
     } = useTasteData();
     const user = null; // no account model — taste comes from the imported list
@@ -1805,7 +1602,10 @@ export default function TasteMapPage() {
     });
     const bubbleSpringTimersRef = useRef(new Map());
 
-    const [activeMapView, setActiveMapView] = useState('spotify');
+    const [activeMapView, setActiveMapView] = useState(() => (
+        typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('view') === 'constellation'
+            ? 'constellation' : 'spotify'
+    ));
     const [tracks, setTracks] = useState([]);
     const [tracksSource, setTracksSource] = useState('lastfm');
     const [assignments, setAssignments] = useState([]);
@@ -1838,6 +1638,7 @@ export default function TasteMapPage() {
     const [bubbleZoom, setBubbleZoom] = useState(0.6);
     const [hoveredBubbleId, setHoveredBubbleId] = useState(null);
     const [nowPlayingTrackId, setNowPlayingTrackId] = useState(null);
+    const [bubblePlaybackTrack, setBubblePlaybackTrack] = useState(null);
     const [scrollHint, setScrollHint] = useState(false);
     const [clusterLoading, setClusterLoading] = useState(false);
     const [bubbleNodesResult, setBubbleNodesResult] = useState([]);
@@ -4343,13 +4144,18 @@ export default function TasteMapPage() {
         </div>
     );
 
-    // Playback stays outside the app, but only after an explicit service choice.
+    // YouTube plays in the map; Spotify remains an external service.
     const openTrackExternal = useCallback((trackOrId, service = 'spotify') => {
         const trackId = typeof trackOrId === 'object' ? trackOrId?.id : trackOrId;
         if (!trackId) return;
         const t = (typeof trackOrId === 'object' ? trackOrId : null)
             || tracks.find((x) => x.id === trackId)
             || exploreRecs.find((r) => r.track?.id === trackId)?.track;
+        if (service === 'youtube' && t) {
+            setBubblePlaybackTrack(t);
+            setNowPlayingTrackId(trackId);
+            return;
+        }
         const query = `${t?.artists || ''} ${t?.name || ''}`.trim();
         const url = service === 'youtube'
             ? (query ? `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}` : null)
@@ -4363,6 +4169,7 @@ export default function TasteMapPage() {
     const openTrackCard = useCallback((track, source = 'library') => {
         if (!track?.id) return;
         setSelectedTrackCard({ track, source });
+        setBubblePlaybackTrack(track);
         setNowPlayingTrackId(track.id);
         setBubbleContextMenu(null);
         setHoveredBubbleId(source === 'library' ? track.id : null);
@@ -4545,9 +4352,9 @@ export default function TasteMapPage() {
 
     const handleContextPlayTrack = useCallback(() => {
         if (!bubbleContextMenu?.track) return;
-        openTrackExternal(bubbleContextMenu.track, 'spotify');
+        openTrackCard(bubbleContextMenu.track);
         setBubbleContextMenu(null);
-    }, [bubbleContextMenu, openTrackExternal]);
+    }, [bubbleContextMenu, openTrackCard]);
 
     const handleContextSaveTrack = useCallback(() => {
         if (!bubbleContextMenu?.track) return;
@@ -5077,6 +4884,19 @@ export default function TasteMapPage() {
                         <span className="tm-live-signal"><span aria-hidden />LIVE FIELD</span>
                         <span>{tracks.length} {lang === 'en' ? 'memories' : '개의 기억'}</span>
                         <span>{clusterStats.length} {lang === 'en' ? 'regions' : '개의 영역'}</span>
+                        {importStatus === 'enriching' && importProgress.total > 0 && (
+                            <span>
+                                {lang === 'en' ? 'Adding the rest' : '나머지 곡 추가 중'}
+                                {' '}{Math.round((importProgress.done / importProgress.total) * 100)}%
+                            </span>
+                        )}
+                        {importStatus === 'ready' && Number(importedStats?.failedCount) > 0 && (
+                            <span>
+                                {lang === 'en'
+                                    ? `${importedStats.failedCount} tracks could not be added`
+                                    : `${importedStats.failedCount}곡 추가 실패`}
+                            </span>
+                        )}
                     </div>
                 </div>
                 <div className="tm-header-side">
@@ -6430,11 +6250,33 @@ export default function TasteMapPage() {
                 </>
             )}
 
+            <div className={metroStudioOpen ? 'tm-playback-dock-expanded' : `tm-playback-dock${bubblePlaybackTrack ? ' has-video' : ''}`}>
+            {bubblePlaybackTrack && !metroStudioOpen ? (
+                    <MetroYouTubePlayer
+                        key={bubblePlaybackTrack.id}
+                        track={bubblePlaybackTrack}
+                        trainName={lang === 'en' ? 'Now playing' : '현재 재생 중'}
+                        color="#f5d75f"
+                        lang={lang}
+                        autoplayRequested
+                        embedded
+                        queuePosition={1}
+                        queueLength={1}
+                        onClose={() => {
+                            setBubblePlaybackTrack(null);
+                            setNowPlayingTrackId(null);
+                        }}
+                    />
+            ) : null}
+
             <TasteMapMetroStudio
                 open={Boolean(selectedTrackDetails) || metroStudioOpen}
                 expanded={metroStudioOpen}
                 onClose={() => setMetroStudioOpen(false)}
-                onExpand={() => setMetroStudioOpen(true)}
+                onExpand={() => {
+                    setBubblePlaybackTrack(null);
+                    setMetroStudioOpen(true);
+                }}
                 onDismiss={() => {
                     setMetroStudioOpen(false);
                     setSelectedTrackCard(null);
@@ -6465,6 +6307,8 @@ export default function TasteMapPage() {
                 libraryId={mapId || cacheUserId}
                 lang={lang}
             />
+
+            </div>
 
             {/* Hover tooltip */}
             {viewMode === 'map' && hoveredTrack && (

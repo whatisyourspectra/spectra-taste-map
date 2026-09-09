@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { TasteDataProvider, useTasteData } from './context/TasteDataContext';
 import { parseTrackList } from './utils/parseTrackList';
 import TasteMapPage from './pages/TasteMapPage';
@@ -491,6 +491,8 @@ function AppInner() {
 }
 
 function ResponsiveTasteMapRoute() {
+  const location = useLocation();
+  const openUniverse = new URLSearchParams(location.search).get('view') === 'constellation';
   const [isMobile, setIsMobile] = useState(() => {
     if (typeof window === 'undefined') return false;
     return window.matchMedia('(max-width: 900px)').matches;
@@ -508,7 +510,7 @@ function ResponsiveTasteMapRoute() {
     return () => mq.removeListener(onChange);
   }, []);
 
-  return isMobile ? <TasteMapMobilePage /> : <TasteMapPage />;
+  return isMobile && !openUniverse ? <TasteMapMobilePage /> : <TasteMapPage />;
 }
 
 function App() {

@@ -2676,7 +2676,7 @@
     top: 74px;
     right: 20px;
     bottom: 92px;
-    width: min(400px, calc(100vw - 40px));
+    width: min(320px, calc(100vw - 40px));
     overflow-y: auto;
     border: 1px solid #28343d;
     border-radius: 12px;
@@ -5144,7 +5144,7 @@
     .tm2-youtube-player {
         top: 64px;
         right: 10px;
-        width: min(360px, calc(100vw - 20px));
+        width: min(320px, calc(100vw - 20px));
         border-radius: 12px;
     }
 
