@@ -191,13 +191,17 @@ export function TasteDataProvider({ children, ownerId = null }) {
             setStatus(nextStatus);
             const pendingSourceList = nextStatus === 'enriching' ? list : null;
             activeSourceListRef.current = pendingSourceList;
-            persistLocalTaste(sessionStorage, ownerId, {
+            const payloadToPersist = {
                 tracks: nextTracks,
                 featuresSource: source,
                 stats: nextStats,
                 mapId: id,
                 pendingSourceList,
-            });
+            };
+            persistLocalTaste(sessionStorage, ownerId, payloadToPersist);
+            if (nextStatus === 'ready' && ownerId && supabase) {
+                saveCloudTaste(supabase, ownerId, payloadToPersist);
+            }
         };
 
         try {
@@ -310,6 +314,20 @@ export function TasteDataProvider({ children, ownerId = null }) {
                         return cloud.tracks;
                     }
                     return current;
+                });
+            } else {
+                // Cloud is empty, but local has tracks! Immediately upload to cloud for cross-device sync.
+                setTracks((currentTracks) => {
+                    const tracksToSave = currentTracks.length > 0 ? currentTracks : (initial?.tracks || []);
+                    if (tracksToSave.length > 0) {
+                        saveCloudTaste(supabase, ownerId, {
+                            tracks: tracksToSave,
+                            featuresSource: featuresSource || initial?.featuresSource || 'none',
+                            stats: stats || initial?.stats || null,
+                            mapId: mapId || initial?.mapId || 'default-map',
+                        });
+                    }
+                    return currentTracks;
                 });
             }
             setCloudSyncing(false);

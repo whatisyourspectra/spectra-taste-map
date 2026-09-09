@@ -16,34 +16,16 @@ create table if not exists public.user_taste_maps (
 -- Row Level Security (RLS) 활성화: 다른 사용자가 내 지도를 보거나 수정할 수 없도록 보호
 alter table public.user_taste_maps enable row level security;
 
--- 본인 데이터만 조회 가능
+-- 기존 정책들 정리 후 upsert 및 모든 작업을 완벽하게 지원하는 통합 정책 적용
 drop policy if exists "Users can select own taste map" on public.user_taste_maps;
-create policy "Users can select own taste map"
-    on public.user_taste_maps
-    for select
-    to authenticated
-    using (auth.uid() = user_id);
-
--- 본인 데이터만 삽입 가능
 drop policy if exists "Users can insert own taste map" on public.user_taste_maps;
-create policy "Users can insert own taste map"
-    on public.user_taste_maps
-    for insert
-    to authenticated
-    with check (auth.uid() = user_id);
-
--- 본인 데이터만 수정 가능
 drop policy if exists "Users can update own taste map" on public.user_taste_maps;
-create policy "Users can update own taste map"
-    on public.user_taste_maps
-    for update
-    to authenticated
-    using (auth.uid() = user_id);
-
--- 본인 데이터만 삭제 가능
 drop policy if exists "Users can delete own taste map" on public.user_taste_maps;
-create policy "Users can delete own taste map"
+drop policy if exists "Users can manage own taste map" on public.user_taste_maps;
+
+create policy "Users can manage own taste map"
     on public.user_taste_maps
-    for delete
+    for all
     to authenticated
-    using (auth.uid() = user_id);
+    using (auth.uid() = user_id)
+    with check (auth.uid() = user_id);
