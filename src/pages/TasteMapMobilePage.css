@@ -65,3 +65,44 @@
 @media (max-width: 360px) { .tmm-root { padding-left: 16px; padding-right: 16px; } .tmm-drop-header > span { font-size: 9px; } }
 @media (max-height: 720px) { .tmm-living { height: 52svh; min-height: 320px; padding-top: 18px; } .tmm-taste-sentence { margin: 10px auto 18px; } }
 @media (prefers-reduced-motion: reduce) { .tmm-root * { transition: none; scroll-behavior: auto; } }
+
+/* A quiet, constellation-first mobile surface. */
+.tmm-root { padding-top: calc(env(safe-area-inset-top, 0px) + 12px); }
+.tmm-shell { max-width: 520px; }
+.tmm-brand { font-size: 12px; letter-spacing: .24em; }
+.tmm-brand-mark { width: 14px; height: 14px; }
+.tmm-brand-mark::after { inset: 4px; }
+.tmm-menu { position: relative; z-index: 5; }
+.tmm-menu summary { list-style: none; width: 44px; height: 44px; display: grid; place-items: center; cursor: pointer; font-size: 26px; color: #aabbd2; }
+.tmm-menu summary::-webkit-details-marker { display: none; }
+.tmm-menu summary:focus-visible { outline: 2px solid #b8cdf1; outline-offset: 2px; border-radius: 50%; }
+.tmm-menu-panel { position: absolute; right: 0; top: 48px; min-width: 180px; display: grid; gap: 4px; padding: 10px; border: 1px solid #293646; border-radius: 16px; background: #101722; box-shadow: 0 16px 48px #0006; }
+.tmm-menu-panel button, .tmm-menu-panel .sa-account-button { min-height: 44px; width: 100%; padding: 10px 12px; border: 0; background: none; color: #c1cfe2; text-align: left; font-size: 13px; }
+.tmm-living { height: max(390px, calc(100svh - 240px)); max-height: 760px; padding-top: 30px; }
+.tmm-living h1 { margin: 10px 0 0; font-size: 24px; font-weight: 400; }
+.tmm-eyebrow { font-size: 8px; letter-spacing: .28em; }
+.tmm-avatar-stage { width: calc(100% + 32px); margin-left: -16px; display: grid; place-items: center; }
+.tmm-avatar-stage .lc-avatar { max-height: 100%; }
+.tmm-region-signals { gap: 10px 16px; }
+.tmm-library-count { margin: 12px 0 26px; text-align: center; color: #74859c; font-size: 10px; letter-spacing: .06em; }
+.tmm-progress { text-align: center; font-size: 11px; color: #91a4c0; }
+.tmm-primary-actions { display: grid; justify-items: center; gap: 8px; }
+.tmm-export { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 48px; padding: 12px 28px; border: 1px solid #374357; border-radius: 28px; background: #141e2d; color: #d4e1f3; font-size: 12px; }
+.tmm-export svg { width: 17px; height: 17px; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
+.tmm-export:disabled { opacity: .5; cursor: wait; }
+.tmm-explore-toggle { min-height: 44px; padding: 10px 20px; color: #8396af; background: none; border: 0; font-size: 11px; }
+.tmm-explore-toggle span { margin-left: 8px; }
+#tmm-exploration { margin-top: 24px; }
+#tmm-exploration[hidden] { display: none; }
+.tmm-session-note { text-align: center; color: #78889f; font-size: 10px; margin: 16px 0; }
+.tmm-export-error { color: #e4adad; text-align: center; font-size: 12px; }
+.tmm-export-dialog { width: min(440px, calc(100vw - 32px)); max-height: 90dvh; padding: 16px; border: 1px solid #344155; border-radius: 20px; background: #101722; color: #d4e1f3; overflow: auto; }
+.tmm-export-dialog::backdrop { background: #02050bd9; backdrop-filter: blur(8px); }
+.tmm-export-dialog header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.tmm-export-dialog h2 { font-size: 14px; font-weight: 500; }
+.tmm-export-dialog header button { width: 44px; height: 44px; font-size: 24px; background: none; border: 0; color: inherit; }
+.tmm-export-dialog > img { display: block; width: 100%; max-height: 58dvh; object-fit: contain; border-radius: 8px; }
+.tmm-export-options { display: flex; gap: 10px; margin-top: 16px; }
+.tmm-export-options a, .tmm-export-options button { flex: 1; display: grid; place-items: center; min-height: 48px; border: 1px solid #3c4b61; border-radius: 12px; background: #1c2a40; color: #e6edf8; font-size: 13px; text-decoration: none; }
+.tmm-export-dialog > p { margin-top: 14px; color: #91a1b7; font-size: 11px; text-align: center; line-height: 1.6; }
+@media (max-height: 650px) { .tmm-living { height: max(320px, calc(100svh - 210px)); padding-top: 16px; } .tmm-library-count { margin-bottom: 16px; } }

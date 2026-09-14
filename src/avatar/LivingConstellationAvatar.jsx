@@ -1,9 +1,18 @@
 import { useEffect, useId, useState } from 'react';
 import './LivingConstellationAvatar.css';
 
-export default function LivingConstellationAvatar({ avatar, reaction, lang = 'ko' }) {
+export default function LivingConstellationAvatar({ avatar, reaction, lang = 'ko', showReceiver = true }) {
     const id = useId().replace(/:/g, '');
     const [paused, setPaused] = useState(false);
+    const points = [...avatar.nodes, ...avatar.orbits];
+    const minX = Math.min(...points.map((node) => node.x));
+    const maxX = Math.max(...points.map((node) => node.x));
+    const minY = Math.min(...points.map((node) => node.y));
+    const maxY = Math.max(...points.map((node) => node.y));
+    const extent = Math.max(180, maxX - minX + 64, maxY - minY + 64);
+    const viewBox = !showReceiver && points.length
+        ? `${(minX + maxX - extent) / 2} ${(minY + maxY - extent) / 2} ${extent} ${extent}`
+        : '0 0 360 360';
     useEffect(() => {
         const onVisibility = () => setPaused(document.hidden);
         document.addEventListener('visibilitychange', onVisibility);
@@ -11,8 +20,8 @@ export default function LivingConstellationAvatar({ avatar, reaction, lang = 'ko
     }, []);
     return (
         <svg className={`lc-avatar${paused ? ' is-paused' : ''}`}
-            viewBox="0 0 360 360" role="img" aria-labelledby={`${id}-title ${id}-desc`}
-            style={{ '--lc-pulse': `${avatar.pulseSeconds}s`, '--lc-drift': `${avatar.driftSeconds}s` }}>
+            viewBox={viewBox} role="img" aria-labelledby={`${id}-title ${id}-desc`}
+            style={{ overflow: showReceiver ? 'visible' : 'hidden', '--lc-pulse': `${avatar.pulseSeconds}s`, '--lc-drift': `${avatar.driftSeconds}s` }}>
             <title id={`${id}-title`}>{lang === 'en' ? 'Your living constellation' : '살아 있는 나의 취향 별자리'}</title>
             <desc id={`${id}-desc`}>{lang === 'en'
                 ? `${avatar.nodes.length} track stars connected by taste, with ${avatar.orbits.length} exploration stars in orbit.`
@@ -61,8 +70,8 @@ export default function LivingConstellationAvatar({ avatar, reaction, lang = 'ko
                 </g>
             </g>)}
             {/* One quiet receiving star visually links the card below to this body. */}
-            <path className="lc-drop-thread" d="M180 345v-22" />
-            <circle cx="180" cy="326" r="2" fill="#b3c9eb" opacity="0.5" />
+            {showReceiver && <path className="lc-drop-thread" d="M180 345v-22" />}
+            {showReceiver && <circle cx="180" cy="326" r="2" fill="#b3c9eb" opacity="0.5" />}
             {reaction && <g key={reaction.id} className={`lc-reaction lc-reaction-${reaction.action}`}
                 data-reaction={reaction.action}
                 style={{ '--lc-target-x': `${reaction.x}px`, '--lc-target-y': `${reaction.y}px`, color: reaction.color }}>

@@ -346,7 +346,6 @@ function buildSummaryBadges(view, system, {
 
 function buildStationVisibility(view, {
     detailMode,
-    hasLineSelection,
     summaryBadges,
     pinnedStationId,
 }) {

@@ -1,20 +1,17 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTasteData } from '../context/TasteDataContext';
-import { buildTasteState, describeTasteState, getTasteGenres, uniqueTracks } from '../taste/buildTasteState';
+import { buildTasteState, getTasteGenres, uniqueTracks } from '../taste/buildTasteState';
 import { hash01 } from '../taste/constellationTopology';
 import { getGenreIdentity, titleizeGenre } from '../taste/genreIdentity';
 import { buildAvatarState, buildAvatarReaction } from '../avatar/buildAvatarState';
 import LivingConstellationAvatar from '../avatar/LivingConstellationAvatar';
 import './TasteMapMobilePage.css';
+import { createConstellationImage } from '../avatar/exportConstellation';
 import AccountButton from '../auth/AccountButton';
 
 const API_BASE = import.meta?.env?.VITE_API_BASE || '';
 const EMPTY_TRACKS = [];
-
-function ArrowIcon() {
-    return <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 18 18 6M6 6h12v12" /></svg>;
-}
 
 function ActionIcon({ action }) {
     return <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -39,6 +36,12 @@ function MobileConstellation({ tracks, status, progress }) {
         try { return localStorage.getItem('spectra-tastemap-lang-v1') === 'en' ? 'en' : 'ko'; }
         catch { return 'ko'; }
     });
+    const [exploring, setExploring] = useState(false);
+    const [exporting, setExporting] = useState(false);
+    const [exportImage, setExportImage] = useState(null);
+    const [exportError, setExportError] = useState('');
+    const stageRef = useRef(null);
+    const dialogRef = useRef(null);
     const [now] = useState(() => Date.now());
     const [session, setSession] = useState({ decisions: [], active: null, count: 0 });
     const [discovery, setDiscovery] = useState({ key: '', tracks: [], status: 'loading' });
@@ -65,7 +68,7 @@ function MobileConstellation({ tracks, status, progress }) {
     }, [anchor]);
     const discoveryKey = `${discoveryQuery}:${retry}`;
     useEffect(() => {
-        if (!discoveryQuery) return undefined;
+        if (!exploring || !discoveryQuery) return undefined;
         const controller = new AbortController();
         let disposed = false;
         const timeout = window.setTimeout(() => controller.abort(), 12000);
@@ -83,7 +86,7 @@ function MobileConstellation({ tracks, status, progress }) {
                 .finally(() => window.clearTimeout(timeout));
         }, 0);
         return () => { disposed = true; controller.abort(); window.clearTimeout(start); window.clearTimeout(timeout); };
-    }, [discoveryKey, discoveryQuery]);
+    }, [discoveryKey, discoveryQuery, exploring]);
     useEffect(() => {
         if (!session.active) return undefined;
         const timer = window.setTimeout(() => setSession((current) => ({ ...current, active: null })), 1150);
@@ -101,7 +104,33 @@ function MobileConstellation({ tracks, status, progress }) {
     const fromLibrary = track && library.some((item) => item.id === track.id);
     const genre = getTasteGenres(track)[0];
     const cover = track?.coverUrl || track?.imageUrl || track?.album?.images?.[0]?.url;
-    const explanation = describeTasteState(taste, lang);
+    useEffect(() => {
+        if (!exportImage) return undefined;
+        dialogRef.current?.showModal();
+        return () => URL.revokeObjectURL(exportImage.url);
+    }, [exportImage]);
+    const exportConstellation = async () => {
+        if (exporting) return;
+        setExporting(true);
+        setExportError('');
+        try {
+            const blob = await createConstellationImage(stageRef.current.querySelector('svg'), {
+                title: en ? 'My constellation' : '나의 별자리',
+                genres: taste.coreGenres.slice(0, 3).map((item) => titleizeGenre(item.genre)),
+                count: library.length,
+            });
+            const file = new File([blob], 'spectra-constellation.png', { type: 'image/png' });
+            setExportImage({ url: URL.createObjectURL(blob), file });
+        } catch {
+            setExportError(en ? 'Could not create the image. Please try again.' : '이미지를 만들지 못했어요. 다시 시도해 주세요.');
+        } finally { setExporting(false); }
+    };
+    const shareImage = async () => {
+        try { await navigator.share({ files: [exportImage.file] }); }
+        catch (error) {
+            if (error.name !== 'AbortError') setExportError(en ? 'Sharing failed. You can still save the image.' : '공유하지 못했어요. 이미지 저장을 이용해 주세요.');
+        }
+    };
     const decide = (action) => {
         if (!track || session.active) return;
         setSession((current) => current.active ? current : ({
@@ -119,19 +148,22 @@ function MobileConstellation({ tracks, status, progress }) {
             <div className="tmm-shell">
                 <header className="tmm-appbar">
                     <a href="/taste-map/mobile" className="tmm-brand" aria-label="SPECTRA home"><span className="tmm-brand-mark" aria-hidden="true" />SPECTRA</a>
-                    <div className="tmm-account-actions">
-                    <AccountButton lang={lang} />
-                    <button type="button" className="tmm-language" onClick={() => setLang(en ? 'ko' : 'en')}
-                        aria-label={en ? '한국어로 전환' : 'Switch to English'}>{en ? 'KO' : 'EN'}</button>
-                    </div>
+                    <details className="tmm-menu">
+                        <summary aria-label={en ? 'More options' : '더 보기'}>···</summary>
+                        <div className="tmm-menu-panel">
+                            <AccountButton lang={lang} />
+                            <button type="button" onClick={() => setLang(en ? 'ko' : 'en')}>{en ? '한국어' : 'English'}</button>
+                            <button type="button" onClick={() => navigate('/taste-map?view=constellation')}>{en ? 'Detailed map' : '상세 지도'}</button>
+                        </div>
+                    </details>
                 </header>
                 <section className="tmm-living" aria-labelledby="tmm-living-title">
                     <div className="tmm-living-heading">
-                        <span className="tmm-eyebrow">YOUR LIVING CONSTELLATION</span>
-                        <h1 id="tmm-living-title">{en ? 'A shape only you make.' : '당신만의 형태로.'}</h1>
-                        <p>{en ? 'Every sound leaves a little of you.' : '당신이 머문 음악이 하나의 별자리로.'}</p>
+                        <span className="tmm-eyebrow">YOUR CONSTELLATION</span>
+                        <h1 id="tmm-living-title">{en ? 'My constellation' : '나의 별자리'}</h1>
+
                     </div>
-                    <div className="tmm-avatar-stage"><LivingConstellationAvatar avatar={avatar} reaction={reaction} lang={lang} /></div>
+                    <div className="tmm-avatar-stage" ref={stageRef}><LivingConstellationAvatar avatar={avatar} reaction={reaction} lang={lang} showReceiver={exploring} /></div>
                     <div className="tmm-region-signals" aria-label={en ? 'Core taste regions' : '중심 취향 영역'}>
                         {taste.coreGenres.slice(0, 3).map((signal) => <span key={signal.genre}
                             style={{ '--tmm-region': `rgb(${getGenreIdentity(signal.genre).tone.rgb})` }}>
@@ -139,7 +171,17 @@ function MobileConstellation({ tracks, status, progress }) {
                         </span>)}
                     </div>
                 </section>
-                <p className="tmm-taste-sentence" aria-live="polite">{explanation}</p>
+                <p className="tmm-library-count">{en ? `${library.length.toLocaleString()} tracks, one constellation` : `${library.length.toLocaleString()}곡이 만든 하나의 별자리`}</p>
+                {status === 'enriching' && <p className="tmm-progress" role="status">{en ? 'Adding stars' : '별을 더 불러오는 중'} · {progress.done}/{progress.total}</p>}
+                <div className="tmm-primary-actions">
+                    <button className="tmm-export" type="button" disabled={exporting || Boolean(session.active)} onClick={exportConstellation}>
+                        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M5 16v5h14v-5" /></svg>
+                        {exporting ? (en ? 'Creating image…' : '이미지 만드는 중…') : (en ? 'Save constellation' : '별자리 이미지 저장')}
+                    </button>
+                    <button className="tmm-explore-toggle" type="button" aria-expanded={exploring} aria-controls="tmm-exploration" onClick={() => setExploring(!exploring)}>{exploring ? (en ? 'Close exploration' : '탐색 접기') : (en ? 'Explore more music' : '음악 더 탐색하기')} <span aria-hidden="true">{exploring ? '−' : '+'}</span></button>
+                </div>
+                {!exportImage && exportError && <p className="tmm-export-error" role="alert">{exportError}</p>}
+                <div id="tmm-exploration" hidden={!exploring}>
                 <section className="tmm-drop" aria-labelledby="tmm-drop-title" aria-busy={Boolean(session.active)}>
                     <div className="tmm-drop-header">
                         <h2 id="tmm-drop-title">TASTE DROP <span aria-hidden="true">/</span> <small>{String(session.count + 1).padStart(2, '0')}</small></h2>
@@ -177,12 +219,18 @@ function MobileConstellation({ tracks, status, progress }) {
                         : status === 'enriching' ? (en ? `More stars arriving · ${progress.done}/${progress.total}` : `별을 더 불러오는 중 · ${progress.done}/${progress.total}`)
                             : (en ? 'A small choice. A changing constellation.' : '작은 선택 하나, 조금 달라지는 별자리.'))}</div>
                 </section>
-                <footer className="tmm-footer">
-                    <button type="button" onClick={() => navigate('/taste-map?view=constellation')}>
-                        <span>{en ? 'Explore my taste universe' : '나의 취향 우주 펼쳐보기'}</span><ArrowIcon />
-                    </button>
-                    <span>{en ? 'Taste Drop choices stay in this session.' : 'Taste Drop 선택은 이번 세션에 머물러요.'}</span>
-                </footer>
+                <p className="tmm-session-note">{en ? 'Taste Drop choices stay in this session.' : 'Taste Drop 선택은 이번 세션에 머물러요.'}</p>
+                </div>
+                {exportImage && <dialog className="tmm-export-dialog" ref={dialogRef} onClose={() => setExportImage(null)} aria-labelledby="tmm-export-title">
+                    <header><h2 id="tmm-export-title">{en ? 'Your constellation' : '나의 별자리 이미지'}</h2><button type="button" autoFocus onClick={() => dialogRef.current.close()} aria-label={en ? 'Close' : '닫기'}>×</button></header>
+                    <img src={exportImage.url} alt={en ? 'Your constellation export preview' : '내 별자리 이미지 미리보기'} />
+                    <div className="tmm-export-options">
+                        <a href={exportImage.url} download="spectra-constellation.png">{en ? 'Save PNG' : 'PNG 저장'}</a>
+                        {navigator.canShare?.({ files: [exportImage.file] }) && <button type="button" onClick={shareImage}>{en ? 'Share' : '공유하기'}</button>}
+                    </div>
+                    <p>{en ? 'You can also touch and hold the image to save it.' : '이미지를 길게 눌러 사진에 저장할 수도 있어요.'}</p>
+                    {exportError && <p role="alert">{exportError}</p>}
+                </dialog>}
             </div>
         </main>
     );

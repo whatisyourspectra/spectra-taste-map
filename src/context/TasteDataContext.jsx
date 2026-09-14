@@ -10,6 +10,7 @@ import {
     fetchCloudTaste,
     saveCloudTaste,
     deleteCloudTaste,
+    shouldRestoreCloudTaste,
 } from '../taste/tasteStorage';
 import { supabase } from '../auth/supabaseClient';
 const CHUNK_SIZE = 40;
@@ -20,7 +21,6 @@ const REQUEST_RETRY_COUNT = 2;
 const MIN_RECOVERY_CHUNK_SIZE = 10;
 
 const TasteDataContext = createContext(null);
-
 
 function newMapId() {
     if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
@@ -119,11 +119,6 @@ export function TasteDataProvider({ children, ownerId = null }) {
             ? initial.pendingSourceList
             : null,
     );
-    const activeSourceListRef = useRef(
-        initial?.stats?.backgroundEnriching && Array.isArray(initial?.pendingSourceList)
-            ? initial.pendingSourceList
-            : null,
-    );
 
     const [tracks, setTracks] = useState(initial?.tracks || []);
     const [featuresSource, setFeaturesSource] = useState(initial?.featuresSource || 'none');
@@ -154,7 +149,6 @@ export function TasteDataProvider({ children, ownerId = null }) {
 
         const runId = importRunRef.current + 1;
         importRunRef.current = runId;
-        activeSourceListRef.current = list;
         const id = options.mapId || newMapId();
         const collectedById = new Map(
             seededTracks.filter((track) => track?.id).map((track) => [track.id, track]),
@@ -190,18 +184,16 @@ export function TasteDataProvider({ children, ownerId = null }) {
             setMapId(id);
             setStatus(nextStatus);
             const pendingSourceList = nextStatus === 'enriching' ? list : null;
-            activeSourceListRef.current = pendingSourceList;
             const payloadToPersist = {
                 tracks: nextTracks,
                 featuresSource: source,
                 stats: nextStats,
                 mapId: id,
                 pendingSourceList,
+                updatedAt: new Date().toISOString(),
             };
             persistLocalTaste(sessionStorage, ownerId, payloadToPersist);
-            if (nextStatus === 'ready' && ownerId && supabase) {
-                saveCloudTaste(supabase, ownerId, payloadToPersist);
-            }
+            return payloadToPersist;
         };
 
         try {
@@ -223,7 +215,7 @@ export function TasteDataProvider({ children, ownerId = null }) {
 
             // Stop blocking the whole screen as soon as a representative map
             // can be drawn. The remaining catalog matching continues below.
-            publish(remaining.length > 0 ? 'enriching' : 'ready');
+            if (remaining.length > 0) publish('enriching');
 
             if (remaining.length > 0) {
                 const chunks = [];
@@ -260,7 +252,7 @@ export function TasteDataProvider({ children, ownerId = null }) {
                                 completedChunks % BACKGROUND_PUBLISH_EVERY === 0
                                 || completedChunks === chunks.length
                             ) {
-                                publish(completedChunks === chunks.length ? 'ready' : 'enriching');
+                                publish('enriching');
                             }
                         }
                     },
@@ -275,67 +267,63 @@ export function TasteDataProvider({ children, ownerId = null }) {
         }
 
         if (importRunRef.current !== runId) return { ok: false, cancelled: true };
-        publish('ready');
+        const completedTaste = publish('ready');
+        if (ownerId && supabase) {
+            saveCloudTaste(supabase, ownerId, completedTaste).catch((error) => {
+                console.error('[TasteStorage] Cloud save failed:', error);
+            });
+        }
         return { ok: true, count: collectedById.size, failedCount };
     }, [ownerId]);
 
     useEffect(() => {
-        const pendingSourceList = resumeImportRef.current;
-        if (!pendingSourceList?.length) return;
-        resumeImportRef.current = null;
-        importTracks(pendingSourceList, {
-            seedTracks: initial?.tracks || [],
-            mapId: initial?.mapId || null,
-            featuresSource: initial?.featuresSource || 'none',
-        });
-    }, [importTracks, initial?.featuresSource, initial?.mapId, initial?.tracks]);
-
-    // Background / initial sync: Fetch latest cloud map for signed-in user if newer or missing locally
-    useEffect(() => {
-        if (!ownerId || !supabase) {
-            setCloudSyncing(false);
-            return undefined;
-        }
         let disposed = false;
-        fetchCloudTaste(supabase, ownerId).then((cloud) => {
-            if (disposed) return;
-            if (cloud && Array.isArray(cloud.tracks) && cloud.tracks.length > 0) {
-                setTracks((current) => {
-                    if (current.length === 0 || cloud.mapId !== mapId) {
-                        setFeaturesSource(cloud.featuresSource);
-                        setStats(cloud.stats);
-                        setMapId(cloud.mapId);
-                        setStatus('ready');
-                        setProgress({
-                            done: Number(cloud.stats?.processedCount) || cloud.tracks.length,
-                            total: Number(cloud.stats?.totalAvailable) || cloud.tracks.length,
-                        });
-                        persistLocalTaste(sessionStorage, ownerId, cloud);
-                        return cloud.tracks;
-                    }
-                    return current;
+        // Defer until after StrictMode's setup/cleanup probe, preserving resumable imports.
+        Promise.resolve().then(() => {
+            const pendingSourceList = resumeImportRef.current;
+            if (disposed || !pendingSourceList?.length) return;
+            resumeImportRef.current = null;
+            importTracks(pendingSourceList, {
+                seedTracks: initial?.tracks || [],
+                mapId: initial?.mapId || null,
+                featuresSource: initial?.featuresSource || 'none',
+            });
+        });
+        return () => {
+            disposed = true;
+            importRunRef.current += 1;
+        };
+    }, [importTracks, initial]);
+
+    useEffect(() => {
+        if (!ownerId || !supabase) return undefined;
+        let disposed = false;
+        const runId = importRunRef.current;
+        fetchCloudTaste(supabase, ownerId).then(async (cloud) => {
+            // An import or reset performed while fetching takes precedence.
+            if (disposed || importRunRef.current !== runId) return;
+            if (shouldRestoreCloudTaste(initial, cloud)) {
+                setTracks(cloud.tracks);
+                setFeaturesSource(cloud.featuresSource);
+                setStats(cloud.stats);
+                setMapId(cloud.mapId);
+                setStatus('ready');
+                setProgress({
+                    done: Number(cloud.stats?.processedCount) || cloud.tracks.length,
+                    total: Number(cloud.stats?.totalAvailable) || cloud.tracks.length,
                 });
-            } else {
-                // Cloud is empty, but local has tracks! Immediately upload to cloud for cross-device sync.
-                setTracks((currentTracks) => {
-                    const tracksToSave = currentTracks.length > 0 ? currentTracks : (initial?.tracks || []);
-                    if (tracksToSave.length > 0) {
-                        saveCloudTaste(supabase, ownerId, {
-                            tracks: tracksToSave,
-                            featuresSource: featuresSource || initial?.featuresSource || 'none',
-                            stats: stats || initial?.stats || null,
-                            mapId: mapId || initial?.mapId || 'default-map',
-                        });
-                    }
-                    return currentTracks;
-                });
+                persistLocalTaste(sessionStorage, ownerId, cloud);
+            } else if (initial?.tracks?.length && !initial?.stats?.backgroundEnriching
+                && (!cloud || Date.parse(initial.updatedAt) > Date.parse(cloud.updatedAt))) {
+                await saveCloudTaste(supabase, ownerId, initial);
             }
-            setCloudSyncing(false);
-        }).catch(() => {
+        }).catch((error) => {
+            if (!disposed) console.error('[TasteStorage] Initial cloud sync failed:', error);
+        }).finally(() => {
             if (!disposed) setCloudSyncing(false);
         });
         return () => { disposed = true; };
-    }, [ownerId, mapId]);
+    }, [ownerId, initial]);
 
     const reset = useCallback(() => {
         importRunRef.current += 1;
@@ -347,31 +335,13 @@ export function TasteDataProvider({ children, ownerId = null }) {
         setError(null);
         setProgress({ done: 0, total: 0 });
         resumeImportRef.current = null;
-        activeSourceListRef.current = null;
         clearLocalTaste(sessionStorage, ownerId);
         if (ownerId && supabase) {
-            deleteCloudTaste(supabase, ownerId);
+            deleteCloudTaste(supabase, ownerId).catch((error) => {
+                console.error('[TasteStorage] Cloud delete failed:', error);
+            });
         }
     }, [ownerId]);
-
-    // Keep local storage and Supabase cloud in sync if tracks change after mount (e.g. re-import).
-    useEffect(() => {
-        if ((status === 'ready' || status === 'enriching') && tracks.length > 0) {
-            const dataToPersist = {
-                tracks,
-                featuresSource,
-                stats,
-                mapId,
-                pendingSourceList: status === 'enriching'
-                    ? activeSourceListRef.current
-                    : null,
-            };
-            persistLocalTaste(sessionStorage, ownerId, dataToPersist);
-            if (status === 'ready' && ownerId && supabase) {
-                saveCloudTaste(supabase, ownerId, dataToPersist);
-            }
-        }
-    }, [status, tracks, featuresSource, stats, mapId, ownerId]);
 
     const value = {
         tracks,
