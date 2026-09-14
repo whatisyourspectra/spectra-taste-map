@@ -83,18 +83,49 @@ export function clearLocalTaste(storage, ownerId) {
     }
 }
 
-// ── Cloud Synchronization (Supabase PostgreSQL) ──────────────────────────
+// Serialize reads and mutations per account, including across provider remounts.
+const cloudQueues = new WeakMap();
+function enqueueCloudOperation(client, ownerId, operation) {
+    let accounts = cloudQueues.get(client);
+    if (!accounts) {
+        accounts = new Map();
+        cloudQueues.set(client, accounts);
+    }
+    const previous = accounts.get(ownerId) || Promise.resolve();
+    const result = previous.then(operation);
+    // A failed request must not poison later explicitly requested operations.
+    const settled = result.catch(() => {});
+    accounts.set(ownerId, settled);
+    settled.then(() => {
+        if (accounts.get(ownerId) === settled) accounts.delete(ownerId);
+    });
+    return result;
+}
+
+export function shouldRestoreCloudTaste(local, cloud) {
+    if (!cloud?.tracks?.length) return false;
+    if (!local?.tracks?.length) return true;
+    const localTime = Date.parse(local.updatedAt);
+    const cloudTime = Date.parse(cloud.updatedAt);
+    // Legacy browser caches have no revision timestamp: prefer the saved account map.
+    if (!Number.isFinite(localTime)) return true;
+    return Number.isFinite(cloudTime) && cloudTime > localTime;
+}
 
 export async function fetchCloudTaste(supabase, ownerId) {
     if (!supabase || !ownerId) return null;
-    try {
+    return enqueueCloudOperation(supabase, ownerId, async () => {
         const { data, error } = await supabase
             .from('user_taste_maps')
             .select('map_id, features_source, stats, tracks, updated_at')
             .eq('user_id', ownerId)
             .maybeSingle();
-
-        if (error || !data || !Array.isArray(data.tracks) || data.tracks.length === 0) return null;
+        // Failed reads must never be interpreted as permission to overwrite a map.
+        if (error) throw error;
+        if (!data) return null;
+        if (!Array.isArray(data.tracks) || data.tracks.length === 0) {
+            throw new Error('Invalid cloud taste map');
+        }
         return {
             tracks: data.tracks,
             featuresSource: data.features_source || 'none',
@@ -102,46 +133,34 @@ export async function fetchCloudTaste(supabase, ownerId) {
             mapId: data.map_id,
             updatedAt: data.updated_at,
         };
-    } catch {
-        return null;
-    }
+    });
 }
 
 export async function saveCloudTaste(supabase, ownerId, tasteData) {
-    if (!supabase || !ownerId || !tasteData || !Array.isArray(tasteData.tracks) || tasteData.tracks.length === 0) return null;
-    try {
-        const payload = {
-            user_id: ownerId,
-            map_id: tasteData.mapId || 'default-map',
-            features_source: tasteData.featuresSource || 'none',
-            stats: tasteData.stats || null,
-            tracks: tasteData.tracks,
-            updated_at: new Date().toISOString(),
-        };
+    if (!supabase || !ownerId || !Array.isArray(tasteData?.tracks) || !tasteData.tracks.length) return null;
+    const payload = {
+        user_id: ownerId,
+        map_id: tasteData.mapId || 'default-map',
+        features_source: tasteData.featuresSource || 'none',
+        stats: tasteData.stats || null,
+        tracks: tasteData.tracks,
+        updated_at: tasteData.updatedAt || new Date().toISOString(),
+    };
+    return enqueueCloudOperation(supabase, ownerId, async () => {
         const { data, error } = await supabase
             .from('user_taste_maps')
             .upsert(payload, { onConflict: 'user_id' })
             .select('updated_at')
             .maybeSingle();
-
-        if (error) {
-            console.error('[TasteStorage] Cloud sync failed:', error.message, error);
-            return null;
-        }
-        console.log('[TasteStorage] Taste map saved to Supabase cloud successfully!');
+        if (error) throw error;
         return data;
-    } catch (err) {
-        console.error('[TasteStorage] Cloud save error:', err);
-        return null;
-    }
+    });
 }
 
 export async function deleteCloudTaste(supabase, ownerId) {
     if (!supabase || !ownerId) return;
-    try {
-        await supabase.from('user_taste_maps').delete().eq('user_id', ownerId);
-    } catch {
-        /* non-fatal */
-    }
+    return enqueueCloudOperation(supabase, ownerId, async () => {
+        const { error } = await supabase.from('user_taste_maps').delete().eq('user_id', ownerId);
+        if (error) throw error;
+    });
 }
-

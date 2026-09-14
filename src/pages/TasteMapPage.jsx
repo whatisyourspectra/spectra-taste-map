@@ -7,6 +7,16 @@ import TasteMapMetroStudio from './TasteMapMetroStudio';
 import MetroYouTubePlayer from './MetroYouTubePlayer';
 import './TasteMapPage.css';
 
+const FeatureBar = ({ label, value }) => (
+    <div className="tm-feat-row">
+        <span className="tm-feat-label">{label}</span>
+        <div className="tm-feat-bar-bg">
+            <div className="tm-feat-bar-fill" style={{ width: `${Math.round(value * 100)}%` }} />
+        </div>
+        <span className="tm-feat-val">{Math.round(value * 100)}</span>
+    </div>
+);
+
 const API_BASE = import.meta?.env?.VITE_API_BASE || '';
 const api = (path) => `${API_BASE}${path}`;
 const TM_FETCH_CACHE_TTL_MS = 10 * 60 * 1000;
@@ -1011,7 +1021,7 @@ function YearCompareDepthScene({ sceneKey }) {
 
 function TasteYearComparePanel({ tracks, profileName, lang = 'ko' }) {
     const copy = TM_I18N[lang] || TM_I18N.ko;
-    const [targetId, setTargetId] = useState('');
+    const [selectedTargetId, setTargetId] = useState('');
     const [source, setSource] = useState('recent');
     const [mode, setMode] = useState('blend');
     const [selectedGenreKey, setSelectedGenreKey] = useState(null);
@@ -1032,15 +1042,9 @@ function TasteYearComparePanel({ tracks, profileName, lang = 'ko' }) {
         return ordered;
     }, [currentYear, yearlyPersonas]);
 
-    useEffect(() => {
-        if (!compareCandidates.length) {
-            setTargetId('');
-            return;
-        }
-        if (!targetId || !compareCandidates.some((item) => item.id === targetId)) {
-            setTargetId(compareCandidates[0].id);
-        }
-    }, [compareCandidates, targetId]);
+    const targetId = compareCandidates.some((item) => item.id === selectedTargetId)
+        ? selectedTargetId
+        : compareCandidates[0]?.id || '';
 
     const comparePersona = useMemo(
         () => compareCandidates.find((item) => item.id === targetId) || compareCandidates[0] || null,
@@ -1623,14 +1627,14 @@ export default function TasteMapPage() {
     const [xAxis, setXAxis] = useState('valence');
     const [yAxis, setYAxis] = useState('energy');
     const [zAxis, setZAxis] = useState('danceability');
-    const [axisPreset, setAxisPreset] = useState('mood');
+    const axisPreset = resolveAxisPreset(xAxis, yAxis)?.key || 'custom';
     const [genreVocab, setGenreVocab] = useState([]);
-    const [cacheUserId, setCacheUserId] = useState('guest');
-    const [cacheReady, setCacheReady] = useState(false);
+    const cacheUserId = mapId || 'guest';
+    const cacheReady = true;
 
     const [hoveredIdx, setHoveredIdx] = useState(null);
     const [hoveredTrack, setHoveredTrack] = useState(null);
-    const [hoveredPos, setHoveredPos] = useState({ x: 0, y: 0 });
+    const hoveredPos = { x: 0, y: 0 };
     const [selectedCluster, setSelectedCluster] = useState(null);
     const [canvasSize, setCanvasSize] = useState({ w: 800, h: 520 });
     const [bubbleFieldSize, setBubbleFieldSize] = useState({ w: 0, h: 0 });
@@ -1795,11 +1799,6 @@ export default function TasteMapPage() {
     }, []);
 
     useEffect(() => {
-        setCacheUserId(mapId || 'guest');
-        setCacheReady(true);
-    }, [mapId]);
-
-    useEffect(() => {
         if (typeof window !== 'undefined') {
             window.localStorage.setItem(TM_LOCALE_STORAGE_KEY, lang);
         }
@@ -1878,11 +1877,6 @@ export default function TasteMapPage() {
         });
         return () => { cancelled = true; };
     }, [fetchTracks, cacheReady]);
-
-    useEffect(() => {
-        const matched = resolveAxisPreset(xAxis, yAxis);
-        setAxisPreset(matched?.key || 'custom');
-    }, [xAxis, yAxis]);
 
     // ── Run clustering via Web Worker (automatic cluster count) ─────────────
     useEffect(() => {
@@ -3609,7 +3603,7 @@ export default function TasteMapPage() {
         exploreEnabled,
         viewMode,
         loading,
-        tracks.length,
+        tracks,
         exploreSparseAnchors,
         exploreSeedGenres,
         knownTrackIds,
@@ -4090,60 +4084,8 @@ export default function TasteMapPage() {
         }));
     }, [clusterStats, tracks.length]);
 
-    const getNearestTrackIndex = useCallback((event, threshold = 20) => {
-        const canvas = canvasRef.current;
-        if (!canvas || tracks.length === 0) return null;
-
-        const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / rect.width;
-        const scaleY = canvas.height / rect.height;
-        const mx = (event.clientX - rect.left) * scaleX;
-        const my = (event.clientY - rect.top) * scaleY;
-
-        const pw = canvas.width - PADDING.left - PADDING.right;
-        const ph = canvas.height - PADDING.top - PADDING.bottom;
-
-        let nearest = null;
-        let nearestDist = threshold;
-
-        tracks.forEach((t, i) => {
-            if (hasTrackFilter && !activeTrackIds.has(t.id)) return;
-
-            const cx = PADDING.left + getTrackFeature(t, xAxis) * pw;
-            const cy = PADDING.top + (1 - getTrackFeature(t, yAxis)) * ph;
-            const d = Math.hypot(mx - cx, my - cy);
-            if (d < nearestDist) {
-                nearestDist = d;
-                nearest = i;
-            }
-        });
-
-        return nearest;
-    }, [tracks, hasTrackFilter, activeTrackIds, xAxis, yAxis]);
-
-    // ── Mouse hit-test ───────────────────────────────────────────────────────
-    const handleMouseMove = useCallback((e) => {
-        const nearest = getNearestTrackIndex(e, 20);
-        setHoveredIdx(nearest);
-        setHoveredTrack(nearest !== null ? tracks[nearest] : null);
-        setHoveredPos({ x: e.clientX, y: e.clientY });
-    }, [getNearestTrackIndex, tracks]);
-
-    const handleMouseLeave = useCallback(() => {
-        setHoveredIdx(null);
-        setHoveredTrack(null);
-    }, []);
-
     // ── Helpers ─────────────────────────────────────────────────────────────
-    const FeatureBar = ({ label, value }) => (
-        <div className="tm-feat-row">
-            <span className="tm-feat-label">{label}</span>
-            <div className="tm-feat-bar-bg">
-                <div className="tm-feat-bar-fill" style={{ width: `${Math.round(value * 100)}%` }} />
-            </div>
-            <span className="tm-feat-val">{Math.round(value * 100)}</span>
-        </div>
-    );
+
 
     // YouTube plays in the map; Spotify remains an external service.
     const openTrackExternal = useCallback((trackOrId, service = 'spotify') => {
@@ -4200,14 +4142,6 @@ export default function TasteMapPage() {
         isSpectraExpandMode,
         spectraExpandTrackId,
     ]);
-
-    const handleCanvasClick = useCallback((e) => {
-        const nearest = getNearestTrackIndex(e, 16);
-        if (nearest === null) return;
-
-        const track = tracks[nearest];
-        openTrackCard(track, 'library');
-    }, [getNearestTrackIndex, tracks, openTrackCard]);
 
     const handleBubbleClick = useCallback((track) => {
         const justPanned = Date.now() - (panRef.current.lastMoveAt || 0) < 120;
@@ -4655,7 +4589,7 @@ export default function TasteMapPage() {
         }
     }, [zAxis]);
 
-    const handleLibraryCardWheel = useCallback((listRef) => (event) => {
+    const handleLibraryCardWheel = useCallback((event, listRef) => {
         const list = listRef?.current;
         if (!list) return;
 
@@ -4693,16 +4627,6 @@ export default function TasteMapPage() {
         setYAxis(nextKey);
     };
 
-    const handleZAxisChange = (nextKey) => {
-        if (nextKey === xAxis) {
-            setXAxis(zAxis);
-        }
-        if (nextKey === yAxis) {
-            setYAxis(zAxis);
-        }
-        setZAxis(nextKey);
-    };
-
     const hoveredCluster = hoveredIdx !== null ? clusterById[assignments[hoveredIdx]] : null;
     const selectedClusterData = useMemo(() => {
         if (selectedCluster !== null && clusterById[selectedCluster]) return clusterById[selectedCluster];
@@ -4710,7 +4634,6 @@ export default function TasteMapPage() {
     }, [selectedCluster, clusterById, clusterStats]);
     const xMeta = FEATURE_META[xAxis];
     const yMeta = FEATURE_META[yAxis];
-    const zMeta = FEATURE_META[zAxis];
     const discoveryAnchorPosition = useMemo(() => {
         if (!isSpectraExpandMode || !spectraExpandTrackId) return null;
         const anchor = bubbleRenderItems.find((item) => item.node.track.id === spectraExpandTrackId);
@@ -5162,7 +5085,7 @@ export default function TasteMapPage() {
 
                         {!libraryLoading && !libraryError && librarySummary && (
                             <div className="tm-library-grid">
-                                <article className="tm-library-card" onWheel={handleLibraryCardWheel(followedListRef)}>
+                                <article className="tm-library-card" onWheel={(event) => handleLibraryCardWheel(event, followedListRef)}>
                                     <div className="tm-library-card-head">
                                         <div>
                                             <span className="tm-library-card-label">팔로우 아티스트</span>
@@ -5233,7 +5156,7 @@ export default function TasteMapPage() {
                                     </div>
                                 </article>
 
-                                <article className="tm-library-card" onWheel={handleLibraryCardWheel(savedAlbumListRef)}>
+                                <article className="tm-library-card" onWheel={(event) => handleLibraryCardWheel(event, savedAlbumListRef)}>
                                     <div className="tm-library-card-head">
                                         <div>
                                             <span className="tm-library-card-label">저장한 앨범</span>

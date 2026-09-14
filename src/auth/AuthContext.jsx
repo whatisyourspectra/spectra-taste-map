@@ -78,7 +78,7 @@ export function AuthProvider({ children }) {
         window.location.assign(data.url);
     }, [isMock]);
 
-    const signInMock = useCallback(async (returnTo) => {
+    const signInMock = useCallback(async () => {
         const mockUser = {
             id: 'spectra-mock-user-1',
             email: 'listener@spectra.local',
