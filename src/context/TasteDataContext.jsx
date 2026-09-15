@@ -12,6 +12,8 @@ import {
     deleteCloudTaste,
     shouldRestoreCloudTaste,
 } from '../taste/tasteStorage';
+import { uniqueTracks } from '../taste/buildTasteState';
+import { appendDecision, reflectionKey } from '../reflection/reflectionStorage';
 import { supabase } from '../auth/supabaseClient';
 const CHUNK_SIZE = 40;
 const PREVIEW_TRACK_COUNT = 32;
@@ -343,6 +345,45 @@ export function TasteDataProvider({ children, ownerId = null }) {
         }
     }, [ownerId]);
 
+    const recordDecision = useCallback((action, track, source = 'web') => {
+        if (!track?.id) return;
+        const currentMapId = mapId || initial?.mapId || 'default-map';
+        const storageKey = reflectionKey(ownerId, currentMapId);
+
+        if (typeof window !== 'undefined' && window.localStorage) {
+            appendDecision(window.localStorage, storageKey, action, track, source);
+        }
+
+        if (action === 'absorb') {
+            setTracks((prev) => {
+                const updated = uniqueTracks([...prev, track]);
+                const nextStats = {
+                    fetchedCount: updated.length,
+                    totalAvailable: updated.length,
+                    processedCount: updated.length,
+                    failedCount: stats?.failedCount || 0,
+                    backgroundEnriching: false,
+                };
+                setStats(nextStats);
+                const payload = {
+                    tracks: updated,
+                    featuresSource,
+                    stats: nextStats,
+                    mapId: currentMapId,
+                    pendingSourceList: null,
+                    updatedAt: new Date().toISOString(),
+                };
+                persistLocalTaste(sessionStorage, ownerId, payload);
+                if (ownerId && supabase) {
+                    saveCloudTaste(supabase, ownerId, payload).catch((err) => {
+                        console.error('[TasteStorage] Cloud save on recordDecision failed:', err);
+                    });
+                }
+                return updated;
+            });
+        }
+    }, [mapId, initial?.mapId, ownerId, featuresSource, stats?.failedCount]);
+
     const value = {
         tracks,
         featuresSource,
@@ -354,6 +395,7 @@ export function TasteDataProvider({ children, ownerId = null }) {
         cloudSyncing,
         hasTaste: tracks.length > 0,
         importTracks,
+        recordDecision,
         reset,
     };
 

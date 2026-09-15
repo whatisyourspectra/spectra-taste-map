@@ -68,15 +68,18 @@ function MobileConstellation({ tracks, status, progress, storageKey }) {
     const selectedTrack = uniqueTracks([...library, ...session.decisions.map((choice) => choice.track)]).find((item) => item.id === selectedId);
     const evidence = [...changes.choices].reverse();
     const addedChoices = changes.choices.filter((choice) => choice.action === 'absorb');
+    const webAdded = addedChoices.filter((choice) => choice.source === 'web');
     const interested = changes.choices.filter((choice) => choice.action === 'dig');
     const headline = !previous
         ? (en ? 'Your story starts here.' : '나의 첫 스펙트라, 여기서 시작해요.')
-        : addedChoices.length ? (en ? `${addedChoices.length} choices became part of your Spectra.` : `${addedChoices.length}곡을 나의 스펙트라로 받아들였어요.`)
-            : interested.length ? (en ? `${interested.length} tracks opened a new direction.` : `${interested.length}곡에서 더 알고 싶은 방향을 찾았어요.`)
-                : changes.added.length ? (en ? `${changes.added.length} tracks joined your library.` : `라이브러리에 ${changes.added.length}곡이 더해졌어요.`)
-                    : changes.removed.length ? (en ? 'Your library has been updated.' : '라이브러리 구성이 달라졌어요.')
-                        : evidence.length ? (en ? 'You made room for another direction.' : '다른 방향을 위한 여백을 남겼어요.')
-                            : (en ? 'Still beautifully you.' : '지금은, 익숙한 나의 흐름 그대로.');
+        : webAdded.length
+            ? (en ? `${webAdded.length} discoveries from web joined your Spectra.` : `웹 지도에서 발견한 ${webAdded.length}곡이 스펙트라에 스며들었어요.`)
+            : addedChoices.length ? (en ? `${addedChoices.length} choices became part of your Spectra.` : `${addedChoices.length}곡을 나의 스펙트라로 받아들였어요.`)
+                : interested.length ? (en ? `${interested.length} tracks opened a new direction.` : `${interested.length}곡에서 더 알고 싶은 방향을 찾았어요.`)
+                    : changes.added.length ? (en ? `${changes.added.length} tracks joined your library.` : `라이브러리에 ${changes.added.length}곡이 더해졌어요.`)
+                        : changes.removed.length ? (en ? 'Your library has been updated.' : '라이브러리 구성이 달라졌어요.')
+                            : evidence.length ? (en ? 'You made room for another direction.' : '다른 방향을 위한 여백을 남겼어요.')
+                                : (en ? 'Still beautifully you.' : '지금은, 익숙한 나의 흐름 그대로.');
     useEffect(() => {
         if (!library.length) return undefined;
         const timer = setTimeout(() => {
@@ -177,7 +180,7 @@ function MobileConstellation({ tracks, status, progress, storageKey }) {
         if (!track || session.active) return;
         setComparison(0);
         setSession((current) => current.active ? current : ({
-            decisions: [...current.decisions.filter((item) => item.track.id !== track.id), { action, track, at: Date.now() }],
+            decisions: [...current.decisions.filter((item) => item.track.id !== track.id), { action, track, source: 'mobile', at: Date.now() }],
             active: { action, track }, count: current.count + 1,
         }));
     };
@@ -226,8 +229,8 @@ function MobileConstellation({ tracks, status, progress, storageKey }) {
                         const ids = new Set(bundle.map(item => item.id));
                         setComparison(0);
                         setSession(current => current.active ? current : ({
-                            decisions: [...current.decisions.filter(item => !ids.has(item.track.id)), ...bundle.map(track => ({ action: 'absorb', track, at: Date.now() }))],
-                            active: { action: 'absorb', track: bundle[0] }, count: current.count + bundle.length,
+                            decisions: [...current.decisions.filter(item => !ids.has(item.track.id)), ...bundle.map(track => ({ action: 'absorb', track, source: 'mobile', at: Date.now() }))],
+                            active: { action: 'absorb', track: bundle[0], source: 'mobile' }, count: current.count + bundle.length,
                         }));
                     }} />
                 {!saved && <div className="tmm-save-error" role="alert"><p>{en ? 'Your choices are visible, but could not be saved. Retry before leaving.' : '선택한 음악을 저장하지 못했어요. 화면을 나가기 전에 다시 저장해 주세요.'}</p><button type="button" onClick={() => setSaveRetry(value => value + 1)}>{en ? 'Retry saving' : '저장 다시 시도'}</button></div>}
@@ -241,7 +244,7 @@ function MobileConstellation({ tracks, status, progress, storageKey }) {
                         <h3>{en ? 'Behind the change' : '이 흐름을 만든 음악'}</h3>
                         {[...evidence, ...changes.added.filter((item) => !evidence.some((choice) => choice.track.id === item.id)).map((item) => ({ track: item, action: 'import' }))].slice(0, 5).map((item) => <button type="button" key={item.track.id} onClick={() => { setSelectedId(item.track.id); setComparison(0); stageRef.current?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'center' }); }}>
                             <span className={`tmm-evidence-dot ${item.action}`} /><span><strong>{item.track.name}</strong><small>{item.track.artists}</small></span>
-                            <span>{({ absorb: en ? 'Feels like me' : '내 취향으로', dig: en ? 'Curious' : '더 알고 싶음', pop: en ? 'Passed' : '흘려보냄', import: en ? 'Imported' : '불러온 곡' })[item.action]}</span>
+                            <span>{({ absorb: en ? 'Feels like me' : '내 취향으로', dig: en ? 'Curious' : '더 알고 싶음', pop: en ? 'Passed' : '흘려보냄', import: en ? 'Imported' : '불러온 곡' })[item.action]}{item.source === 'web' ? (en ? ' · Web' : ' · 웹 탐색') : ''}</span>
                         </button>)}
                     </div>}
                 </section>

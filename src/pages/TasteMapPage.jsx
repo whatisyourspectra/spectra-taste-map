@@ -133,7 +133,7 @@ const TM_I18N = {
         recAdd: '내 버블 추가',
         recAdded: '추가됨',
         recSaving: '저장 중…',
-        recAddSuccess: '내 Taste Field에 추가했어요.',
+        recAddSuccess: '나의 스펙트라에 추가했어요.',
         recAddFail: '저장 실패',
         contextMenuExpand: '이 곡을 중심으로 spectra 확장',
         contextMenuFocus: '이 곡으로 이동',
@@ -223,7 +223,7 @@ const TM_I18N = {
         recAdd: 'Add to bubble',
         recAdded: 'Added',
         recSaving: 'Saving…',
-        recAddSuccess: 'Added to your Taste Field.',
+        recAddSuccess: 'Added to your Spectra.',
         recAddFail: 'Save failed',
         contextMenuExpand: 'Expand spectra around this track',
         contextMenuFocus: 'Focus this track',
@@ -347,7 +347,7 @@ const AXIS_PRESETS = [
 // without reshaping the shared navigation and floating tool dock.
 const MAP_VIEW_DEFINITIONS = [
     { id: 'field', label: 'Taste Field', available: true, showInNavigation: false },
-    { id: 'spotify', label: 'Spotify Field', available: true },
+    { id: 'spotify', label: 'Taste Field', available: true },
     { id: 'constellation', label: 'Spectra', available: true },
 ];
 
@@ -1557,6 +1557,7 @@ export default function TasteMapPage() {
         mapId,
         status: importStatus,
         progress: importProgress,
+        recordDecision,
         reset,
     } = useTasteData();
     const user = null; // no account model — taste comes from the imported list
@@ -1659,6 +1660,8 @@ export default function TasteMapPage() {
     const [exploreLoading, setExploreLoading] = useState(false);
     const [exploreError, setExploreError] = useState(null);
     const [exploreRecs, setExploreRecs] = useState([]);
+    const [explorePrefetchedCount, setExplorePrefetchedCount] = useState(0);
+    const prefetchedRecsRef = useRef({ key: '', recs: [] });
     const [hoveredExploreId, setHoveredExploreId] = useState(null);
     const [savingLibraryTrackIds] = useState({}); // no async library save anymore; stays empty.
     const [savedFromRecIds, setSavedFromRecIds] = useState({});
@@ -2216,6 +2219,35 @@ export default function TasteMapPage() {
         return ['electronic', 'indie', 'pop'];
     }, [bubbleCandidateTracks, spectraExpandTrack]);
 
+    const bubbleWorldScale = useMemo(() => {
+        const count = bubbleTracks.length;
+        const densityBoost = Math.max(1, Math.sqrt(Math.max(1, count) / 110));
+        return BUBBLE_BASE_WORLD_SCALE * densityBoost;
+    }, [bubbleTracks.length]);
+
+    // Track debounced camera viewport for viewport-aware sparse discovery
+    const [debouncedViewport, setDebouncedViewport] = useState(() => ({
+        camX: 0,
+        camY: 0,
+        zoom: 0.6,
+        w: 0,
+        h: 0,
+    }));
+
+    useEffect(() => {
+        const id = setTimeout(() => {
+            setDebouncedViewport({
+                camX: camera.x,
+                camY: camera.y,
+                zoom: bubbleZoom,
+                w: bubbleFieldSize.w,
+                h: bubbleFieldSize.h,
+            });
+        }, 350);
+        return () => clearTimeout(id);
+    }, [camera.x, camera.y, bubbleZoom, bubbleFieldSize.w, bubbleFieldSize.h]);
+
+    // Viewport-aware sparse anchors: find voids in the CURRENT screen rather than map extremes
     const exploreSparseAnchors = useMemo(() => {
         if (spectraExpandTrack) {
             const fx = clamp01(getTrackFeature(spectraExpandTrack, xAxis));
@@ -2230,16 +2262,58 @@ export default function TasteMapPage() {
         const sourceTracks = hasTrackFilter ? bubbleCandidateTracks : tracks;
         if (sourceTracks.length < 12) return [];
 
-        const cols = 7;
-        const rows = 5;
+        const curW = debouncedViewport.w || bubbleFieldSize.w || 800;
+        const curH = debouncedViewport.h || bubbleFieldSize.h || 600;
+        const vW = curW * bubbleWorldScale;
+        const vH = curH * bubbleWorldScale;
+        const zoom = debouncedViewport.zoom || bubbleZoom || 0.6;
+        const camX = Number.isFinite(debouncedViewport.camX) ? debouncedViewport.camX : camera.x;
+        const camY = Number.isFinite(debouncedViewport.camY) ? debouncedViewport.camY : camera.y;
+
+        const viewportW = zoom > 0 ? curW / zoom : vW;
+        const viewportH = zoom > 0 ? curH / zoom : vH;
+        const pad = 90;
+        const fieldEffectiveW = Math.max(1, vW - pad * 2);
+        const fieldEffectiveH = Math.max(1, vH - pad * 2);
+
+        // Normalized feature coordinates currently framed in viewport
+        // Keep 12% safety margin from viewport borders so bubbles spawn visibly inside screen
+        const marginX = viewportW * 0.12;
+        const marginY = viewportH * 0.12;
+        const viewLeft = camX + marginX;
+        const viewRight = camX + viewportW - marginX;
+        const viewTop = camY + marginY;
+        const viewBottom = camY + viewportH - marginY;
+
+        const rawMinFx = (viewLeft - pad) / fieldEffectiveW;
+        const rawMaxFx = (viewRight - pad) / fieldEffectiveW;
+        // Screen top is lower worldY, which represents higher featureY
+        const rawMaxFy = 1 - (viewTop - pad) / fieldEffectiveH;
+        const rawMinFy = 1 - (viewBottom - pad) / fieldEffectiveH;
+
+        const minFx = clamp01(Math.min(rawMinFx, rawMaxFx));
+        const maxFx = clamp01(Math.max(rawMinFx, rawMaxFx));
+        const minFy = clamp01(Math.min(rawMinFy, rawMaxFy));
+        const maxFy = clamp01(Math.max(rawMinFy, rawMaxFy));
+
+        const spanX = Math.max(0.12, maxFx - minFx);
+        const spanY = Math.max(0.12, maxFy - minFy);
+        const safeMinX = Math.min(minFx, 1 - spanX);
+        const safeMinY = Math.min(minFy, 1 - spanY);
+
+        // Subdivide visible viewport into 5x4 grid
+        const cols = 5;
+        const rows = 4;
         const counts = Array.from({ length: rows }, () => Array(cols).fill(0));
 
         sourceTracks.forEach((track) => {
             const fx = clamp01(getTrackFeature(track, xAxis));
             const fy = clamp01(getTrackFeature(track, yAxis));
-            const c = Math.min(cols - 1, Math.floor(fx * cols));
-            const r = Math.min(rows - 1, Math.floor(fy * rows));
-            counts[r][c] += 1;
+            if (fx >= safeMinX && fx <= safeMinX + spanX && fy >= safeMinY && fy <= safeMinY + spanY) {
+                const c = Math.min(cols - 1, Math.floor(((fx - safeMinX) / spanX) * cols));
+                const r = Math.min(rows - 1, Math.floor(((fy - safeMinY) / spanY) * rows));
+                counts[r][c] += 1;
+            }
         });
 
         const cells = [];
@@ -2258,14 +2332,16 @@ export default function TasteMapPage() {
                 }
                 const localDensity = neighCount > 0 ? neigh / neighCount : counts[r][c];
                 const score = counts[r][c] + localDensity * 0.42;
-                const tie = hash01(`${xAxis}:${yAxis}:${r}:${c}`);
+                const tie = hash01(`${xAxis}:${yAxis}:${r}:${c}:${Math.round(camX / 60)}:${Math.round(camY / 60)}`);
+                const centerFx = clamp01(safeMinX + ((c + 0.5) / cols) * spanX);
+                const centerFy = clamp01(safeMinY + ((r + 0.5) / rows) * spanY);
                 cells.push({
                     r,
                     c,
                     score,
                     tie,
-                    x: (c + 0.5) / cols,
-                    y: (r + 0.5) / rows,
+                    x: centerFx,
+                    y: centerFy,
                 });
             }
         }
@@ -2282,14 +2358,28 @@ export default function TasteMapPage() {
             picked.push(cell);
             if (picked.length >= 3) break;
         }
-        return picked.map((cell, idx) => ({ ...cell, id: `anchor-${idx}-${cell.r}-${cell.c}` }));
-    }, [tracks, bubbleCandidateTracks, hasTrackFilter, xAxis, yAxis, spectraExpandTrack]);
 
-    const bubbleWorldScale = useMemo(() => {
-        const count = bubbleTracks.length;
-        const densityBoost = Math.max(1, Math.sqrt(Math.max(1, count) / 110));
-        return BUBBLE_BASE_WORLD_SCALE * densityBoost;
-    }, [bubbleTracks.length]);
+        // Viewport key based on camera tile coordinates so anchors stay stable during tiny micro-shakes
+        const viewHash = `${Math.round(camX / 80)}_${Math.round(camY / 80)}_${Math.round(zoom * 10)}`;
+        return picked.map((cell, idx) => ({
+            ...cell,
+            id: `anchor-view-${idx}-${cell.r}-${cell.c}-${viewHash}`,
+        }));
+    }, [
+        tracks,
+        bubbleCandidateTracks,
+        hasTrackFilter,
+        xAxis,
+        yAxis,
+        spectraExpandTrack,
+        debouncedViewport,
+        bubbleFieldSize.w,
+        bubbleFieldSize.h,
+        bubbleWorldScale,
+        bubbleZoom,
+        camera.x,
+        camera.y,
+    ]);
 
     // Debounce field size so layout worker doesn't re-fire on every resize frame
     const [debouncedFieldSize, setDebouncedFieldSize] = useState({ w: 0, h: 0 });
@@ -3481,6 +3571,132 @@ export default function TasteMapPage() {
         return labels;
     }, [viewMode, visibleBubbleRenderItems, clusterStats]);
 
+    const fetchDiscoveryForAnchors = useCallback(async (anchors, currentSpectraExpandTrackId = null) => {
+        if (!anchors || anchors.length === 0) return [];
+        const requests = anchors.map(async (anchor) => {
+            const seedTrackId = anchor.seedTrackId || '';
+            const params = new URLSearchParams({
+                xAxis,
+                yAxis,
+                targetX: String(clamp01(anchor.x)),
+                targetY: String(clamp01(anchor.y)),
+                limit: seedTrackId ? '14' : '8',
+                seedGenres: exploreSeedGenres.join(','),
+                source,
+            });
+            if (seedTrackId) {
+                const seedTrack = tracks.find((t) => t.id === seedTrackId);
+                if (seedTrack?.artists && seedTrack?.name) {
+                    const seedArtist = String(seedTrack.artists).split(',')[0].trim();
+                    params.set('seedTracks', `${seedArtist}|${seedTrack.name}`);
+                }
+            }
+            const res = await fetch(api(`/api/discover?${params.toString()}`));
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            const tracksOut = Array.isArray(data?.tracks) ? data.tracks : [];
+            return tracksOut.map((track, sourceRank) => ({
+                track,
+                anchorId: anchor.id,
+                targetX: anchor.x,
+                targetY: anchor.y,
+                seedTrackId: seedTrackId || null,
+                sourceRank,
+            }));
+        });
+
+        const byAnchor = await Promise.all(requests);
+        const dedupAll = new Map();
+        const dedupNovel = new Map();
+        const upsertCandidate = (bucket, item) => {
+            const key = getRecommendationDedupKey(item?.track);
+            if (!key) return;
+            const existing = bucket.get(key);
+            if (!existing) {
+                bucket.set(key, item);
+                return;
+            }
+            const rankA = Number.isFinite(item?.sourceRank) ? item.sourceRank : Number.POSITIVE_INFINITY;
+            const rankB = Number.isFinite(existing?.sourceRank) ? existing.sourceRank : Number.POSITIVE_INFINITY;
+            if (rankA < rankB) {
+                bucket.set(key, item);
+                return;
+            }
+            if (rankA > rankB) return;
+            const scoreA = Number.isFinite(Number(item?.track?.popularity)) ? Number(item.track.popularity) : -1;
+            const scoreB = Number.isFinite(Number(existing?.track?.popularity)) ? Number(existing.track.popularity) : -1;
+            if (scoreA > scoreB) {
+                bucket.set(key, item);
+                return;
+            }
+            if (scoreA === scoreB && hash01(item?.track?.id || '') < hash01(existing?.track?.id || '')) {
+                bucket.set(key, item);
+            }
+        };
+        byAnchor.flat().forEach((item) => {
+            if (!item?.track?.id) return;
+            if (currentSpectraExpandTrackId && item.track.id === currentSpectraExpandTrackId) return;
+            upsertCandidate(dedupAll, item);
+            if (knownTrackIds.has(item.track.id)) return;
+            upsertCandidate(dedupNovel, item);
+        });
+        const ranked = [...(dedupNovel.size > 0 ? dedupNovel.values() : dedupAll.values())]
+            .sort((a, b) => {
+                const ra = Number.isFinite(a?.sourceRank) ? a.sourceRank : Number.POSITIVE_INFINITY;
+                const rb = Number.isFinite(b?.sourceRank) ? b.sourceRank : Number.POSITIVE_INFINITY;
+                if (ra !== rb) return ra - rb;
+                const pa = Number.isFinite(Number(a?.track?.popularity)) ? Number(a.track.popularity) : -1;
+                const pb = Number.isFinite(Number(b?.track?.popularity)) ? Number(b.track.popularity) : -1;
+                if (pa !== pb) return pb - pa;
+                return hash01(a?.track?.id || '') - hash01(b?.track?.id || '');
+            });
+        return ranked.slice(0, currentSpectraExpandTrackId ? 14 : 18);
+    }, [
+        xAxis,
+        yAxis,
+        exploreSeedGenres,
+        source,
+        tracks,
+        knownTrackIds,
+    ]);
+
+    // Background prefetch key based on current axes and map density
+    const prefetchKey = useMemo(() => {
+        if (viewMode !== 'bubble' || loading || tracks.length < 12 || exploreSparseAnchors.length === 0) return '';
+        const anchorIds = exploreSparseAnchors.map((a) => a.id).join(',');
+        return `${xAxis}:${yAxis}:${source}:${tracks.length}:${anchorIds}`;
+    }, [viewMode, loading, tracks.length, exploreSparseAnchors, xAxis, yAxis, source]);
+
+    // Background pre-fetch effect: quietly pull sparse anchor recs when idle
+    useEffect(() => {
+        if (!prefetchKey) return undefined;
+        if (prefetchedRecsRef.current.key === prefetchKey && prefetchedRecsRef.current.recs.length > 0) return undefined;
+
+        let cancelled = false;
+        const timer = setTimeout(() => {
+            fetchDiscoveryForAnchors(exploreSparseAnchors, null)
+                .then((recs) => {
+                    if (cancelled) return;
+                    prefetchedRecsRef.current = { key: prefetchKey, recs };
+                    setExplorePrefetchedCount(recs.length);
+                    // If user toggled explore while prefetch was in flight, show immediately
+                    if (exploreEnabled && !spectraExpandTrackId) {
+                        setExploreRecs(recs);
+                        setExploreLoading(false);
+                    }
+                })
+                .catch(() => {
+                    /* Silent prefetch failure — user-driven explore will retry if needed */
+                });
+        }, 400);
+
+        return () => {
+            cancelled = true;
+            clearTimeout(timer);
+        };
+    }, [prefetchKey, fetchDiscoveryForAnchors, exploreSparseAnchors, exploreEnabled, spectraExpandTrackId]);
+
+    // Main Explore Activation Effect: zero-latency from cache or on-demand fetch
     useEffect(() => {
         if (!exploreEnabled) {
             setExploreLoading(false);
@@ -3492,109 +3708,65 @@ export default function TasteMapPage() {
             if (loading) setExploreRecs([]);
             return;
         }
+
+        // 1. If spectraExpand is active (focusing on a specific bubble), fetch on demand
+        if (spectraExpandTrackId) {
+            if (exploreSparseAnchors.length === 0) {
+                setExploreRecs([]);
+                return;
+            }
+            let cancelled = false;
+            setExploreLoading(true);
+            setExploreError(null);
+            fetchDiscoveryForAnchors(exploreSparseAnchors, spectraExpandTrackId)
+                .then((merged) => {
+                    if (!cancelled) setExploreRecs(merged);
+                })
+                .catch((e) => {
+                    if (!cancelled) {
+                        setExploreRecs([]);
+                        setExploreError(e?.message || '추천곡을 불러오지 못했습니다.');
+                    }
+                })
+                .finally(() => {
+                    if (!cancelled) setExploreLoading(false);
+                });
+            return () => { cancelled = true; };
+        }
+
+        // 2. Normal explore: if prefetch cache is ready, activate immediately with ZERO delay
+        if (prefetchedRecsRef.current.key === prefetchKey && prefetchedRecsRef.current.recs.length > 0) {
+            setExploreRecs(prefetchedRecsRef.current.recs);
+            setExploreLoading(false);
+            setExploreError(null);
+            return;
+        }
+
+        // 3. Fallback: fetch on demand if prefetch hasn't settled yet
         if (exploreSparseAnchors.length === 0) {
             setExploreRecs([]);
             return;
         }
-
         let cancelled = false;
         setExploreLoading(true);
         setExploreError(null);
-
-        (async () => {
-            try {
-                const requests = exploreSparseAnchors.map(async (anchor) => {
-                    const seedTrackId = anchor.seedTrackId || '';
-                    const params = new URLSearchParams({
-                        xAxis,
-                        yAxis,
-                        targetX: String(clamp01(anchor.x)),
-                        targetY: String(clamp01(anchor.y)),
-                        limit: seedTrackId ? '14' : '8',
-                        seedGenres: exploreSeedGenres.join(','),
-                        source,
-                    });
-                    // Resolve the seed track id → "artist|title" for source-aware discovery.
-                    if (seedTrackId) {
-                        const seedTrack = tracks.find((t) => t.id === seedTrackId);
-                        if (seedTrack?.artists && seedTrack?.name) {
-                            const seedArtist = String(seedTrack.artists).split(',')[0].trim();
-                            params.set('seedTracks', `${seedArtist}|${seedTrack.name}`);
-                        }
-                    }
-                    const res = await fetch(api(`/api/discover?${params.toString()}`));
-                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                    const data = await res.json();
-                    const tracksOut = Array.isArray(data?.tracks) ? data.tracks : [];
-                    return tracksOut.map((track, sourceRank) => ({
-                        track,
-                        anchorId: anchor.id,
-                        targetX: anchor.x,
-                        targetY: anchor.y,
-                        seedTrackId: seedTrackId || null,
-                        sourceRank,
-                    }));
-                });
-
-                const byAnchor = await Promise.all(requests);
-                const dedupAll = new Map();
-                const dedupNovel = new Map();
-                const upsertCandidate = (bucket, item) => {
-                    const key = getRecommendationDedupKey(item?.track);
-                    if (!key) return;
-                    const existing = bucket.get(key);
-                    if (!existing) {
-                        bucket.set(key, item);
-                        return;
-                    }
-                    const rankA = Number.isFinite(item?.sourceRank) ? item.sourceRank : Number.POSITIVE_INFINITY;
-                    const rankB = Number.isFinite(existing?.sourceRank) ? existing.sourceRank : Number.POSITIVE_INFINITY;
-                    if (rankA < rankB) {
-                        bucket.set(key, item);
-                        return;
-                    }
-                    if (rankA > rankB) return;
-                    const scoreA = Number.isFinite(Number(item?.track?.popularity)) ? Number(item.track.popularity) : -1;
-                    const scoreB = Number.isFinite(Number(existing?.track?.popularity)) ? Number(existing.track.popularity) : -1;
-                    if (scoreA > scoreB) {
-                        bucket.set(key, item);
-                        return;
-                    }
-                    if (scoreA === scoreB && hash01(item?.track?.id || '') < hash01(existing?.track?.id || '')) {
-                        bucket.set(key, item);
-                    }
-                };
-                byAnchor.flat().forEach((item) => {
-                    if (!item?.track?.id) return;
-                    if (spectraExpandTrackId && item.track.id === spectraExpandTrackId) return;
-                    upsertCandidate(dedupAll, item);
-                    if (knownTrackIds.has(item.track.id)) return;
-                    upsertCandidate(dedupNovel, item);
-                });
-                const ranked = [...(dedupNovel.size > 0 ? dedupNovel.values() : dedupAll.values())]
-                    .sort((a, b) => {
-                        const ra = Number.isFinite(a?.sourceRank) ? a.sourceRank : Number.POSITIVE_INFINITY;
-                        const rb = Number.isFinite(b?.sourceRank) ? b.sourceRank : Number.POSITIVE_INFINITY;
-                        if (ra !== rb) return ra - rb;
-                        const pa = Number.isFinite(Number(a?.track?.popularity)) ? Number(a.track.popularity) : -1;
-                        const pb = Number.isFinite(Number(b?.track?.popularity)) ? Number(b.track.popularity) : -1;
-                        if (pa !== pb) return pb - pa;
-                        // Stable tie-break so layout doesn't jump between refreshes.
-                        return hash01(a?.track?.id || '') - hash01(b?.track?.id || '');
-                    });
-                const merged = ranked.slice(0, spectraExpandTrackId ? 14 : 18);
+        fetchDiscoveryForAnchors(exploreSparseAnchors, null)
+            .then((merged) => {
                 if (!cancelled) {
+                    prefetchedRecsRef.current = { key: prefetchKey, recs: merged };
+                    setExplorePrefetchedCount(merged.length);
                     setExploreRecs(merged);
                 }
-            } catch (e) {
+            })
+            .catch((e) => {
                 if (!cancelled) {
                     setExploreRecs([]);
                     setExploreError(e?.message || '추천곡을 불러오지 못했습니다.');
                 }
-            } finally {
+            })
+            .finally(() => {
                 if (!cancelled) setExploreLoading(false);
-            }
-        })();
+            });
 
         return () => {
             cancelled = true;
@@ -3605,12 +3777,9 @@ export default function TasteMapPage() {
         loading,
         tracks,
         exploreSparseAnchors,
-        exploreSeedGenres,
-        knownTrackIds,
         spectraExpandTrackId,
-        xAxis,
-        yAxis,
-        source,
+        prefetchKey,
+        fetchDiscoveryForAnchors,
     ]);
 
     const exploreRenderItems = useMemo(() => {
@@ -4118,8 +4287,8 @@ export default function TasteMapPage() {
         setHoveredBubbleId(source === 'library' ? track.id : null);
     }, []);
 
-    // "Save" now folds the discovered track into the local field (no Spotify library).
-    const saveTrackToMyBubble = useCallback((track) => {
+    // "Save" now folds the discovered track into the local field and records a taste decision.
+    const saveTrackToMyBubble = useCallback((track, action = 'absorb') => {
         const trackId = track?.id;
         if (!trackId) return;
         if (knownTrackIds.has(trackId) || savedFromRecIds[trackId]) return;
@@ -4128,12 +4297,18 @@ export default function TasteMapPage() {
             setSpectraAffinityMap((prev) => ({ ...prev, [trackId]: spectraExpandTrackId }));
         }
 
+        const enrichedTrack = { ...track, addedAt: new Date().toISOString() };
         setSavedFromRecIds((prev) => ({ ...prev, [trackId]: true }));
         setTracks((prev) => (
             prev.some((t) => t.id === trackId)
                 ? prev
-                : [...prev, { ...track, addedAt: new Date().toISOString() }]
+                : [...prev, enrichedTrack]
         ));
+
+        if (recordDecision) {
+            recordDecision(action, enrichedTrack, 'web');
+        }
+
         setRecActionMessage(copy.recAddSuccess);
     }, [
         knownTrackIds,
@@ -4141,6 +4316,7 @@ export default function TasteMapPage() {
         copy.recAddSuccess,
         isSpectraExpandMode,
         spectraExpandTrackId,
+        recordDecision,
     ]);
 
     const handleBubbleClick = useCallback((track) => {
@@ -5236,52 +5412,17 @@ export default function TasteMapPage() {
                         <div className="tm-dock-actions">
                             <button
                                 type="button"
-                                className={`tm-dock-action${showUtilityControls ? ' active' : ''}`}
-                                onClick={() => setShowUtilityControls((prev) => !prev)}
-                                aria-expanded={showUtilityControls}
-                            >
-                                <span aria-hidden>⌁</span>{lang === 'en' ? 'Axes' : '축'}
-                            </button>
-                            <button
-                                type="button"
-                                className={`tm-dock-action${magneticPullEnabled ? ' active' : ''}`}
-                                onClick={() => setMagneticPullEnabled((prev) => !prev)}
-                                aria-pressed={magneticPullEnabled}
-                                title={lang === 'en' ? 'Pull nearby bubbles toward the pointer' : '포인터 주변 버블을 부드럽게 끌어당깁니다'}
-                            >
-                                <span aria-hidden>◎</span>{lang === 'en' ? 'Magnet' : '자석'}
-                            </button>
-                            <button
-                                type="button"
                                 className={`tm-dock-action${exploreEnabled ? ' active' : ''}`}
                                 onClick={toggleExplore}
                                 aria-pressed={exploreEnabled}
+                                title={!exploreEnabled && explorePrefetchedCount > 0
+                                    ? (lang === 'en' ? `${explorePrefetchedCount} new stars discovered in empty space` : `빈 공간에 ${explorePrefetchedCount}개의 별이 준비되었습니다`)
+                                    : (lang === 'en' ? 'Discover' : '탐색')}
                             >
                                 <span aria-hidden>✦</span>{lang === 'en' ? 'Discover' : '탐색'}
-                            </button>
-                            <button
-                                type="button"
-                                className={`tm-dock-action${dashboardOpen ? ' active' : ''}`}
-                                onClick={() => {
-                                    setDashboardOpen((prev) => !prev);
-                                    setDeepAnalysisOpen(false);
-                                    setShareMode(false);
-                                }}
-                                aria-pressed={dashboardOpen}
-                            >
-                                <span aria-hidden>◫</span>{lang === 'en' ? 'Inspect' : '인사이트'}
-                            </button>
-                            <button
-                                type="button"
-                                className={`tm-dock-action${deepAnalysisOpen ? ' active' : ''}`}
-                                onClick={() => {
-                                    setDeepAnalysisOpen((prev) => !prev);
-                                    setDashboardOpen(false);
-                                    setShareMode(false);
-                                }}
-                                aria-pressed={deepAnalysisOpen}
-                            >
-                                <span aria-hidden>◌</span>{lang === 'en' ? 'Story' : '스토리'}
+                                {!exploreEnabled && explorePrefetchedCount > 0 && (
+                                    <span className="tm-dock-badge" aria-hidden>{explorePrefetchedCount}</span>
+                                )}
                             </button>
                             <button
                                 type="button"
@@ -5290,15 +5431,6 @@ export default function TasteMapPage() {
                                 aria-pressed={shareMode}
                             >
                                 <span aria-hidden>⌗</span>{lang === 'en' ? 'Select' : '선택'}
-                            </button>
-                            <button
-                                type="button"
-                                className="tm-dock-action tm-dock-theme"
-                                onClick={() => setMapTheme((prev) => (prev === 'day' ? 'dark' : 'day'))}
-                                aria-label={mapTheme === 'day' ? 'dark map' : 'light map'}
-                                title={mapTheme === 'day' ? 'Dark field' : 'Light field'}
-                            >
-                                <span aria-hidden>{mapTheme === 'day' ? '●' : '○'}</span>
                             </button>
                         </div>
 
@@ -5378,9 +5510,11 @@ export default function TasteMapPage() {
                                     <button
                                         className={`tm-explore-toggle tm-explore-toggle--overlay${exploreEnabled ? ' active' : ''}`}
                                         onClick={toggleExplore}
-                                        title="빈 영역 탐색 추천곡 표시"
+                                        title={!exploreEnabled && explorePrefetchedCount > 0
+                                            ? `빈 영역 탐색 추천곡 (${explorePrefetchedCount}곡 준비됨)`
+                                            : '빈 영역 탐색 추천곡 표시'}
                                     >
-                                        {exploreEnabled ? copy.recOn : copy.recOff}
+                                        {exploreEnabled ? copy.recOn : (!exploreEnabled && explorePrefetchedCount > 0 ? `${copy.recOff} (${explorePrefetchedCount})` : copy.recOff)}
                                     </button>
                                     {exploreEnabled && exploreRecs.length > 0 && (
                                         <button

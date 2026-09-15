@@ -35,3 +35,22 @@ export function reflectionChanges(previous, tracks, decisions) {
         }),
     };
 }
+export function createDecision(action, track, source = 'web', at = Date.now()) {
+    if (!track?.id || !['absorb', 'dig', 'pop'].includes(action)) return null;
+    return {
+        action,
+        track,
+        source,
+        at: Number.isFinite(at) ? at : Date.now(),
+    };
+}
+
+export function appendDecision(storage, key, action, track, source = 'web') {
+    const decision = createDecision(action, track, source);
+    if (!decision) return null;
+    const current = loadReflection(storage, key);
+    const existing = current.decisions.filter((d) => d.track?.id !== decision.track.id);
+    const updated = [...existing, decision];
+    saveReflection(storage, key, updated, current.snapshot);
+    return updated;
+}
