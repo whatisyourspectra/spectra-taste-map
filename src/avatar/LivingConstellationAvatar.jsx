@@ -1,7 +1,7 @@
 import { useEffect, useId, useState } from 'react';
 import './LivingConstellationAvatar.css';
 
-export default function LivingConstellationAvatar({ avatar, reaction, lang = 'ko', showReceiver = true }) {
+export default function LivingConstellationAvatar({ avatar, reaction, lang = 'ko', showReceiver = true, fixedFrame = false, spatial = false, onSelect }) {
     const id = useId().replace(/:/g, '');
     const [paused, setPaused] = useState(false);
     const points = [...avatar.nodes, ...avatar.orbits];
@@ -19,10 +19,10 @@ export default function LivingConstellationAvatar({ avatar, reaction, lang = 'ko
         return () => document.removeEventListener('visibilitychange', onVisibility);
     }, []);
     return (
-        <svg className={`lc-avatar${paused ? ' is-paused' : ''}`}
-            viewBox={viewBox} role="img" aria-labelledby={`${id}-title ${id}-desc`}
+        <svg className={`lc-avatar${spatial ? ' lc-spatial' : ''}${paused ? ' is-paused' : ''}`}
+            viewBox={fixedFrame ? "-20 -34 400 400" : viewBox} role={onSelect ? "group" : "img"} aria-labelledby={`${id}-title ${id}-desc`}
             style={{ overflow: showReceiver ? 'visible' : 'hidden', '--lc-pulse': `${avatar.pulseSeconds}s`, '--lc-drift': `${avatar.driftSeconds}s` }}>
-            <title id={`${id}-title`}>{lang === 'en' ? 'Your living constellation' : '살아 있는 나의 취향 별자리'}</title>
+            <title id={`${id}-title`}>{lang === 'en' ? 'Your living Spectra' : '살아 있는 나의 스펙트라'}</title>
             <desc id={`${id}-desc`}>{lang === 'en'
                 ? `${avatar.nodes.length} track stars connected by taste, with ${avatar.orbits.length} exploration stars in orbit.`
                 : `취향으로 연결된 ${avatar.nodes.length}개의 곡 별과 탐색 중인 ${avatar.orbits.length}개의 공전하는 별.`}</desc>
@@ -38,7 +38,7 @@ export default function LivingConstellationAvatar({ avatar, reaction, lang = 'ko
                 </radialGradient>
             </defs>
             <circle cx="180" cy="166" r="150" fill={`url(#${id}-warmth)`} />
-            {avatar.orbits.length > 0 && <ellipse className="lc-orbit-guide" cx="180" cy="166" rx="150" ry="134" />}
+            {!spatial && avatar.orbits.length > 0 && <ellipse className="lc-orbit-guide" cx="180" cy="166" rx="150" ry="134" />}
             <g className="lc-body">
                 {avatar.regions.slice(0, 8).map((region) => <circle key={region.genre}
                     cx={region.x} cy={region.y} r={40 + region.strength * 28}
@@ -50,8 +50,13 @@ export default function LivingConstellationAvatar({ avatar, reaction, lang = 'ko
                 </g>
                 {avatar.nodes.map((node) => (
                     <g key={node.id} className={`lc-star${node.emerging ? ' emerging' : ''}`}
-                        data-track-id={node.id} style={{ color: node.color, '--lc-star-opacity': node.opacity }}>
+                        data-track-id={node.id} role={onSelect ? 'button' : undefined} tabIndex={onSelect ? 0 : undefined}
+                        aria-label={onSelect ? node.title : undefined}
+                        onClick={onSelect ? () => onSelect(node.id) : undefined}
+                        onKeyDown={onSelect ? (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onSelect(node.id); } } : undefined}
+                        style={{ color: node.color, '--lc-star-opacity': node.opacity }}>
                         <title>{node.title}</title>
+                        {onSelect && <circle cx={node.x} cy={node.y} r="12" fill="transparent" />}
                         <circle cx={node.x} cy={node.y} r={node.radius * 5} fill={`url(#${id}-glow)`} />
                         <circle cx={node.x} cy={node.y} r={node.radius} fill={node.color} />
                         <circle cx={node.x} cy={node.y} r={node.radius * 0.43} fill="#f1f5ff" />

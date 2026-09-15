@@ -348,7 +348,7 @@ const AXIS_PRESETS = [
 const MAP_VIEW_DEFINITIONS = [
     { id: 'field', label: 'Taste Field', available: true, showInNavigation: false },
     { id: 'spotify', label: 'Spotify Field', available: true },
-    { id: 'constellation', label: 'Constellation', available: true },
+    { id: 'constellation', label: 'Spectra', available: true },
 ];
 
 // ─── Clustering helpers ────────────────────────────────────────────────────────
