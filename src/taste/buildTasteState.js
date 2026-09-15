@@ -98,7 +98,7 @@ export function describeTasteState(state, lang = 'ko') {
     const core = state.coreGenres[0];
     if (emerging) {
         const genre = titleizeGenre(emerging.genre);
-        return lang === 'en' ? `${genre} is becoming part of your constellation.` : `${genre}, 당신의 별자리에 조금씩 스며들고 있어요.`;
+        return lang === 'en' ? `${genre} is becoming part of your Spectra.` : `${genre}, 당신의 스펙트라에 조금씩 스며들고 있어요.`;
     }
     if (exploring) {
         const genre = titleizeGenre(exploring.genre);
@@ -106,7 +106,7 @@ export function describeTasteState(state, lang = 'ko') {
     }
     if (core) {
         const genre = titleizeGenre(core.genre);
-        return lang === 'en' ? `Your constellation gathers around ${genre}.` : `당신의 별자리는 ${genre}를 중심으로 모여 있어요.`;
+        return lang === 'en' ? `Your Spectra gathers around ${genre}.` : `당신의 스펙트라는 ${genre}를 중심으로 모여 있어요.`;
     }
     return lang === 'en' ? 'Your music is finding its own shape.' : '당신의 음악이 하나의 형태를 만들어가고 있어요.';
 }

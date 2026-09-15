@@ -6,8 +6,12 @@ import { hash01 } from '../taste/constellationTopology';
 import { getGenreIdentity, titleizeGenre } from '../taste/genreIdentity';
 import { buildAvatarState, buildAvatarReaction } from '../avatar/buildAvatarState';
 import LivingConstellationAvatar from '../avatar/LivingConstellationAvatar';
+import ImmersiveSpectra from '../reflection/ImmersiveSpectra';
+import { loadReflection, saveReflection, reflectionKey, reflectionChanges } from '../reflection/reflectionStorage';
+import { useAuth } from '../auth/AuthContext';
 import './TasteMapMobilePage.css';
-import { createConstellationImage } from '../avatar/exportConstellation';
+import DailySpectra from '../daily/DailySpectra';
+import { createConstellationImage, createDailyStoryImage } from '../avatar/exportConstellation';
 import AccountButton from '../auth/AccountButton';
 
 const API_BASE = import.meta?.env?.VITE_API_BASE || '';
@@ -30,7 +34,7 @@ function openExternal(track) {
     } catch { /* Incomplete metadata should not interrupt Taste Drop. */ }
 }
 
-function MobileConstellation({ tracks, status, progress }) {
+function MobileConstellation({ tracks, status, progress, storageKey }) {
     const navigate = useNavigate();
     const [lang, setLang] = useState(() => {
         try { return localStorage.getItem('spectra-tastemap-lang-v1') === 'en' ? 'en' : 'ko'; }
@@ -38,12 +42,20 @@ function MobileConstellation({ tracks, status, progress }) {
     });
     const [exploring, setExploring] = useState(false);
     const [exporting, setExporting] = useState(false);
+    const [sharing, setSharing] = useState(false);
+    const exportLock = useRef(false);
     const [exportImage, setExportImage] = useState(null);
     const [exportError, setExportError] = useState('');
     const stageRef = useRef(null);
     const dialogRef = useRef(null);
     const [now] = useState(() => Date.now());
-    const [session, setSession] = useState({ decisions: [], active: null, count: 0 });
+    const [stored] = useState(() => { try { return loadReflection(localStorage, storageKey); } catch { return { decisions: [], snapshot: null }; } });
+    const [session, setSession] = useState(() => ({ decisions: stored.decisions, active: null, count: 0 }));
+    const [saved, setSaved] = useState(true);
+    const visitBaseline = useRef(null);
+    const [saveRetry, setSaveRetry] = useState(0);
+    const [comparison, setComparison] = useState(0);
+    const [selectedId, setSelectedId] = useState(null);
     const [discovery, setDiscovery] = useState({ key: '', tracks: [], status: 'loading' });
     const [retry, setRetry] = useState(0);
     const en = lang === 'en';
@@ -51,6 +63,31 @@ function MobileConstellation({ tracks, status, progress }) {
     const baseTaste = useMemo(() => buildTasteState(library, { now }), [library, now]);
     const taste = useMemo(() => buildTasteState(library, { decisions: session.decisions, now }), [library, session.decisions, now]);
     const avatar = useMemo(() => buildAvatarState(taste, library, session.decisions), [taste, library, session.decisions]);
+    const previous = stored.snapshot;
+    const changes = useMemo(() => reflectionChanges(previous, library, session.decisions), [previous, library, session.decisions]);
+    const selectedTrack = uniqueTracks([...library, ...session.decisions.map((choice) => choice.track)]).find((item) => item.id === selectedId);
+    const evidence = [...changes.choices].reverse();
+    const addedChoices = changes.choices.filter((choice) => choice.action === 'absorb');
+    const interested = changes.choices.filter((choice) => choice.action === 'dig');
+    const headline = !previous
+        ? (en ? 'Your story starts here.' : '나의 첫 스펙트라, 여기서 시작해요.')
+        : addedChoices.length ? (en ? `${addedChoices.length} choices became part of your Spectra.` : `${addedChoices.length}곡을 나의 스펙트라로 받아들였어요.`)
+            : interested.length ? (en ? `${interested.length} tracks opened a new direction.` : `${interested.length}곡에서 더 알고 싶은 방향을 찾았어요.`)
+                : changes.added.length ? (en ? `${changes.added.length} tracks joined your library.` : `라이브러리에 ${changes.added.length}곡이 더해졌어요.`)
+                    : changes.removed.length ? (en ? 'Your library has been updated.' : '라이브러리 구성이 달라졌어요.')
+                        : evidence.length ? (en ? 'You made room for another direction.' : '다른 방향을 위한 여백을 남겼어요.')
+                            : (en ? 'Still beautifully you.' : '지금은, 익숙한 나의 흐름 그대로.');
+    useEffect(() => {
+        if (!library.length) return undefined;
+        const timer = setTimeout(() => {
+            // Keep the arrival state, so next visit can reflect on choices made during this visit.
+            if (!visitBaseline.current && status === 'ready') visitBaseline.current = { at: Date.now(), ids: library.map((item) => item.id), decisions: session.decisions, avatar };
+            const snapshot = visitBaseline.current || stored.snapshot;
+            try { setSaved(saveReflection(localStorage, storageKey, session.decisions, snapshot)); }
+            catch { setSaved(false); }
+        }, 0);
+        return () => clearTimeout(timer);
+    }, [avatar, library, session.decisions, status, storageKey, stored.snapshot, saveRetry]);
     const reaction = session.active ? {
         ...buildAvatarReaction(session.active.action, session.active.track, avatar), id: session.count,
     } : null;
@@ -109,37 +146,43 @@ function MobileConstellation({ tracks, status, progress }) {
         dialogRef.current?.showModal();
         return () => URL.revokeObjectURL(exportImage.url);
     }, [exportImage]);
-    const exportConstellation = async () => {
-        if (exporting) return;
+    const exportConstellation = async (daily = null) => {
+        if (exportLock.current) return;
+        exportLock.current = true;
         setExporting(true);
         setExportError('');
         try {
-            const blob = await createConstellationImage(stageRef.current.querySelector('svg'), {
-                title: en ? 'My constellation' : '나의 별자리',
+            const blob = daily ? await createDailyStoryImage({ ...daily, lang }) : await createConstellationImage(stageRef.current.querySelector('.tmm-space-present svg'), {
+                title: en ? 'My Spectra' : '나의 스펙트라',
                 genres: taste.coreGenres.slice(0, 3).map((item) => titleizeGenre(item.genre)),
-                count: library.length,
+                count: uniqueTracks([...library, ...session.decisions.filter(item => item.action === 'absorb').map(item => item.track)]).length,
             });
-            const file = new File([blob], 'spectra-constellation.png', { type: 'image/png' });
-            setExportImage({ url: URL.createObjectURL(blob), file });
+            const file = new File([blob], daily ? `daily-spectra-${daily.day}.png` : 'my-spectra-story.png', { type: 'image/png' });
+            setExportImage({ url: URL.createObjectURL(blob), file, daily: Boolean(daily) });
         } catch {
             setExportError(en ? 'Could not create the image. Please try again.' : '이미지를 만들지 못했어요. 다시 시도해 주세요.');
-        } finally { setExporting(false); }
+        } finally { setExporting(false); exportLock.current = false; }
     };
     const shareImage = async () => {
+        if (sharing) return;
+        setSharing(true); setExportError('');
         try { await navigator.share({ files: [exportImage.file] }); }
         catch (error) {
             if (error.name !== 'AbortError') setExportError(en ? 'Sharing failed. You can still save the image.' : '공유하지 못했어요. 이미지 저장을 이용해 주세요.');
-        }
+        } finally { setSharing(false); }
     };
+    let canShareImage = false;
+    try { canShareImage = Boolean(exportImage && navigator.share && navigator.canShare?.({ files: [exportImage.file] })); } catch { /* Save remains available. */ }
     const decide = (action) => {
         if (!track || session.active) return;
+        setComparison(0);
         setSession((current) => current.active ? current : ({
-            decisions: [...current.decisions.filter((item) => item.track.id !== track.id), { action, track }],
+            decisions: [...current.decisions.filter((item) => item.track.id !== track.id), { action, track, at: Date.now() }],
             active: { action, track }, count: current.count + 1,
         }));
     };
     const feedback = session.active ? {
-        absorb: en ? `${track.name} is joining your constellation.` : `${track.name}, 별자리에 스며드는 중.`,
+        absorb: en ? `${track.name} is joining your Spectra.` : `${track.name}, 스펙트라에 스며드는 중.`,
         dig: en ? `${track.name} is entering your orbit.` : `${track.name}, 새로운 궤도로.`,
         pop: en ? `${track.name} is drifting away.` : `${track.name}, 가볍게 흘려보내요.`,
     }[session.active.action] : '';
@@ -159,11 +202,11 @@ function MobileConstellation({ tracks, status, progress }) {
                 </header>
                 <section className="tmm-living" aria-labelledby="tmm-living-title">
                     <div className="tmm-living-heading">
-                        <span className="tmm-eyebrow">YOUR CONSTELLATION</span>
-                        <h1 id="tmm-living-title">{en ? 'My constellation' : '나의 별자리'}</h1>
+                        <span className="tmm-eyebrow">MY SPECTRA</span>
+                        <h1 id="tmm-living-title">{en ? 'My Spectra' : '나의 스펙트라'}</h1>
 
                     </div>
-                    <div className="tmm-avatar-stage" ref={stageRef}><LivingConstellationAvatar avatar={avatar} reaction={reaction} lang={lang} showReceiver={exploring} /></div>
+                    <div className="tmm-avatar-stage"><ImmersiveSpectra avatar={avatar} previous={previous?.avatar} comparison={comparison} reaction={reaction} lang={lang} stageRef={stageRef} onSelect={setSelectedId} /></div>
                     <div className="tmm-region-signals" aria-label={en ? 'Core taste regions' : '중심 취향 영역'}>
                         {taste.coreGenres.slice(0, 3).map((signal) => <span key={signal.genre}
                             style={{ '--tmm-region': `rgb(${getGenreIdentity(signal.genre).tone.rgb})` }}>
@@ -171,12 +214,50 @@ function MobileConstellation({ tracks, status, progress }) {
                         </span>)}
                     </div>
                 </section>
-                <p className="tmm-library-count">{en ? `${library.length.toLocaleString()} tracks, one constellation` : `${library.length.toLocaleString()}곡이 만든 하나의 별자리`}</p>
+                <p className="tmm-library-count">{en ? `${library.length.toLocaleString()} tracks, one Spectra` : `${library.length.toLocaleString()}곡이 만든 하나의 스펙트라`}</p>
                 {status === 'enriching' && <p className="tmm-progress" role="status">{en ? 'Adding stars' : '별을 더 불러오는 중'} · {progress.done}/{progress.total}</p>}
+                {selectedTrack && <aside className="tmm-selected" aria-live="polite">
+                    <div><span className="tmm-eyebrow">IN YOUR SPECTRA</span><h2>{selectedTrack.name}</h2><p>{selectedTrack.artists}</p></div>
+                    <button type="button" onClick={() => openExternal(selectedTrack)}>{en ? 'Listen ↗' : '듣기 ↗'}</button>
+                    <button type="button" aria-label={en ? 'Close track' : '곡 정보 닫기'} onClick={() => setSelectedId(null)}>×</button>
+                </aside>}
+                <DailySpectra library={library} identity={storageKey} lang={lang} onListen={openExternal} onCreateStory={exportConstellation} exporting={exporting}
+                    saved={saved} onRetrySave={() => setSaveRetry(value => value + 1)} decisions={session.decisions} busy={Boolean(session.active)} onAbsorb={(bundle) => {
+                        const ids = new Set(bundle.map(item => item.id));
+                        setComparison(0);
+                        setSession(current => current.active ? current : ({
+                            decisions: [...current.decisions.filter(item => !ids.has(item.track.id)), ...bundle.map(track => ({ action: 'absorb', track, at: Date.now() }))],
+                            active: { action: 'absorb', track: bundle[0] }, count: current.count + bundle.length,
+                        }));
+                    }} />
+                {!saved && <div className="tmm-save-error" role="alert"><p>{en ? 'Your choices are visible, but could not be saved. Retry before leaving.' : '선택한 음악을 저장하지 못했어요. 화면을 나가기 전에 다시 저장해 주세요.'}</p><button type="button" onClick={() => setSaveRetry(value => value + 1)}>{en ? 'Retry saving' : '저장 다시 시도'}</button></div>}
+                <details className="tmm-reflection-details" onToggle={event => { if (!event.currentTarget.open) setComparison(0); }}>
+                <summary>{en ? 'Look back on my changes' : '나의 변화 돌아보기'}<span aria-hidden="true">＋</span></summary>
+                <section className="tmm-reflection" aria-labelledby="tmm-reflection-title">
+                    <div className="tmm-section-label"><span className="tmm-eyebrow">YOUR TASTE, IN MOTION</span><span>{previous ? new Date(previous.at).toLocaleDateString(en ? 'en-US' : 'ko-KR', { month: 'short', day: 'numeric' }) : '01'} → {en ? 'NOW' : '지금'}</span></div>
+                    <h2 id="tmm-reflection-title">{headline}</h2>
+                    <p>{!previous ? (en ? 'We’re keeping this moment. Come back to see how your taste unfolds.' : '지금의 모습을 첫 기록으로 남겨요. 다음 방문에는 달라진 흐름을 함께 볼 수 있어요.') : (en ? 'A reflection of your library and choices since your last visit.' : '지난 방문 이후의 라이브러리와 직접 고른 음악을 돌아봐요.')}</p>
+                    {(evidence.length > 0 || changes.added.length > 0) && <div className="tmm-evidence">
+                        <h3>{en ? 'Behind the change' : '이 흐름을 만든 음악'}</h3>
+                        {[...evidence, ...changes.added.filter((item) => !evidence.some((choice) => choice.track.id === item.id)).map((item) => ({ track: item, action: 'import' }))].slice(0, 5).map((item) => <button type="button" key={item.track.id} onClick={() => { setSelectedId(item.track.id); setComparison(0); stageRef.current?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'center' }); }}>
+                            <span className={`tmm-evidence-dot ${item.action}`} /><span><strong>{item.track.name}</strong><small>{item.track.artists}</small></span>
+                            <span>{({ absorb: en ? 'Feels like me' : '내 취향으로', dig: en ? 'Curious' : '더 알고 싶음', pop: en ? 'Passed' : '흘려보냄', import: en ? 'Imported' : '불러온 곡' })[item.action]}</span>
+                        </button>)}
+                    </div>}
+                </section>
+                <section className="tmm-comparison" aria-labelledby="tmm-compare-title">
+                    <div className="tmm-section-label"><h2 id="tmm-compare-title">{en ? 'Trace your change' : '나의 변화 살펴보기'}</h2><span>{comparison > 50 ? (en ? 'THEN' : '이전') : (en ? 'NOW' : '지금')}</span></div>
+                    {previous ? <><div className="tmm-compare-preview" aria-hidden="true"><div style={{ opacity: 1 - comparison / 100 }}><LivingConstellationAvatar avatar={avatar} lang={lang} showReceiver={false} fixedFrame /></div><div style={{ opacity: comparison / 100 }}><LivingConstellationAvatar avatar={previous.avatar} lang={lang} showReceiver={false} fixedFrame /></div></div><label htmlFor="tmm-time">{en ? 'Move through your Spectra' : '슬라이더로 이전 모습과 지금을 겹쳐보세요'}</label>
+                    <input id="tmm-time" type="range" min="0" max="100" value={100 - comparison} onChange={(event) => setComparison(100 - Number(event.target.value))} aria-valuetext={en ? `${100 - comparison}% toward now` : `현재 모습 ${100 - comparison}%`} />
+                    <div className="tmm-time-labels"><button type="button" onClick={() => setComparison(100)}>{en ? 'Last visit' : '지난 방문'}</button><button type="button" onClick={() => setComparison(0)}>{en ? 'Now' : '지금'}</button></div></>
+                        : <p>{en ? 'Your first moment is being saved. Comparison opens on your next visit.' : '첫 모습을 기록하고 있어요. 다음 방문부터 이전 모습과 비교할 수 있어요.'}</p>}
+                </section>
+                <p className="tmm-session-note" role="status">{saved ? (en ? 'Your reflections are kept in this browser.' : '나의 회고는 이 브라우저에 보관돼요.') : (en ? 'Could not save this reflection. Check your browser storage.' : '기록을 저장하지 못했어요. 브라우저 저장 공간을 확인해 주세요.')}</p>
+                </details>
                 <div className="tmm-primary-actions">
-                    <button className="tmm-export" type="button" disabled={exporting || Boolean(session.active)} onClick={exportConstellation}>
+                    <button className="tmm-export" type="button" disabled={exporting || Boolean(session.active)} onClick={() => exportConstellation()}>
                         <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M5 16v5h14v-5" /></svg>
-                        {exporting ? (en ? 'Creating image…' : '이미지 만드는 중…') : (en ? 'Save constellation' : '별자리 이미지 저장')}
+                        {exporting ? (en ? 'Creating image…' : '이미지 만드는 중…') : (en ? 'Create My Spectra story card' : '나의 스펙트라 공유 카드 만들기')}
                     </button>
                     <button className="tmm-explore-toggle" type="button" aria-expanded={exploring} aria-controls="tmm-exploration" onClick={() => setExploring(!exploring)}>{exploring ? (en ? 'Close exploration' : '탐색 접기') : (en ? 'Explore more music' : '음악 더 탐색하기')} <span aria-hidden="true">{exploring ? '−' : '+'}</span></button>
                 </div>
@@ -212,23 +293,23 @@ function MobileConstellation({ tracks, status, progress }) {
                             </button>)}
                         </div>
                     </> : <div className="tmm-drop-empty"><p>{en ? 'Every drop has found its place.' : '오늘의 음악이 모두 자리를 찾았어요.'}</p>
-                        <button type="button" onClick={() => { setSession({ decisions: [], active: null, count: 0 }); setRetry((value) => value + 1); }}>
+                        <button type="button" onClick={() => { setRetry((value) => value + 1); }}>
                             {en ? 'Start a new session' : '새로운 세션 시작'}</button></div>}
                     <div className="tmm-drop-status" role="status">{feedback || (discovery.key === discoveryKey && discovery.status === 'unavailable'
                         ? (en ? 'Discovery is resting. Explore your library for now.' : '추천 연결을 쉬는 동안, 내 라이브러리를 탐색해요.')
                         : status === 'enriching' ? (en ? `More stars arriving · ${progress.done}/${progress.total}` : `별을 더 불러오는 중 · ${progress.done}/${progress.total}`)
-                            : (en ? 'A small choice. A changing constellation.' : '작은 선택 하나, 조금 달라지는 별자리.'))}</div>
+                            : (en ? 'A small choice. A changing Spectra.' : '작은 선택 하나, 조금 달라지는 스펙트라.'))}</div>
                 </section>
-                <p className="tmm-session-note">{en ? 'Taste Drop choices stay in this session.' : 'Taste Drop 선택은 이번 세션에 머물러요.'}</p>
+                <p className="tmm-session-note">{en ? 'Your choices leave a trace in your Spectra.' : '작은 선택이 나의 스펙트라에 남아요.'}</p>
                 </div>
                 {exportImage && <dialog className="tmm-export-dialog" ref={dialogRef} onClose={() => setExportImage(null)} aria-labelledby="tmm-export-title">
-                    <header><h2 id="tmm-export-title">{en ? 'Your constellation' : '나의 별자리 이미지'}</h2><button type="button" autoFocus onClick={() => dialogRef.current.close()} aria-label={en ? 'Close' : '닫기'}>×</button></header>
-                    <img src={exportImage.url} alt={en ? 'Your constellation export preview' : '내 별자리 이미지 미리보기'} />
+                    <header><h2 id="tmm-export-title">{exportImage.daily ? 'Daily Spectra' : 'My Spectra'} · {en ? 'Story card' : '스토리 카드'}</h2><button type="button" autoFocus onClick={() => dialogRef.current.close()} aria-label={en ? 'Close' : '닫기'}>×</button></header>
+                    <img src={exportImage.url} alt={en ? 'Your Spectra export preview' : '내 스펙트라 이미지 미리보기'} />
                     <div className="tmm-export-options">
-                        <a href={exportImage.url} download="spectra-constellation.png">{en ? 'Save PNG' : 'PNG 저장'}</a>
-                        {navigator.canShare?.({ files: [exportImage.file] }) && <button type="button" onClick={shareImage}>{en ? 'Share' : '공유하기'}</button>}
+                        <a href={exportImage.url} download={exportImage.file.name}>{en ? 'Save image' : '이미지 저장'}</a>
+                        {canShareImage && <button type="button" disabled={sharing} onClick={shareImage}>{sharing ? (en ? 'Opening…' : '여는 중…') : (en ? 'Share' : '공유하기')}</button>}
                     </div>
-                    <p>{en ? 'You can also touch and hold the image to save it.' : '이미지를 길게 눌러 사진에 저장할 수도 있어요.'}</p>
+                    <p>{canShareImage ? (en ? 'Choose Instagram if available in the share menu. Otherwise save the image and add it to your story.' : '공유 메뉴에 Instagram이 있으면 선택하세요. 없으면 이미지를 저장해 스토리에 추가할 수 있어요.') : (en ? 'Save the image, then select it in Instagram Stories. You can also touch and hold to save.' : '이미지를 저장한 뒤 Instagram 스토리에서 선택하세요. 이미지를 길게 눌러 저장할 수도 있어요.')}</p>
                     {exportError && <p role="alert">{exportError}</p>}
                 </dialog>}
             </div>
@@ -238,5 +319,7 @@ function MobileConstellation({ tracks, status, progress }) {
 
 export default function TasteMapMobilePage() {
     const { tracks, mapId, status, progress } = useTasteData();
-    return <MobileConstellation key={mapId || 'guest'} tracks={tracks} status={status} progress={progress} />;
+    const { user } = useAuth();
+    const key = reflectionKey(user?.id, mapId);
+    return <MobileConstellation key={key} storageKey={key} tracks={tracks} status={status} progress={progress} />;
 }

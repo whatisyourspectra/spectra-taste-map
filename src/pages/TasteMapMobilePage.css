@@ -106,3 +106,57 @@
 .tmm-export-options a, .tmm-export-options button { flex: 1; display: grid; place-items: center; min-height: 48px; border: 1px solid #3c4b61; border-radius: 12px; background: #1c2a40; color: #e6edf8; font-size: 13px; text-decoration: none; }
 .tmm-export-dialog > p { margin-top: 14px; color: #91a1b7; font-size: 11px; text-align: center; line-height: 1.6; }
 @media (max-height: 650px) { .tmm-living { height: max(320px, calc(100svh - 210px)); padding-top: 16px; } .tmm-library-count { margin-bottom: 16px; } }
+
+/* My Spectra: an immersive field above a quiet reflection journal. */
+.tmm-root { background: radial-gradient(ellipse at 80% 15%, #17203366, transparent 45%), radial-gradient(ellipse at 0% 40%, #211a3266, transparent 40%), #070a11; }
+.tmm-living { height: clamp(460px, 72svh, 720px); }
+.tmm-living h1 { font-size: 29px; letter-spacing: -.055em; }
+.tmm-avatar-stage { isolation: isolate; }
+.tmm-space { position: relative; width: 100%; height: 100%; min-height: 260px; }
+.tmm-space-viewport { position: absolute; inset: 0 0 56px; overflow: hidden; perspective: 650px; touch-action: pan-y; cursor: grab; border-radius: 35%; }
+.tmm-space-viewport:focus-visible { outline: 1px solid #7995c7; outline-offset: -4px; }
+.is-dragging .tmm-space-viewport { cursor: grabbing; }
+.tmm-space-world { width: 100%; height: 100%; position: relative; will-change: transform; transform-style: preserve-3d; }
+.tmm-space-present, .tmm-space-past { position: absolute; inset: 0; }
+.tmm-space-past { filter: saturate(.55); }
+.tmm-space-dust { position: absolute; inset: 12% 5% 20%; pointer-events: none; opacity: .45; background-image: radial-gradient(circle at 12% 22%, #bfd3ff 0 1px, transparent 1.5px), radial-gradient(circle at 87% 67%, #afc6ff 0 1px, transparent 1.5px), radial-gradient(circle at 68% 16%, #afc6ff 0 .7px, transparent 1.2px), radial-gradient(circle at 32% 78%, #afc6ff 0 .7px, transparent 1.2px); animation: tmm-float 18s ease-in-out infinite alternate; }
+@keyframes tmm-float { to { transform: translate3d(6px, -9px, 0) scale(1.05); opacity: .7; } }
+.tmm-space-controls { position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; border: 1px solid #a6b9ed18; border-radius: 30px; background: #111928aa; }
+.tmm-space-controls button { background: none; border: none; color: #9caecb; min-width: 44px; min-height: 44px; font-size: 16px; }
+.tmm-space-controls button:nth-child(2) { font-size: 10px; padding: 0 10px; white-space: nowrap; }
+.tmm-space-hint { position: absolute; bottom: 0; width: 100%; text-align: center; color: #8292ae; font-size: 9px; margin: 0; }
+.tmm-reflection { margin-top: 30px; padding: 25px 22px; border: 1px solid #a9b9e01c; border-radius: 24px; background: linear-gradient(135deg, #1c263944, #11172466); }
+.tmm-section-label { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.tmm-section-label > span:last-child { color: #8391ac; font-size: 9px; font-variant-numeric: tabular-nums; }
+.tmm-reflection h2 { margin: 20px 0 12px; font-size: 22px; line-height: 1.55; font-weight: 450; letter-spacing: -.04em; word-break: keep-all; }
+.tmm-reflection > p, .tmm-comparison > p { font-size: 12px; color: #93a2bb; line-height: 1.9; word-break: keep-all; }
+.tmm-evidence { margin-top: 25px; padding-top: 18px; border-top: 1px solid #b3c4eb14; }
+.tmm-evidence h3 { font-size: 11px; color: #9cacbf; font-weight: 400; margin: 0 0 12px; }
+.tmm-evidence button { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 64px; background: none; border: none; text-align: left; color: #d7e2f2; padding: 8px 0; }
+.tmm-evidence button > span:nth-child(2) { flex: 1; min-width: 0; }
+.tmm-evidence strong, .tmm-evidence small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tmm-evidence strong { font-size: 13px; font-weight: 450; }
+.tmm-evidence small { color: #8798b2; font-size: 10px; margin-top: 5px; }
+.tmm-evidence button > span:last-child { color: #a5afc5; font-size: 9px; }
+.tmm-evidence-dot { width: 6px; height: 6px; border-radius: 50%; background: #c3d9fb; box-shadow: 0 0 12px #8eaafc; }
+.tmm-evidence-dot.dig { background: #c7afff; }.tmm-evidence-dot.pop { background: #78859a; box-shadow: none; }
+.tmm-comparison { padding: 28px 8px 16px; }
+.tmm-comparison h2 { font-size: 14px; font-weight: 450; margin: 0 0 15px; }
+.tmm-comparison label { display: block; font-size: 11px; color: #899ab4; margin: 2px 0 14px; }
+.tmm-comparison input { width: 100%; min-height: 44px; accent-color: #c4c9f9; cursor: ew-resize; }
+.tmm-comparison input:focus-visible { outline: 2px solid #b8cdf1; outline-offset: 3px; }
+.tmm-time-labels { display: flex; justify-content: space-between; }
+.tmm-time-labels button { min-height: 44px; border: none; background: none; padding: 0 8px; color: #a6b7d0; font-size: 10px; }
+.tmm-selected { display: flex; align-items: center; gap: 12px; padding: 18px; border: 1px solid #6f86b444; border-radius: 18px; background: #172133; }
+.tmm-selected > div { flex: 1; min-width: 0; }
+.tmm-selected h2 { font-size: 16px; margin: 8px 0; overflow-wrap: anywhere; }.tmm-selected p { color: #9aaac2; font-size: 11px; }
+.tmm-selected button { min-height: 44px; min-width: 44px; color: #d5e4fa; background: none; border: none; white-space: nowrap; }
+.tmm-primary-actions { padding-top: 16px; }.tmm-explore-toggle { font-size: 12px; color: #b8c4dc; }
+.lc-star[role="button"] { cursor: pointer; }.lc-star[role="button"]:focus { outline: none; }.lc-star[role="button"]:focus-visible > circle { stroke: #fff; stroke-width: 1; }
+@media (prefers-reduced-motion: reduce) { .tmm-space-dust { animation: none; }.tmm-space-world { transform-style: flat; } }
+.tmm-compare-preview { height: 190px; position: relative; margin: -10px 0 8px; border-radius: 18px; background: radial-gradient(ellipse, #1b244b33, transparent 70%); }
+.tmm-compare-preview > div { position: absolute; inset: 0; }
+/* Gestures are owned only by the 3D viewport; surrounding content still scrolls. */
+.tmm-space-viewport { touch-action: none; border-radius: 0; perspective: none; user-select: none; -webkit-user-select: none; }
+.tmm-space-world { transform-style: flat; will-change: auto; }
+.lc-spatial .lc-body, .lc-spatial .lc-orbit { animation: none; }
