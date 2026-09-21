@@ -1389,7 +1389,7 @@ function TasteYearComparePanel({ tracks, profileName, lang = 'ko' }) {
 // ─── Canvas renderer ──────────────────────────────────────────────────────────
 const PADDING = { top: 48, right: 32, bottom: 56, left: 56 };
 const BUBBLE_BASE_WORLD_SCALE = 5.0;
-const BUBBLE_MAX_COUNT = 2000;
+const BUBBLE_MAX_COUNT = 5000;
 // Allow pulling far enough back to see the taste field with generous context.
 const BUBBLE_ZOOM_MIN = 0.1;
 const BUBBLE_ZOOM_MAX = 10.0;
@@ -3199,7 +3199,7 @@ export default function TasteMapPage() {
             && item.yPx >= -overscan
             && item.yPx <= bubbleFieldSize.h + overscan
         ));
-        const maxMounted = bubbleZoom < 0.5 ? 320 : bubbleZoom < 0.85 ? 420 : 520;
+        const maxMounted = bubbleZoom < 0.5 ? 800 : bubbleZoom < 0.85 ? 1200 : 1600;
         if (visible.length <= maxMounted) return visible;
 
         const selectedId = selectedTrackCard?.track?.id;
@@ -4984,6 +4984,13 @@ export default function TasteMapPage() {
                         <span className="tm-live-signal"><span aria-hidden />LIVE FIELD</span>
                         <span>{tracks.length} {lang === 'en' ? 'memories' : '개의 기억'}</span>
                         <span>{clusterStats.length} {lang === 'en' ? 'regions' : '개의 영역'}</span>
+                        {importedStats?.isCapped && (
+                            <span title={lang === 'en' ? `Uniformly sampled from ${importedStats.originalImportCount?.toLocaleString()} tracks` : `전체 ${importedStats.originalImportCount?.toLocaleString()}곡 중 대표 선별`}>
+                                {lang === 'en'
+                                    ? `Representative ${importedStats.totalAvailable?.toLocaleString()} sampled`
+                                    : `대표 ${importedStats.totalAvailable?.toLocaleString()}곡 선별됨`}
+                            </span>
+                        )}
                         {importStatus === 'enriching' && importProgress.total > 0 && (
                             <span>
                                 {lang === 'en' ? 'Adding the rest' : '나머지 곡 추가 중'}

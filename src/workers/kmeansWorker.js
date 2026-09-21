@@ -97,8 +97,13 @@ function dbscan(points, eps, minPts) {
     const regionQuery = (idx) => {
         const out = [];
         const p = points[idx];
+        const p0 = p[0], p1 = p[1], p2 = p[2];
         for (let j = 0; j < n; j++) {
-            if (euclidDistSq(p, points[j]) <= epsSq) out.push(j);
+            const q = points[j];
+            if (Math.abs(p0 - q[0]) > eps) continue;
+            if (Math.abs(p1 - q[1]) > eps) continue;
+            if (Math.abs(p2 - q[2]) > eps) continue;
+            if (euclidDistSq(p, q) <= epsSq) out.push(j);
         }
         return out;
     };

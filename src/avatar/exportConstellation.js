@@ -96,22 +96,97 @@ export async function createDailyStoryImage({ theme, day, tracks, lang }) {
     ctx.font = '20px sans-serif'; ctx.fillText(day.replaceAll('-', ' . '), 540, 275);
     ctx.strokeStyle = `${theme.color}55`; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.ellipse(540, 450, 230, 75, -.25, 0, Math.PI * 2); ctx.stroke();
-    const points = [[325,490], [445,395], [575,455], [710,365], [745,510]];
-    ctx.beginPath(); points.forEach(([x,y], i) => i ? ctx.lineTo(x,y) : ctx.moveTo(x,y)); ctx.stroke();
-    for (const [x,y] of points) {
-        const halo = ctx.createRadialGradient(x,y,0,x,y,25); halo.addColorStop(0, theme.color); halo.addColorStop(1, `${theme.color}00`);
-        ctx.fillStyle = halo; ctx.fillRect(x-25,y-25,50,50); ctx.fillStyle = '#f2f3ff'; ctx.beginPath(); ctx.arc(x,y,4,0,Math.PI*2); ctx.fill();
-    }
-    ctx.fillStyle = theme.color; ctx.font = '24px sans-serif'; ctx.fillText(en ? 'Your daily music reading' : '오늘의 스펙트라', 540, 625);
-    ctx.fillStyle = '#ecedf8'; ctx.font = '58px sans-serif'; ctx.fillText(theme.name[en ? 1 : 0], 540, 715);
-    ctx.fillStyle = '#b0bdd3'; ctx.font = '28px sans-serif';
-    wrap(ctx, theme.message[en ? 1 : 0], 820).slice(0, 3).forEach((line,i)=>ctx.fillText(line,540,800+i*46));
-    ctx.font = '18px sans-serif'; ctx.fillStyle = theme.color; ctx.fillText(`${tracks.length} TRACKS / TODAY’S SELECTION`,540,990);
-    tracks.slice(0,5).forEach((track,i)=>{
-        const y = 1080 + i*100;
-        ctx.textAlign = 'left'; ctx.fillStyle = theme.color; ctx.font = '20px sans-serif'; ctx.fillText(String(i+1).padStart(2,'0'),130,y);
-        ctx.fillStyle = '#e2e7f4'; ctx.font = '30px sans-serif'; ctx.fillText(ellipsis(ctx,track.name,730),195,y);
-        ctx.fillStyle = '#92a3bd'; ctx.font = '22px sans-serif'; ctx.fillText(ellipsis(ctx,track.artists,730),195,y+34);
+    const basePoints = [[330, 490], [440, 395], [565, 460], [695, 370], [745, 505]];
+    const points = (tracks.slice(0, 5).length ? tracks.slice(0, 5) : [{}]).map((track, i) => {
+        const bp = basePoints[i] || [330 + i * 100, 450];
+        const v = Number.isFinite(track?.valence) ? track.valence : 0.5;
+        const e = Number.isFinite(track?.energy) ? track.energy : 0.5;
+        return [
+            Math.round(bp[0] + (v - 0.5) * 32),
+            Math.round(bp[1] - (e - 0.5) * 44),
+        ];
     });
-    return new Promise((resolve,reject)=>canvas.toBlob(blob=>blob ? resolve(blob) : reject(new Error('PNG encoding failed')), 'image/png'));
+    ctx.beginPath();
+    points.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y));
+    ctx.stroke();
+
+    for (let i = 0; i < points.length; i++) {
+        const [x, y] = points[i];
+        const t = tracks[i];
+        const isDisc = t?.dailyOrigin === 'discovery';
+        const halo = ctx.createRadialGradient(x, y, 0, x, y, 32);
+        halo.addColorStop(0, theme.color);
+        halo.addColorStop(1, `${theme.color}00`);
+        ctx.fillStyle = halo;
+        ctx.fillRect(x - 32, y - 32, 64, 64);
+
+        if (isDisc) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.fillStyle = theme.color;
+            ctx.beginPath();
+            ctx.moveTo(0, -9);
+            ctx.lineTo(7, 0);
+            ctx.lineTo(0, 9);
+            ctx.lineTo(-7, 0);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(0, 0, 3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        } else {
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(x, y, 4.5, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
+    ctx.fillStyle = theme.color;
+    ctx.font = '24px sans-serif';
+    ctx.fillText(en ? 'Your daily music reading' : '오늘의 스펙트라', 540, 620);
+    ctx.fillStyle = '#ecedf8';
+    ctx.font = 'bold 56px sans-serif';
+    ctx.fillText(theme.name[en ? 1 : 0], 540, 700);
+
+    ctx.fillStyle = '#b0bdd3';
+    ctx.font = '26px sans-serif';
+    wrap(ctx, theme.message[en ? 1 : 0], 820).slice(0, 3).forEach((line, i) => ctx.fillText(line, 540, 775 + i * 44));
+
+    if (theme.tags?.[en ? 1 : 0]) {
+        ctx.fillStyle = `${theme.color}dd`;
+        ctx.font = '600 20px sans-serif';
+        ctx.fillText(theme.tags[en ? 1 : 0].join('   ·   '), 540, 915);
+    }
+
+    ctx.font = '18px sans-serif';
+    ctx.fillStyle = theme.color;
+    ctx.fillText(`${tracks.length} TRACKS / TODAY’S SELECTION`, 540, 995);
+
+    tracks.slice(0, 5).forEach((track, i) => {
+        const y = 1080 + i * 115;
+        const isDisc = track.dailyOrigin === 'discovery';
+        ctx.textAlign = 'left';
+        ctx.fillStyle = theme.color;
+        ctx.font = 'bold 22px sans-serif';
+        ctx.fillText(String(i + 1).padStart(2, '0'), 130, y);
+
+        ctx.fillStyle = '#e2e7f4';
+        ctx.font = '600 28px sans-serif';
+        ctx.fillText(ellipsis(ctx, track.name, 680), 195, y);
+
+        ctx.fillStyle = '#8fa2be';
+        ctx.font = '21px sans-serif';
+        const sub = `${track.artists || 'Unknown'}${isDisc ? (en ? '  ·  ✦ NEW FIND' : '  ·  ✦ 새로운 발견') : ''}`;
+        ctx.fillText(ellipsis(ctx, sub, 720), 195, y + 36);
+    });
+
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#5a6c86';
+    ctx.font = '16px sans-serif';
+    ctx.fillText('S P E C T R A   ·   M U S I C   T A S T E   M A P', 540, 1780);
+
+    return new Promise((resolve, reject) => canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('PNG encoding failed')), 'image/png'));
 }

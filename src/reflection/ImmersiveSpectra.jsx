@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import LivingConstellationAvatar from '../avatar/LivingConstellationAvatar';
 import { clampZoom, DEFAULT_CAMERA, projectPoint, projectSpectra } from './projectSpectra';
 
-export default function ImmersiveSpectra({ avatar, previous, comparison, reaction, lang, stageRef, onSelect }) {
+export default function ImmersiveSpectra({ avatar, previous, comparison, reaction, lang, stageRef, onSelect, tourCameraTarget }) {
     const camera = useRef({ ...DEFAULT_CAMERA });
     const [view, setView] = useState({ ...DEFAULT_CAMERA });
     const pointers = useRef(new Map());
@@ -21,6 +21,40 @@ export default function ImmersiveSpectra({ avatar, previous, comparison, reactio
         cancelAnimationFrame(frame.current);
         frame.current = requestAnimationFrame(paint);
     };
+
+    // Smoothly animate 3D camera with cinematic arc zoom when tourCameraTarget changes
+    useEffect(() => {
+        if (!tourCameraTarget) return undefined;
+        stop();
+        const start = { ...camera.current };
+        const target = {
+            yaw: tourCameraTarget.yaw ?? start.yaw,
+            pitch: tourCameraTarget.pitch ?? start.pitch,
+            zoom: clampZoom(tourCameraTarget.zoom ?? start.zoom),
+        };
+        const startTime = performance.now();
+        const duration = 900;
+
+        const step = (now) => {
+            const elapsed = now - startTime;
+            const t = Math.min(1, elapsed / duration);
+            const ease = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+            camera.current.yaw = start.yaw + (target.yaw - start.yaw) * ease;
+            camera.current.pitch = start.pitch + (target.pitch - start.pitch) * ease;
+
+            // Subtle, silky camera arc swoop
+            const dip = Math.sin(t * Math.PI) * 0.16;
+            camera.current.zoom = clampZoom((start.zoom + (target.zoom - start.zoom) * ease) - dip);
+
+            paint();
+            if (t < 1) {
+                frame.current = requestAnimationFrame(step);
+            }
+        };
+
+        frame.current = requestAnimationFrame(step);
+        return () => cancelAnimationFrame(frame.current);
+    }, [tourCameraTarget]);
     useEffect(() => {
         const pause = () => {
             if (document.hidden) {
@@ -112,10 +146,26 @@ export default function ImmersiveSpectra({ avatar, previous, comparison, reactio
             onClickCapture={(event) => { if (moved.current && event.detail !== 0) { event.preventDefault(); event.stopPropagation(); } }}>
             <div className="tmm-space-world" data-yaw={view.yaw} data-pitch={view.pitch} data-zoom={view.zoom}>
                 <div className="tmm-space-present" style={{ opacity: 1 - comparison / 100 }}>
-                    <LivingConstellationAvatar avatar={current} reaction={projectedReaction} lang={lang} showReceiver={false} fixedFrame spatial onSelect={comparison < 50 ? onSelect : undefined} />
+                    <LivingConstellationAvatar
+                        avatar={current}
+                        reaction={projectedReaction}
+                        lang={lang}
+                        showReceiver={false}
+                        fixedFrame
+                        spatial
+                        onSelect={comparison < 50 ? onSelect : undefined}
+                        activeGenre={tourCameraTarget?.targetGenre}
+                    />
                 </div>
                 {past && <div className="tmm-space-past" style={{ opacity: comparison / 100, pointerEvents: 'none' }} aria-hidden="true">
-                    <LivingConstellationAvatar avatar={past} lang={lang} showReceiver={false} fixedFrame spatial />
+                    <LivingConstellationAvatar
+                        avatar={past}
+                        lang={lang}
+                        showReceiver={false}
+                        fixedFrame
+                        spatial
+                        activeGenre={tourCameraTarget?.targetGenre}
+                    />
                 </div>}
             </div>
         </div>

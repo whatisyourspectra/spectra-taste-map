@@ -39,19 +39,20 @@ self.onmessage = ({ data }) => {
     const assignmentByTrackId = new Map(assignmentEntries);
     const playWeightById = new Map(playWeightEntries || []);
     const projected2dByTrackId = new Map(projected2dEntries || []);
+    const count = tracks.length;
+    if (count === 0) { self.postMessage({ nodes: [] }); return; }
+
     const isGenreProjected = projected2dByTrackId.size > 0;
     const virtualW = Math.max(1, fieldW * worldScale);
     const virtualH = Math.max(1, fieldH * worldScale);
-    const count = tracks.length;
-    if (count === 0) { self.postMessage({ nodes: [] }); return; }
 
     const pad = 90;
     // Keep large sets readable, but widen the visual size range so play-count
     // differences are easier to perceive at a glance.
-    const sizeMin = count > 500 ? 24 : count > 300 ? 30 : count > 150 ? 36 : 44;
-    const sizeMax = count > 500 ? 50 : count > 300 ? 64 : count > 150 ? 78 : 92;
-    const sepPad  = count > 500 ? 22 : count > 300 ? 36 : count > 150 ? 62 : 92;
-    const jitterRange = count > 500 ? 72 : count > 300 ? 58 : 44;
+    const sizeMin = count > 2000 ? 18 : count > 1000 ? 22 : count > 500 ? 24 : count > 300 ? 30 : count > 150 ? 36 : 44;
+    const sizeMax = count > 2000 ? 38 : count > 1000 ? 44 : count > 500 ? 50 : count > 300 ? 64 : count > 150 ? 78 : 92;
+    const sepPad  = count > 2000 ? 12 : count > 1000 ? 16 : count > 500 ? 22 : count > 300 ? 36 : count > 150 ? 62 : 92;
+    const jitterRange = count > 2000 ? 84 : count > 500 ? 72 : count > 300 ? 58 : 44;
     const spacingFactor = isGenreProjected ? 0.76 : 1.0;
     const sepPadAdjusted = sepPad * spacingFactor;
 
@@ -125,51 +126,62 @@ self.onmessage = ({ data }) => {
         ]),
     );
 
-    const clusterPull = count > 1000 ? 0.016 : count > 600 ? 0.022 : count > 300 ? 0.028 : 0.034;
-    const cellSize = (sizeMax + sepPadAdjusted) * 2.2;
+    const clusterPull = count > 2000 ? 0.012 : count > 1000 ? 0.016 : count > 600 ? 0.022 : count > 300 ? 0.028 : 0.034;
+    const cellSize = (sizeMax + sepPadAdjusted) * 2.0;
     // Large imports favor fast, stable placement over imperceptible late-pass
-    // collision refinements. This keeps a multi-thousand-track layout from
-    // monopolizing the worker while preserving the same spatial character.
-    const layoutIterations = count > 1600 ? 22 : count > 900 ? 28 : count > 450 ? 36 : 44;
+    // collision refinements. This keeps multi-thousand-track layouts fast and responsive.
+    const layoutIterations = count > 2500 ? 18 : count > 1600 ? 22 : count > 900 ? 28 : count > 450 ? 36 : 44;
+
     for (let iter = 0; iter < layoutIterations; iter++) {
+        // Fast integer spatial hash grid (1 insertion per node)
         const grid = new Map();
         for (let i = 0; i < nodes.length; i++) {
             const gx = Math.floor(nodes[i].x / cellSize);
             const gy = Math.floor(nodes[i].y / cellSize);
-            for (let dxi = -1; dxi <= 1; dxi++) {
-                for (let dyi = -1; dyi <= 1; dyi++) {
-                    const key = `${gx + dxi},${gy + dyi}`;
-                    if (!grid.has(key)) grid.set(key, []);
-                    grid.get(key).push(i);
-                }
+            const key = ((gx * 73856093) ^ (gy * 19349663)) >>> 0;
+            const cell = grid.get(key);
+            if (!cell) {
+                grid.set(key, [i]);
+            } else {
+                cell.push(i);
             }
         }
+
+        // Check 3x3 neighborhood around each node
         for (let i = 0; i < nodes.length; i++) {
             const a = nodes[i];
             const gx = Math.floor(a.x / cellSize);
             const gy = Math.floor(a.y / cellSize);
-            const cell = grid.get(`${gx},${gy}`);
-            if (!cell) continue;
-            for (const j of cell) {
-                if (j <= i) continue;
-                const b = nodes[j];
-                const sameCluster = Number.isInteger(a.clusterId)
-                    && Number.isInteger(b.clusterId)
-                    && a.clusterId === b.clusterId;
-                const clusterGap = sameCluster
-                    ? sepPadAdjusted * (isGenreProjected ? 0.98 : 1.12)
-                    : sepPadAdjusted * (isGenreProjected ? 1.18 : 1.62);
-                const minDist = (a.size + b.size) / 2 + clusterGap;
-                const dx = b.x - a.x;
-                const dy = b.y - a.y;
-                const dist = Math.hypot(dx, dy) || 0.001;
-                if (dist < minDist) {
-                    const push = (minDist - dist) * 0.52;
-                    const nx = dx / dist, ny = dy / dist;
-                    a.x = Math.max(pad, Math.min(virtualW - pad, a.x - nx * push));
-                    a.y = Math.max(pad, Math.min(virtualH - pad, a.y - ny * push));
-                    b.x = Math.max(pad, Math.min(virtualW - pad, b.x + nx * push));
-                    b.y = Math.max(pad, Math.min(virtualH - pad, b.y + ny * push));
+
+            for (let dxi = -1; dxi <= 1; dxi++) {
+                for (let dyi = -1; dyi <= 1; dyi++) {
+                    const neighborKey = (((gx + dxi) * 73856093) ^ ((gy + dyi) * 19349663)) >>> 0;
+                    const cell = grid.get(neighborKey);
+                    if (!cell) continue;
+
+                    for (let c = 0; c < cell.length; c++) {
+                        const j = cell[c];
+                        if (j <= i) continue;
+                        const b = nodes[j];
+                        const sameCluster = Number.isInteger(a.clusterId)
+                            && Number.isInteger(b.clusterId)
+                            && a.clusterId === b.clusterId;
+                        const clusterGap = sameCluster
+                            ? sepPadAdjusted * (isGenreProjected ? 0.98 : 1.12)
+                            : sepPadAdjusted * (isGenreProjected ? 1.18 : 1.62);
+                        const minDist = (a.size + b.size) / 2 + clusterGap;
+                        const dx = b.x - a.x;
+                        const dy = b.y - a.y;
+                        const dist = Math.hypot(dx, dy) || 0.001;
+                        if (dist < minDist) {
+                            const push = (minDist - dist) * 0.52;
+                            const nx = dx / dist, ny = dy / dist;
+                            a.x = Math.max(pad, Math.min(virtualW - pad, a.x - nx * push));
+                            a.y = Math.max(pad, Math.min(virtualH - pad, a.y - ny * push));
+                            b.x = Math.max(pad, Math.min(virtualW - pad, b.x + nx * push));
+                            b.y = Math.max(pad, Math.min(virtualH - pad, b.y + ny * push));
+                        }
+                    }
                 }
             }
         }

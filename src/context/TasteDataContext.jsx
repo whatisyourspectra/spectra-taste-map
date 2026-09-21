@@ -22,6 +22,9 @@ const BACKGROUND_PUBLISH_EVERY = 5;
 const REQUEST_RETRY_COUNT = 2;
 const MIN_RECOVERY_CHUNK_SIZE = 10;
 
+import { MAX_IMPORT_TRACKS, sampleTracksEvenly } from '../utils/sampleTracks.js';
+export { MAX_IMPORT_TRACKS, sampleTracksEvenly };
+
 const TasteDataContext = createContext(null);
 
 function newMapId() {
@@ -138,16 +141,17 @@ export function TasteDataProvider({ children, ownerId = null }) {
     const [cloudSyncing, setCloudSyncing] = useState(() => Boolean(ownerId && supabase && (!initial?.tracks || initial.tracks.length === 0)));
 
     const importTracks = useCallback(async (parsedList, options = {}) => {
-        const list = Array.isArray(parsedList) ? parsedList : [];
-        if (list.length === 0) {
+        const rawList = Array.isArray(parsedList) ? parsedList : [];
+        if (rawList.length === 0) {
             setError('불러온 곡이 없습니다. 목록을 확인해 주세요.');
             setStatus('error');
             return { ok: false };
         }
+        const { items: list, capped, originalTotal } = sampleTracksEvenly(rawList, MAX_IMPORT_TRACKS);
         const seededTracks = Array.isArray(options.seedTracks) ? options.seedTracks : [];
         setStatus(seededTracks.length > 0 ? 'enriching' : 'importing');
         setError(null);
-        setProgress({ done: 0, total: list.length });
+        setProgress({ done: 0, total: list.length, originalTotal, isCapped: capped });
 
         const runId = importRunRef.current + 1;
         importRunRef.current = runId;
@@ -176,6 +180,8 @@ export function TasteDataProvider({ children, ownerId = null }) {
             const nextStats = {
                 fetchedCount: nextTracks.length,
                 totalAvailable: list.length,
+                originalImportCount: originalTotal,
+                isCapped: capped,
                 processedCount,
                 failedCount,
                 backgroundEnriching: nextStatus === 'enriching',
@@ -275,7 +281,7 @@ export function TasteDataProvider({ children, ownerId = null }) {
                 console.error('[TasteStorage] Cloud save failed:', error);
             });
         }
-        return { ok: true, count: collectedById.size, failedCount };
+        return { ok: true, count: collectedById.size, failedCount, isCapped: capped, originalImportCount: originalTotal };
     }, [ownerId]);
 
     useEffect(() => {

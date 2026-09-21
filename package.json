@@ -8,6 +8,7 @@
     "dev": "vite",
     "server": "nodemon server.js",
     "dev:all": "concurrently \"npm run dev\" \"npm run server\"",
+    "test": "node --test tests/*.test.mjs",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"

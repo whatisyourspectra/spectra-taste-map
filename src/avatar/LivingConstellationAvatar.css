@@ -31,9 +31,79 @@
     100% { transform: translate(340px, 292px) scale(.1); opacity: 0; }
 }
 .lc-avatar.is-paused * { animation-play-state: paused; }
+
+/* Orbit Tour Refined Celestial Aesthetics */
+.lc-region {
+    transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), r 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.lc-region.is-tour-focus {
+    opacity: 0.85 !important;
+}
+.lc-region.is-tour-dim {
+    opacity: 0.12 !important;
+}
+
+.lc-connections line {
+    transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), stroke-width 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.lc-connections line.is-tour-focus {
+    stroke-width: 1.25px !important;
+    opacity: 0.82 !important;
+    filter: drop-shadow(0 0 2.5px currentColor);
+}
+.lc-connections line.is-tour-dim {
+    opacity: 0.12 !important;
+    stroke-width: 0.55px !important;
+}
+
+.lc-star {
+    transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.lc-star.is-tour-focus {
+    filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.55)) drop-shadow(0 0 8px currentColor);
+    animation: lc-tour-star-breath 3.4s ease-in-out infinite alternate !important;
+}
+.lc-star.is-tour-dim {
+    opacity: 0.3 !important;
+}
+
+.lc-orbit.is-tour-dim {
+    opacity: 0.22 !important;
+    transition: opacity 0.7s ease;
+}
+
+.lc-celestial-reticle {
+    transform-origin: center;
+    animation: lc-reticle-breathe 4s ease-in-out infinite alternate;
+    opacity: 0.7;
+}
+
+@keyframes lc-tour-star-breath {
+    0% {
+        opacity: 0.88;
+        transform: scale(1);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1.06);
+    }
+}
+
+@keyframes lc-reticle-breathe {
+    0% {
+        opacity: 0.45;
+        transform: scale(0.96);
+    }
+    100% {
+        opacity: 0.8;
+        transform: scale(1.04);
+    }
+}
+
 @media (prefers-reduced-motion: reduce) {
-    .lc-body, .lc-star, .lc-orbit, .lc-reaction { animation: none; }
+    .lc-body, .lc-star, .lc-orbit, .lc-reaction, .lc-celestial-reticle { animation: none !important; }
     .lc-star { opacity: var(--lc-star-opacity); }
+    .lc-star.is-tour-focus { animation: none !important; }
     .lc-reaction { transform: translate(var(--lc-target-x), var(--lc-target-y)); }
     .lc-reaction-pop { opacity: 0; }
 }

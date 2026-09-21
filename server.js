@@ -29,7 +29,7 @@ const CLIENT_DIST_DIR = path.join(__dirname, 'dist');
 const CLIENT_INDEX_PATH = path.join(CLIENT_DIST_DIR, 'index.html');
 const isDirectRun = Boolean(process.argv[1]) && path.resolve(process.argv[1]) === __filename;
 
-const ENRICH_MAX_TRACKS = Number(process.env.ENRICH_MAX_TRACKS || 1500);
+const ENRICH_MAX_TRACKS = Number(process.env.ENRICH_MAX_TRACKS || 5000);
 
 const isProd = process.env.NODE_ENV === 'production';
 

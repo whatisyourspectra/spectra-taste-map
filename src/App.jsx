@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { TasteDataProvider, useTasteData } from './context/TasteDataContext';
+import { TasteDataProvider, useTasteData, MAX_IMPORT_TRACKS } from './context/TasteDataContext';
 import { parseTrackList } from './utils/parseTrackList';
 import TasteMapPage from './pages/TasteMapPage';
 import TasteMapMobilePage from './pages/TasteMapMobilePage';
@@ -17,18 +17,18 @@ function seeded01(seed) {
 }
 
 const TASTE_BUBBLES = [
-  { id: 'b-0', x: 20, y: 26, size: 148, delay: -4.2, duration: 24.4, hue: 0, depth: 'near', cluster: 'a' },
-  { id: 'b-1', x: 28, y: 24, size: 76, delay: -7.1, duration: 21.1, hue: 2, depth: 'mid', cluster: 'a' },
-  { id: 'b-2', x: 24, y: 34, size: 92, delay: -9.3, duration: 26.3, hue: 1, depth: 'far', cluster: 'a' },
-  { id: 'b-3', x: 38, y: 40, size: 132, delay: -5.7, duration: 25.8, hue: 0, depth: 'near', cluster: 'a' },
-  { id: 'b-4', x: 63, y: 20, size: 124, delay: -3.8, duration: 22.6, hue: 1, depth: 'mid', cluster: 'b' },
-  { id: 'b-5', x: 70, y: 30, size: 88, delay: -8.4, duration: 24.2, hue: 2, depth: 'far', cluster: 'b' },
-  { id: 'b-6', x: 76, y: 22, size: 58, delay: -11.8, duration: 19.2, hue: 0, depth: 'far', cluster: 'b' },
-  { id: 'b-7', x: 56, y: 62, size: 172, delay: -2.1, duration: 27.1, hue: 0, depth: 'near', cluster: 'c' },
-  { id: 'b-8', x: 64, y: 66, size: 95, delay: -6.5, duration: 22.4, hue: 1, depth: 'mid', cluster: 'c' },
-  { id: 'b-9', x: 73, y: 58, size: 82, delay: -9.9, duration: 25.3, hue: 2, depth: 'far', cluster: 'c' },
-  { id: 'b-10', x: 84, y: 50, size: 118, delay: -5.1, duration: 23.7, hue: 1, depth: 'mid', cluster: 'd' },
-  { id: 'b-11', x: 89, y: 58, size: 68, delay: -8.8, duration: 20.6, hue: 2, depth: 'far', cluster: 'd' },
+  { id: 'b-0', x: 18, y: 24, size: 148, delay: -4.2, duration: 24.4, hue: 0, depth: 'near', cluster: 'a' },
+  { id: 'b-1', x: 26, y: 20, size: 76, delay: -7.1, duration: 21.1, hue: 2, depth: 'mid', cluster: 'a' },
+  { id: 'b-2', x: 22, y: 32, size: 92, delay: -9.3, duration: 26.3, hue: 1, depth: 'far', cluster: 'a' },
+  { id: 'b-3', x: 34, y: 36, size: 132, delay: -5.7, duration: 25.8, hue: 0, depth: 'near', cluster: 'a' },
+  { id: 'b-4', x: 44, y: 22, size: 110, delay: -3.8, duration: 22.6, hue: 1, depth: 'mid', cluster: 'b' },
+  { id: 'b-5', x: 48, y: 34, size: 84, delay: -8.4, duration: 24.2, hue: 2, depth: 'far', cluster: 'b' },
+  { id: 'b-6', x: 38, y: 16, size: 58, delay: -11.8, duration: 19.2, hue: 0, depth: 'far', cluster: 'b' },
+  { id: 'b-7', x: 24, y: 68, size: 160, delay: -2.1, duration: 27.1, hue: 0, depth: 'near', cluster: 'c' },
+  { id: 'b-8', x: 32, y: 72, size: 95, delay: -6.5, duration: 22.4, hue: 1, depth: 'mid', cluster: 'c' },
+  { id: 'b-9', x: 42, y: 62, size: 82, delay: -9.9, duration: 25.3, hue: 2, depth: 'far', cluster: 'c' },
+  { id: 'b-10', x: 48, y: 78, size: 105, delay: -5.1, duration: 23.7, hue: 1, depth: 'mid', cluster: 'd' },
+  { id: 'b-11', x: 12, y: 52, size: 68, delay: -8.8, duration: 20.6, hue: 2, depth: 'far', cluster: 'd' },
 ];
 
 const TASTE_PARTICLES = Array.from({ length: 34 }, (_, idx) => {
@@ -369,26 +369,44 @@ function ImportOverlay() {
         </section>
         <section className="login-overlay__hero-stage">
           <div className="import-stage">
-            <p className="import-stage__lead">
-              좋아요한 곡 목록을 가져오면 SPECTRA가 감정·장르 패턴을 공간으로 그려줍니다.
-              아래 안내대로 목록을 내보낸 뒤 붙여넣거나 파일을 올려주세요.
-            </p>
-            <ol className="import-guide">
-              <li>
-                <a
-                  className="import-guide__tmm"
-                  href={TUNE_MY_MUSIC_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Tune My Music 열기 ↗
-                </a>
-                <span className="import-guide__hint">새 탭에서 외부 사이트가 열립니다.</span>
-              </li>
-              <li>소스로 <b>Spotify</b>(내 좋아요 / 플레이리스트)를 선택합니다.</li>
-              <li>목적지를 <b>Export to file</b>(CSV)로 골라 내보냅니다.</li>
-              <li>받은 파일을 아래에 올리거나, 목록을 붙여넣습니다.</li>
-            </ol>
+            {/* 내보내는 법 접이식 가이드 */}
+            <details className="import-guide-accordion">
+              <summary className="import-guide-accordion__summary">
+                <div className="import-guide-accordion__left">
+                  <div className="import-guide-accordion__title-group">
+                    <span className="import-guide-accordion__title">Apple Music · Spotify 등에서 목록 가져오는 법</span>
+                    <span className="import-guide-accordion__subtitle">Apple Music · Spotify · YouTube Music 등 전 기종 지원</span>
+                  </div>
+                </div>
+                <span className="import-guide-accordion__badge">안내 보기 ▾</span>
+              </summary>
+              <div className="import-guide-accordion__content">
+                <ol className="import-guide">
+                  <li>
+                    <div className="import-guide__step-header">
+                      <a
+                        className="import-guide__tmm"
+                        href={TUNE_MY_MUSIC_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Tune My Music 열기 ↗
+                      </a>
+                      <span className="import-guide__hint">무료 파일 변환 도구 (새 창)</span>
+                    </div>
+                  </li>
+                  <li>
+                    소스로 <b>Apple Music</b>, <b>Spotify</b>, <b>YouTube Music</b> 등 이용 중인 서비스를 연결합니다.
+                  </li>
+                  <li>
+                    내보낼 곡 목록(보관함 / 플레이리스트) 선택 후, 목적지를 <b>Export to file (CSV)</b>로 골라 다운로드합니다.
+                  </li>
+                  <li>
+                    다운로드한 CSV 또는 TXT 파일을 아래 영역에 끌어다 놓거나 클릭해 업로드합니다.
+                  </li>
+                </ol>
+              </div>
+            </details>
 
             <div
               className={`import-panel${dragActive ? ' dragging' : ''}`}
@@ -432,13 +450,25 @@ function ImportOverlay() {
                 spellCheck={false}
               />
 
+              {parseInfo && parseInfo.count > MAX_IMPORT_TRACKS && (
+                <div className="import-panel__notice">
+                  안정적이고 쾌적한 3D 탐색을 위해 총 {parseInfo.count.toLocaleString()}곡 중 전체 기간을 고르게 대표하는 {MAX_IMPORT_TRACKS.toLocaleString()}곡을 균등 선별하여 지도를 구성합니다.
+                </div>
+              )}
+
               <button
                 type="button"
                 className="login-overlay__enter taste import-panel__cta"
                 onClick={handleGenerate}
                 disabled={busy || !parseInfo}
               >
-                {busy ? `분석 중… ${pct}%` : parseInfo ? `${parseInfo.count}곡으로 지도 만들기` : '곡 목록을 입력하세요'}
+                {busy
+                  ? `분석 중… ${pct}%`
+                  : parseInfo
+                    ? (parseInfo.count > MAX_IMPORT_TRACKS
+                      ? `대표 ${MAX_IMPORT_TRACKS.toLocaleString()}곡으로 지도 만들기`
+                      : `${parseInfo.count.toLocaleString()}곡으로 지도 만들기`)
+                    : '곡 목록을 입력하세요'}
               </button>
               {error && <span className="import-panel__error">{error}</span>}
 
@@ -449,12 +479,11 @@ function ImportOverlay() {
               )}
             </div>
             <span className="login-overlay__subtext">
-              곡 목록은 Last.fm 태그와 Spotify 커버 매칭을 위해 서버로만 전송되며, Spotify 로그인은 필요 없습니다.
+              곡 목록은 음악 특성 분석 및 커버 매칭을 위해 안전하게 처리되며, 별도의 스트리밍 서비스 로그인은 필요 없습니다.
             </span>
           </div>
         </section>
       </div>
-      <div className="login-overlay__edge-glow" aria-hidden />
 
       {busy && (
         <div className="import-analyzing" role="status" aria-live="polite">
@@ -469,6 +498,11 @@ function ImportOverlay() {
             </div>
             <span className="import-analyzing__pct">
               {progress.done}/{progress.total}곡 · {pct}%
+              {progress.originalTotal > progress.total && (
+                <span className="import-analyzing__subpct">
+                  (총 {progress.originalTotal.toLocaleString()}곡 중 대표 {progress.total.toLocaleString()}곡 선별)
+                </span>
+              )}
             </span>
           </div>
         </div>
