@@ -491,7 +491,7 @@ function ImportOverlay() {
             <span className="import-analyzing__spinner" aria-hidden />
             <h3 className="import-analyzing__title">취향을 분석하는 중…</h3>
             <p className="import-analyzing__sub">
-              Last.fm 취향 태그와 Spotify 앨범 커버를 함께 매칭하고 있어요.
+              음악의 장르와 분위기를 분석하고 앨범 커버를 함께 매칭하고 있어요.
             </p>
             <div className="import-analyzing__bar" aria-hidden>
               <span style={{ width: `${pct}%` }} />

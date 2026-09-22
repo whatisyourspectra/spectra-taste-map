@@ -14,6 +14,8 @@ import DailySpectra from '../daily/DailySpectra';
 import { createConstellationImage, createDailyStoryImage } from '../avatar/exportConstellation';
 import AccountButton from '../auth/AccountButton';
 import SpectraOrbitTour from '../tour/SpectraOrbitTour';
+import ConstellationOracle from '../oracle/ConstellationOracle';
+import MonthlyConstellationCalendar from '../oracle/MonthlyConstellationCalendar';
 
 const API_BASE = import.meta?.env?.VITE_API_BASE || '';
 const EMPTY_TRACKS = [];
@@ -60,6 +62,7 @@ function MobileConstellation({ tracks, status, progress, storageKey }) {
     const [discovery, setDiscovery] = useState({ key: '', tracks: [], status: 'loading' });
     const [retry, setRetry] = useState(0);
     const [tourCameraTarget, setTourCameraTarget] = useState(null);
+    const [calendarRefresh, setCalendarRefresh] = useState(0);
     const en = lang === 'en';
     const library = useMemo(() => uniqueTracks(tracks), [tracks]);
     const baseTaste = useMemo(() => buildTasteState(library, { now }), [library, now]);
@@ -239,15 +242,23 @@ function MobileConstellation({ tracks, status, progress, storageKey }) {
                     onCameraChange={setTourCameraTarget}
                 />
 
-                <DailySpectra library={library} identity={storageKey} lang={lang} onListen={openExternal} onCreateStory={exportConstellation} exporting={exporting}
-                    saved={saved} onRetrySave={() => setSaveRetry(value => value + 1)} decisions={session.decisions} busy={Boolean(session.active)} onAbsorb={(bundle) => {
-                        const ids = new Set(bundle.map(item => item.id));
-                        setComparison(0);
-                        setSession(current => current.active ? current : ({
-                            decisions: [...current.decisions.filter(item => !ids.has(item.track.id)), ...bundle.map(track => ({ action: 'absorb', track, source: 'mobile', at: Date.now() }))],
-                            active: { action: 'absorb', track: bundle[0], source: 'mobile' }, count: current.count + bundle.length,
-                        }));
-                    }} />
+                {/* Constellation Oracle & Daily Tear-off Page */}
+                <ConstellationOracle
+                    library={library}
+                    identity={storageKey}
+                    lang={lang}
+                    onListen={openExternal}
+                    onCameraChange={setTourCameraTarget}
+                    onSavedToCalendar={() => setCalendarRefresh((v) => v + 1)}
+                />
+
+                {/* Monthly Constellation Calendar Archive */}
+                <MonthlyConstellationCalendar
+                    identity={storageKey}
+                    lang={lang}
+                    onListen={openExternal}
+                    refreshTrigger={calendarRefresh}
+                />
                 {!saved && <div className="tmm-save-error" role="alert"><p>{en ? 'Your choices are visible, but could not be saved. Retry before leaving.' : '선택한 음악을 저장하지 못했어요. 화면을 나가기 전에 다시 저장해 주세요.'}</p><button type="button" onClick={() => setSaveRetry(value => value + 1)}>{en ? 'Retry saving' : '저장 다시 시도'}</button></div>}
                 <div className="tmm-primary-actions">
                     <button className="tmm-export" type="button" disabled={exporting || Boolean(session.active)} onClick={() => exportConstellation()}>

@@ -86,12 +86,12 @@ const TM_I18N = {
     ko: {
         mappedSubtitle: 'Listening history, mapped in space.',
         explorerLabel: 'EXPLORER',
-        explorerMeta: 'Last.fm taste signals · Spotify cover matching.',
+        explorerMeta: '음악 취향 신호 · 앨범 커버 매칭',
         langKo: '한국어',
         langEn: 'English',
         analyzingTitle: '취향 분석 진행 중',
         analyzingStep1: '목록 불러오기',
-        analyzingStep2: 'Last.fm 태그 · Spotify 커버 매칭',
+        analyzingStep2: '음악 태그 · 앨범 커버 매칭',
         analyzingStep3: '내 취향 지도 생성',
         loginRequired: '먼저 곡 목록을 가져와 주세요.',
         loginAction: '목록 가져오기',
@@ -144,10 +144,10 @@ const TM_I18N = {
         discoveryLens: '탐색 기준',
         discoveryTrackBasis: '이 곡을 기준으로 탐색',
         discoveryGapBasis: '내 취향의 빈 영역 탐색',
-        discoveryTrackDesc: 'Last.fm 유사곡 · 태그 후보 · 현재 축 거리순',
-        discoveryGapDesc: 'Last.fm 대표 태그 후보 · 현재 축의 저밀도 영역 우선',
-        discoverySpotifyTrackDesc: 'Spotify 아티스트·장르 후보 · 현재 축 거리순',
-        discoverySpotifyGapDesc: 'Spotify 대표 장르 후보 · 현재 축의 저밀도 영역 우선',
+        discoveryTrackDesc: '유사곡 · 태그 후보 · 현재 축 거리순',
+        discoveryGapDesc: '대표 태그 후보 · 현재 축의 저밀도 영역 우선',
+        discoverySpotifyTrackDesc: '아티스트·장르 후보 · 현재 축 거리순',
+        discoverySpotifyGapDesc: '대표 장르 후보 · 현재 축의 저밀도 영역 우선',
         discoveryCurrentAxes: '현재 축',
         discoverySeedTags: '기준 태그',
         discoveryMyBubble: '내 취향',
@@ -176,12 +176,12 @@ const TM_I18N = {
     en: {
         mappedSubtitle: 'Listening history, mapped in space.',
         explorerLabel: 'CURRENT EXPLORER',
-        explorerMeta: 'Last.fm taste signals · Spotify cover matching.',
+        explorerMeta: 'Music taste signals · Album cover matching.',
         langKo: '한국어',
         langEn: 'English',
         analyzingTitle: 'Analyzing your taste field',
         analyzingStep1: 'Import your list',
-        analyzingStep2: 'Match Last.fm tags and Spotify covers',
+        analyzingStep2: 'Match music tags and album covers',
         analyzingStep3: 'Build taste map',
         loginRequired: 'Import a track list first.',
         loginAction: 'Import list',
@@ -234,10 +234,10 @@ const TM_I18N = {
         discoveryLens: 'Discovery basis',
         discoveryTrackBasis: 'Explore from this track',
         discoveryGapBasis: 'Explore gaps in your taste',
-        discoveryTrackDesc: 'Last.fm similar tracks and tags · current-axis distance',
-        discoveryGapDesc: 'Last.fm leading-tag candidates · sparse regions on the current axes',
-        discoverySpotifyTrackDesc: 'Spotify artist and genre candidates · current-axis distance',
-        discoverySpotifyGapDesc: 'Spotify leading-genre candidates · sparse regions on the current axes',
+        discoveryTrackDesc: 'Similar tracks and tags · current-axis distance',
+        discoveryGapDesc: 'Leading-tag candidates · sparse regions on the current axes',
+        discoverySpotifyTrackDesc: 'Artist and genre candidates · current-axis distance',
+        discoverySpotifyGapDesc: 'Leading-genre candidates · sparse regions on the current axes',
         discoveryCurrentAxes: 'Current axes',
         discoverySeedTags: 'Seed tags',
         discoveryMyBubble: 'Your taste',
@@ -4869,8 +4869,8 @@ export default function TasteMapPage() {
             ? 'Preparing your imported track list.'
             : '가져온 곡 목록을 준비하고 있어요.';
         if (loading) return lang === 'en'
-            ? 'Preparing Last.fm signals and Spotify cover metadata.'
-            : 'Last.fm 취향 신호와 Spotify 커버 정보를 준비하는 중입니다.';
+            ? 'Analyzing music signals and matching album covers.'
+            : '음악의 취향 신호와 앨범 커버를 준비하는 중입니다.';
         if (clusterLoading) return lang === 'en'
             ? 'Computing clusters and finalizing your taste map.'
             : '클러스터를 계산해 내 취향 지도를 마무리하는 중입니다.';
