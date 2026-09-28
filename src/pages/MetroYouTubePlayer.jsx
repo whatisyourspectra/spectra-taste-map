@@ -142,6 +142,7 @@ const MetroYouTubePlayer = forwardRef(function MetroYouTubePlayer({
     panelShifted = false,
     embedded = false,
     autoplayRequested = false,
+    playbackIntent = null,
     queuePosition = 0,
     queueLength = 0,
     onPlaybackState,
@@ -161,6 +162,7 @@ const MetroYouTubePlayer = forwardRef(function MetroYouTubePlayer({
     const startedRef = useRef(false);
     const unavailableReportedRef = useRef(false);
     const lookupGenerationRef = useRef(0);
+    const loadedVideoKeyRef = useRef(null);
     const windowDragRef = useRef(null);
     const windowResizeRef = useRef(null);
     const [playerReady, setPlayerReady] = useState(false);
@@ -183,6 +185,7 @@ const MetroYouTubePlayer = forwardRef(function MetroYouTubePlayer({
         onProgress,
         onEnded,
         onUnavailable,
+        playbackIntent,
     };
 
     const publishPlaybackState = (state) => {
@@ -260,6 +263,10 @@ const MetroYouTubePlayer = forwardRef(function MetroYouTubePlayer({
                         onStateChange: (event) => {
                             if (cancelled) return;
                             if (event.data === YT.PlayerState.PLAYING) {
+                                if (callbacksRef.current.playbackIntent === false) {
+                                    createdPlayer?.pauseVideo?.();
+                                    return;
+                                }
                                 startedRef.current = true;
                                 setHasStarted(true);
                                 setAutoplayBlocked(false);
@@ -377,18 +384,34 @@ const MetroYouTubePlayer = forwardRef(function MetroYouTubePlayer({
     }, [copy.config, copy.unavailable, retryNonce, track]);
 
     useEffect(() => {
-        if (!playerReady || !video?.videoId || !playerRef.current) return;
+        if (!video?.videoId) {
+            loadedVideoKeyRef.current = null;
+            return;
+        }
+        if (!playerReady || !playerRef.current) return;
+        const videoKey = `${track?.id || ''}:${video.videoId}`;
+        if (loadedVideoKeyRef.current === videoKey) return;
+        loadedVideoKeyRef.current = videoKey;
         unavailableReportedRef.current = false;
         setPositionMs(0);
         setDurationMs(0);
-        if (autoplayRequested || startedRef.current) {
+        if (playbackIntent === true || (playbackIntent === null && (autoplayRequested || startedRef.current))) {
             publishPlaybackState('buffering');
             playerRef.current.loadVideoById?.(video.videoId);
         } else {
             publishPlaybackState('cued');
             playerRef.current.cueVideoById?.(video.videoId);
         }
-    }, [autoplayRequested, playerReady, video?.videoId]);
+    }, [autoplayRequested, playbackIntent, playerReady, track?.id, video?.videoId]);
+
+    useEffect(() => {
+        if (playbackIntent === null || !playerReady || !video?.videoId || !playerRef.current) return;
+        if (playbackIntent && ['paused', 'cued', 'ended'].includes(playerStateRef.current)) {
+            playerRef.current.playVideo?.();
+        } else if (!playbackIntent && ['playing', 'buffering'].includes(playerStateRef.current)) {
+            playerRef.current.pauseVideo?.();
+        }
+    }, [playbackIntent, playerReady, video?.videoId]);
 
     useEffect(() => {
         if (!playerReady || !video?.videoId || !playerRef.current) return undefined;

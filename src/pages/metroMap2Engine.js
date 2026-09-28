@@ -337,9 +337,9 @@ function roundedPathFromPoints(points) {
         }
 
         const cornerRadius = Math.min(
-            current.isStation ? 15 : 26,
-            incomingLength * 0.36,
-            outgoingLength * 0.36,
+            current.isStation ? 28 : 48,
+            incomingLength * 0.44,
+            outgoingLength * 0.44,
         );
         const beforeCorner = {
             x: current.x + ((incoming.x / incomingLength) * cornerRadius),

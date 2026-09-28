@@ -31,9 +31,10 @@
 
 .sco-title {
     margin: 0;
+    font-family: var(--font-display, inherit);
     font-size: 1.25rem;
-    font-weight: 800;
-    letter-spacing: -0.02em;
+    font-weight: 700;
+    letter-spacing: -0.01em;
     color: #f8fafc;
 }
 
@@ -58,12 +59,16 @@
 .sco-sheet {
     position: relative;
     background: linear-gradient(175deg, rgba(17, 24, 39, 0.85) 0%, rgba(11, 17, 33, 0.92) 100%);
-    border: 1px solid rgba(139, 178, 255, 0.2);
-    border-radius: 20px;
+    border: 1px solid rgba(139, 178, 255, 0.24);
+    border-radius: 14px;
     padding: 24px 20px 22px;
-    box-shadow: 0 16px 40px rgba(3, 7, 18, 0.45);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
+    box-shadow:
+        0 24px 64px -12px rgba(2, 6, 17, 0.75),
+        0 12px 28px -6px rgba(2, 6, 17, 0.55),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1),
+        inset 0 0 20px rgba(59, 130, 246, 0.05);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
     overflow: hidden;
     transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.45s ease;
 }
@@ -144,13 +149,14 @@
     gap: 12px;
     width: 100%;
     padding: 13px 16px;
-    background: rgba(30, 41, 59, 0.5);
-    border: 1px solid rgba(148, 163, 184, 0.18);
+    background: rgba(26, 36, 54, 0.65);
+    border: 1px solid rgba(148, 163, 184, 0.2);
     border-radius: 14px;
     color: #e2e8f0;
     font-size: 0.9rem;
     font-weight: 600;
     text-align: left;
+    box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06);
     cursor: pointer;
     transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     -webkit-tap-highlight-color: transparent;
@@ -158,9 +164,10 @@
 
 .sco-chip-btn:hover,
 .sco-chip-btn:focus-visible {
-    background: rgba(59, 130, 246, 0.18);
-    border-color: rgba(96, 165, 250, 0.45);
-    transform: translateY(-1px);
+    background: rgba(59, 130, 246, 0.22);
+    border-color: rgba(96, 165, 250, 0.5);
+    box-shadow: 0 8px 20px -4px rgba(37, 99, 235, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    transform: translateY(-1.5px);
 }
 
 .sco-chip-btn:active {
@@ -225,12 +232,12 @@
 
 /* STEP 2: ARCHETYPE MIRROR */
 .sco-mirror-card {
-    background: linear-gradient(160deg, rgba(30, 58, 138, 0.3) 0%, rgba(15, 23, 42, 0.65) 100%);
-    border: 1px solid rgba(96, 165, 250, 0.3);
-    border-radius: 16px;
+    background: linear-gradient(160deg, rgba(30, 58, 138, 0.35) 0%, rgba(15, 23, 42, 0.75) 100%);
+    border: 1px solid rgba(96, 165, 250, 0.35);
+    border-radius: 14px;
     padding: 20px 18px;
     margin-bottom: 20px;
-    box-shadow: inset 0 0 24px rgba(59, 130, 246, 0.08);
+    box-shadow: 0 12px 28px -6px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.12), inset 0 0 24px rgba(59, 130, 246, 0.12);
 }
 
 .sco-mirror-card__badge {
@@ -294,10 +301,11 @@
     display: flex;
     flex-direction: column;
     text-align: left;
-    background: linear-gradient(160deg, rgba(26, 38, 64, 0.7) 0%, rgba(13, 20, 36, 0.85) 100%);
-    border: 1px solid rgba(148, 163, 184, 0.2);
-    border-radius: 16px;
+    background: linear-gradient(160deg, rgba(26, 38, 64, 0.75) 0%, rgba(13, 20, 36, 0.9) 100%);
+    border: 1px solid rgba(148, 163, 184, 0.22);
+    border-radius: 14px;
     padding: 16px 18px;
+    box-shadow: 0 4px 14px -3px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.08);
     cursor: pointer;
     transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     -webkit-tap-highlight-color: transparent;
@@ -319,7 +327,7 @@
 .sco-shift-card:focus-visible {
     border-color: var(--sco-accent);
     transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35), 0 0 16px rgba(var(--sco-accent), 0.18);
+    box-shadow: 0 12px 28px -4px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 0 16px rgba(var(--sco-accent), 0.2);
 }
 
 .sco-shift-card:active {

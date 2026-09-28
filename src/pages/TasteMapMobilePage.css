@@ -15,14 +15,14 @@
 .tmm-root button:focus-visible, .tmm-root a:focus-visible { outline: 2px solid #b8cdf1; outline-offset: 4px; }
 .tmm-shell { max-width: 460px; margin: 0 auto; }
 .tmm-appbar { display: flex; align-items: center; justify-content: space-between; height: 44px; }
-.tmm-brand { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 650; letter-spacing: .2em; color: inherit; text-decoration: none; }
+.tmm-brand { display: flex; align-items: center; gap: 10px; font-family: var(--font-display, var(--font-main)); font-size: 15px; font-weight: 700; letter-spacing: .24em; color: inherit; text-decoration: none; }
 .tmm-brand-mark { position: relative; display: block; width: 18px; height: 18px; border: 1px solid #a9bbd4; transform: rotate(45deg); border-radius: 5px 0; }
 .tmm-brand-mark::after { content: ''; position: absolute; width: 4px; height: 4px; background: #d6e3f8; border-radius: 50%; inset: 6px; }
 .tmm-language { height: 44px; width: 44px; border: 1px solid #26313f; border-radius: 50%; background: transparent; color: #b7c6da; font-size: 11px; letter-spacing: .08em; }
 .tmm-living { height: clamp(370px, 56svh, 600px); display: grid; grid-template-rows: auto minmax(0, 1fr) auto; padding-top: 28px; }
 .tmm-living-heading { text-align: center; position: relative; z-index: 1; }
 .tmm-eyebrow { font-size: 9px; letter-spacing: .24em; color: #8c9fbc; }
-.tmm-living h1 { margin: 12px 0 8px; font-size: clamp(24px, 6.5vw, 30px); font-weight: 450; letter-spacing: -.045em; line-height: 1.3; }
+.tmm-living h1 { margin: 12px 0 8px; font-family: var(--font-display, var(--font-main)); font-size: clamp(24px, 6.5vw, 30px); font-weight: 600; letter-spacing: -.03em; line-height: 1.3; }
 .tmm-living-heading p { color: var(--tmm-muted); font-size: 12px; letter-spacing: -.015em; }
 .tmm-avatar-stage { min-height: 0; position: relative; width: calc(100% + 24px); margin-left: -12px; }
 .tmm-region-signals { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px 14px; min-height: 28px; }
@@ -76,7 +76,7 @@
 .tmm-menu summary { list-style: none; width: 44px; height: 44px; display: grid; place-items: center; cursor: pointer; font-size: 26px; color: #aabbd2; }
 .tmm-menu summary::-webkit-details-marker { display: none; }
 .tmm-menu summary:focus-visible { outline: 2px solid #b8cdf1; outline-offset: 2px; border-radius: 50%; }
-.tmm-menu-panel { position: absolute; right: 0; top: 48px; min-width: 180px; display: grid; gap: 4px; padding: 10px; border: 1px solid #293646; border-radius: 16px; background: #101722; box-shadow: 0 16px 48px #0006; }
+.tmm-menu-panel { position: absolute; right: 0; top: 48px; min-width: 180px; display: grid; gap: 4px; padding: 10px; border: 1px solid rgba(160, 190, 245, 0.2); border-radius: 14px; background: rgba(16, 23, 34, 0.96); box-shadow: 0 20px 48px -10px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.1); backdrop-filter: blur(20px); }
 .tmm-menu-panel button, .tmm-menu-panel .sa-account-button { min-height: 44px; width: 100%; padding: 10px 12px; border: 0; background: none; color: #c1cfe2; text-align: left; font-size: 13px; }
 .tmm-living { height: max(390px, calc(100svh - 240px)); max-height: 760px; padding-top: 30px; }
 .tmm-living h1 { margin: 10px 0 0; font-size: 24px; font-weight: 400; }
@@ -87,7 +87,7 @@
 .tmm-library-count { margin: 12px 0 26px; text-align: center; color: #74859c; font-size: 10px; letter-spacing: .06em; }
 .tmm-progress { text-align: center; font-size: 11px; color: #91a4c0; }
 .tmm-primary-actions { display: grid; justify-items: center; gap: 8px; }
-.tmm-export { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 48px; padding: 12px 28px; border: 1px solid #374357; border-radius: 28px; background: #141e2d; color: #d4e1f3; font-size: 12px; }
+.tmm-export { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 48px; padding: 12px 28px; border: 1px solid #374357; border-radius: 14px; background: #141e2d; color: #d4e1f3; font-size: 12px; box-shadow: 0 4px 14px -2px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.08); }
 .tmm-export svg { width: 17px; height: 17px; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
 .tmm-export:disabled { opacity: .5; cursor: wait; }
 .tmm-explore-toggle { min-height: 44px; padding: 10px 20px; color: #8396af; background: none; border: 0; font-size: 11px; }
@@ -96,14 +96,14 @@
 #tmm-exploration[hidden] { display: none; }
 .tmm-session-note { text-align: center; color: #78889f; font-size: 10px; margin: 16px 0; }
 .tmm-export-error { color: #e4adad; text-align: center; font-size: 12px; }
-.tmm-export-dialog { width: min(440px, calc(100vw - 32px)); max-height: 90dvh; padding: 16px; border: 1px solid #344155; border-radius: 20px; background: #101722; color: #d4e1f3; overflow: auto; }
+.tmm-export-dialog { width: min(440px, calc(100vw - 32px)); max-height: 90dvh; padding: 16px; border: 1px solid rgba(160, 190, 245, 0.25); border-radius: 14px; background: #101722; color: #d4e1f3; overflow: auto; box-shadow: 0 28px 70px -12px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.12); }
 .tmm-export-dialog::backdrop { background: #02050bd9; backdrop-filter: blur(8px); }
 .tmm-export-dialog header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
 .tmm-export-dialog h2 { font-size: 14px; font-weight: 500; }
 .tmm-export-dialog header button { width: 44px; height: 44px; font-size: 24px; background: none; border: 0; color: inherit; }
 .tmm-export-dialog > img { display: block; width: 100%; max-height: 58dvh; object-fit: contain; border-radius: 8px; }
 .tmm-export-options { display: flex; gap: 10px; margin-top: 16px; }
-.tmm-export-options a, .tmm-export-options button { flex: 1; display: grid; place-items: center; min-height: 48px; border: 1px solid #3c4b61; border-radius: 12px; background: #1c2a40; color: #e6edf8; font-size: 13px; text-decoration: none; }
+.tmm-export-options a, .tmm-export-options button { flex: 1; display: grid; place-items: center; min-height: 48px; border: 1px solid #3c4b61; border-radius: 10px; background: #1c2a40; color: #e6edf8; font-size: 13px; text-decoration: none; }
 .tmm-export-dialog > p { margin-top: 14px; color: #91a1b7; font-size: 11px; text-align: center; line-height: 1.6; }
 @media (max-height: 650px) { .tmm-living { height: max(320px, calc(100svh - 210px)); padding-top: 16px; } .tmm-library-count { margin-bottom: 16px; } }
 
@@ -121,11 +121,11 @@
 .tmm-space-past { filter: saturate(.55); }
 .tmm-space-dust { position: absolute; inset: 12% 5% 20%; pointer-events: none; opacity: .45; background-image: radial-gradient(circle at 12% 22%, #bfd3ff 0 1px, transparent 1.5px), radial-gradient(circle at 87% 67%, #afc6ff 0 1px, transparent 1.5px), radial-gradient(circle at 68% 16%, #afc6ff 0 .7px, transparent 1.2px), radial-gradient(circle at 32% 78%, #afc6ff 0 .7px, transparent 1.2px); animation: tmm-float 18s ease-in-out infinite alternate; }
 @keyframes tmm-float { to { transform: translate3d(6px, -9px, 0) scale(1.05); opacity: .7; } }
-.tmm-space-controls { position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; border: 1px solid #a6b9ed18; border-radius: 30px; background: #111928aa; }
+.tmm-space-controls { position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; border: 1px solid rgba(166, 185, 237, 0.18); border-radius: 14px; background: rgba(17, 25, 40, 0.88); box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.08); backdrop-filter: blur(16px); }
 .tmm-space-controls button { background: none; border: none; color: #9caecb; min-width: 44px; min-height: 44px; font-size: 16px; }
 .tmm-space-controls button:nth-child(2) { font-size: 10px; padding: 0 10px; white-space: nowrap; }
 .tmm-space-hint { position: absolute; bottom: 0; width: 100%; text-align: center; color: #8292ae; font-size: 9px; margin: 0; }
-.tmm-reflection { margin-top: 30px; padding: 25px 22px; border: 1px solid #a9b9e01c; border-radius: 24px; background: linear-gradient(135deg, #1c263944, #11172466); }
+.tmm-reflection { margin-top: 30px; padding: 25px 22px; border: 1px solid rgba(169, 185, 224, 0.16); border-radius: 14px; background: linear-gradient(135deg, rgba(28, 38, 57, 0.45), rgba(17, 23, 36, 0.7)); box-shadow: 0 16px 40px -8px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.07); backdrop-filter: blur(16px); }
 .tmm-section-label { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .tmm-section-label > span:last-child { color: #8391ac; font-size: 9px; font-variant-numeric: tabular-nums; }
 .tmm-reflection h2 { margin: 20px 0 12px; font-size: 22px; line-height: 1.55; font-weight: 450; letter-spacing: -.04em; word-break: keep-all; }
@@ -147,10 +147,13 @@
 .tmm-comparison input:focus-visible { outline: 2px solid #b8cdf1; outline-offset: 3px; }
 .tmm-time-labels { display: flex; justify-content: space-between; }
 .tmm-time-labels button { min-height: 44px; border: none; background: none; padding: 0 8px; color: #a6b7d0; font-size: 10px; }
-.tmm-selected { display: flex; align-items: center; gap: 12px; padding: 18px; border: 1px solid #6f86b444; border-radius: 18px; background: #172133; }
-.tmm-selected > div { flex: 1; min-width: 0; }
+.tmm-selected { display: grid; gap: 14px; padding: 18px; border: 1px solid rgba(111, 134, 180, 0.35); border-radius: 14px; background: #172133; box-shadow: 0 12px 30px -6px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08); scroll-margin-block: 20px; }
+.tmm-selected-head { display: flex; align-items: flex-start; gap: 12px; }
+.tmm-selected-copy { flex: 1; min-width: 0; }
 .tmm-selected h2 { font-size: 16px; margin: 8px 0; overflow-wrap: anywhere; }.tmm-selected p { color: #9aaac2; font-size: 11px; }
-.tmm-selected button { min-height: 44px; min-width: 44px; color: #d5e4fa; background: none; border: none; white-space: nowrap; }
+.tmm-selected button { min-height: 44px; color: #d5e4fa; border: none; }
+.tmm-selected-close { flex: 0 0 44px; background: none; font-size: 22px; }
+.tmm-selected-listen { width: 100%; padding: 10px 14px; border-radius: 10px; background: #2d4162; font-size: 13px; font-weight: 600; }
 .tmm-primary-actions { padding-top: 16px; }.tmm-explore-toggle { font-size: 12px; color: #b8c4dc; }
 .lc-star[role="button"] { cursor: pointer; }.lc-star[role="button"]:focus { outline: none; }.lc-star[role="button"]:focus-visible > circle { stroke: #fff; stroke-width: 1; }
 @media (prefers-reduced-motion: reduce) { .tmm-space-dust { animation: none; }.tmm-space-world { transform-style: flat; } }

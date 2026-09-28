@@ -1,5 +1,6 @@
 :root {
-  --font-main: "Pretendard Variable", "Pretendard", -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", "Noto Sans KR", sans-serif;
+  --font-display: "Syne", "Space Grotesk", "Pretendard Variable", "Pretendard", sans-serif;
+  --font-main: "Space Grotesk", "Pretendard Variable", "Pretendard", -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", "Noto Sans KR", sans-serif;
   --bg-color: #f2f4f6;
   --surface-color: #ffffff;
   --surface-color-light: #f9fafb;

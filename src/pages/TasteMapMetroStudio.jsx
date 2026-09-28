@@ -45,208 +45,208 @@ function getTrainSpeed(train) {
 
 const COPY = {
     ko: {
-        studio: 'METRO MAP 2 · STUDIO',
-        newMetro: '새 노선도',
+        studio: 'CELESTIAL MAP · CONSTELLATION',
+        newMetro: '새 별자리 지도',
         close: '닫기',
-        mapName: '노선도 이름',
-        createTitle: '나의 음악으로 새로운 도시를 만드세요',
-        createDescription: '취향별 노선을 고르거나, 한 곡에서 시작해 장르 노선을 방사형으로 펼칠 수 있어요.',
-        tasteMode: '취향 노선으로 만들기',
-        tasteModeDesc: 'Taste Field에서 분류된 취향을 노선으로 사용합니다.',
-        seedMode: '한 곡에서 뻗어나가기',
-        seedModeDesc: '선택한 곡을 중심역으로 두고 장르별 노선을 펼칩니다.',
-        chooseLines: '포함할 취향 노선',
+        mapName: '별자리 지도 이름',
+        createTitle: '나의 음악으로 새로운 별자리를 만들어 보세요',
+        createDescription: '취향별 궤도를 엮거나, 중심별 한 곡에서 시작해 장르 궤도를 방사형으로 펼칠 수 있어요.',
+        tasteMode: '취향 별자리로 엮기',
+        tasteModeDesc: 'Taste Field에서 분류된 취향을 별자리 궤도로 사용합니다.',
+        seedMode: '중심별에서 뻗어나가기',
+        seedModeDesc: '선택한 곡을 중심 항성으로 두고 장르별 궤도를 펼칩니다.',
+        chooseLines: '포함할 취향 별자리',
         chooseLinesDesc: '일부만 골라도 되고, 전부 선택해도 됩니다.',
-        chooseSeed: '중심이 될 곡',
-        chooseBranches: '뻗어나갈 장르 노선',
+        chooseSeed: '중심이 될 항성(곡)',
+        chooseBranches: '뻗어나갈 장르 궤도',
         searchTrack: '곡 또는 아티스트 검색',
-        detailedSettings: '노선도 생성 상세 설정',
-        maxPerLine: '노선당 최대 역',
-        maxTotal: '전체 최대 역',
-        densityHint: '곡이 많으면 노선별 분포와 인기도를 함께 고려해 자동으로 선곡합니다.',
-        transferRule: '환승곡 정하기',
+        detailedSettings: '별자리 지도 상세 설정',
+        maxPerLine: '궤도당 최대 별',
+        maxTotal: '전체 최대 별',
+        densityHint: '곡이 많으면 궤도별 분포와 인기도를 함께 고려해 자동으로 선곡합니다.',
+        transferRule: '교차별(결절점) 정하기',
         transferAuto: '자동 선택',
         transferManual: '직접 선택',
-        transferNone: '환승 없음',
-        transferCount: '환승곡 수',
-        transferCandidates: '환승곡 후보',
-        create: '노선도 생성하기',
+        transferNone: '교차별 없음',
+        transferCount: '교차별 수',
+        transferCandidates: '교차별 후보',
+        create: '별자리 지도 만들기',
         cancel: '취소',
-        lines: '노선',
-        stations: '역',
-        transfers: '환승',
-        seed: '중심역',
-        editMap: '노선도 편집',
-        addLine: '노선 추가',
-        addTrack: '곡 추가',
-        lineEmpty: '추가할 수 있는 취향 노선이 없습니다.',
-        selectLineFirst: '먼저 곡을 추가할 노선을 선택하세요.',
+        lines: '궤도',
+        stations: '별',
+        transfers: '교차별',
+        seed: '중심별',
+        editMap: '별자리 지도 편집',
+        addLine: '궤도 추가',
+        addTrack: '별 추가',
+        lineEmpty: '추가할 수 있는 취향 궤도가 없습니다.',
+        selectLineFirst: '먼저 별을 추가할 궤도를 선택하세요.',
         availableTracks: '추가 가능한 곡',
         noTracks: '추가할 수 있는 곡이 없습니다.',
-        stationDetail: '역 정보',
-        selectStation: '노선도의 역을 선택하면 곡과 편집 옵션이 표시됩니다.',
-        makeTransfer: '환승역으로 만들기',
-        removeStation: '이 역 삭제',
-        removeLine: '노선 삭제',
+        stationDetail: '별 정보',
+        selectStation: '별자리의 별을 선택하면 곡과 편집 옵션이 표시됩니다.',
+        makeTransfer: '교차별로 만들기',
+        removeStation: '이 별 삭제',
+        removeLine: '궤도 삭제',
         duplicate: '복제',
-        deleteMap: '노선도 삭제',
-        saveSvg: 'SVG 저장',
+        deleteMap: '별자리 지도 삭제',
+        saveSvg: '별자리 지도 SVG 저장',
         fit: '맞춤',
         libraryScope: '현재 Taste Field의 곡만 사용합니다.',
         autoSaved: '이 브라우저에 자동 저장됨',
-        mapTypeTaste: '취향 조합형',
-        mapTypeSeed: '중심곡 방사형',
+        mapTypeTaste: '취향 별자리형',
+        mapTypeSeed: '중심성 방사형',
         allSelected: '전체 선택',
         clear: '선택 해제',
-        songs: '곡',
+        songs: '별',
         zoom: '배율',
-        stationRemoved: '중심역은 삭제할 수 없습니다.',
-        resetLayout: '배치 초기화',
-        trains: '열차',
-        trainControl: '열차 운행',
-        trainControlDesc: '열차를 만든 뒤 지도에서 직접 끌어 원하는 노선과 위치에 놓을 수 있어요.',
-        addTrain: '열차 놓기',
-        newTrain: '새 열차',
-        trainName: '열차 이름',
-        trainNamePlaceholder: '예: 퇴근길 열차',
-        trainColor: '열차 색상',
-        trainSpeed: '운행 속도',
+        stationRemoved: '중심별은 삭제할 수 없습니다.',
+        resetLayout: '별자리 지도 초기화',
+        trains: '혜성(보이저)',
+        trainControl: '궤도 순항',
+        trainControlDesc: '혜성을 지도에서 직접 끌어 원하는 궤도와 별에 놓아 순항시킬 수 있어요.',
+        addTrain: '혜성 띄우기',
+        newTrain: '새 혜성',
+        trainName: '혜성 이름',
+        trainNamePlaceholder: '예: 은하수 보이저',
+        trainColor: '빛무리 색상',
+        trainSpeed: '순항 속도',
         slower: '느리게',
         faster: '빠르게',
-        routeMethod: '운행 경로',
-        lineRoute: '노선 선택',
+        routeMethod: '순항 경로',
+        lineRoute: '별자리 경로 선택',
         customRoute: '직접 선택',
-        customRouteHint: '밝게 표시된 역만 다음 경유지로 선택할 수 있어요.',
-        customRouteEmpty: '지도에서 출발역을 선택하세요.',
-        customRouteInvalid: '현재 역과 바로 연결된 역을 선택해주세요.',
-        routeSongs: '경유 곡 묶음',
+        customRouteHint: '빛나는 별만 다음 경유지로 선택할 수 있어요.',
+        customRouteEmpty: '지도에서 출발별을 선택하세요.',
+        customRouteInvalid: '현재 별과 바로 연결된 별을 선택해주세요.',
+        routeSongs: '순항 곡 묶음',
         currentLocation: '현재 위치',
-        nextStation: '다음 역',
-        running: '운행 중',
+        nextStation: '다음 별',
+        running: '순항 중',
         paused: '일시 정지',
         pause: '정지',
-        resume: '출발',
-        resetTrain: '출발역으로',
-        removeTrain: '열차 삭제',
-        noTrains: '아직 운행 중인 열차가 없습니다.',
-        selectAtLeastTwo: '두 개 이상의 연결된 역이 필요합니다.',
-        removeLastStop: '마지막 역 취소',
-        playlistReady: '플레이리스트 준비됨',
-        dragTrainHint: '열차를 잡아 다른 노선이나 위치로 옮겨보세요.',
-        dropTrainHint: '놓으면 가장 가까운 노선에 붙습니다.',
-        trainMoved: '열차가 새 노선으로 이동했습니다.',
-        youtubeNoVideos: '이 노선에서 재생 가능한 YouTube 영상을 찾지 못했습니다.',
+        resume: '출항',
+        resetTrain: '출발별로',
+        removeTrain: '혜성 소멸',
+        noTrains: '아직 순항 중인 혜성이 없습니다.',
+        selectAtLeastTwo: '두 개 이상의 연결된 별이 필요합니다.',
+        removeLastStop: '마지막 별 취소',
+        playlistReady: '별자리 플레이리스트 준비됨',
+        dragTrainHint: '혜성을 잡아 다른 궤도나 별로 옮겨보세요.',
+        dropTrainHint: '놓으면 가장 가까운 궤도에 정렬됩니다.',
+        trainMoved: '혜성이 새 궤도로 진입했습니다.',
+        youtubeNoVideos: '이 궤도에서 재생 가능한 YouTube 영상을 찾지 못했습니다.',
         previousTrack: '이전 곡',
         nextTrack: '다음 곡',
         seekPlayback: '곡 재생 위치 이동',
-        routeProgress: '전체 노선 진행률',
-        oneTrainOnly: '이 지도에는 열차 한 대만 운행할 수 있습니다.',
+        routeProgress: '전체 궤도 진행률',
+        oneTrainOnly: '이 별자리 지도에는 혜성 한 개만 운항할 수 있습니다.',
         myGroup: '내 그룹',
         exportPlaylist: '내보내기',
         exportSoon: '플레이리스트 내보내기는 준비 중입니다.',
-        nowPassing: '지나는 곡',
+        nowPassing: '지나는 별',
     },
     en: {
-        studio: 'METRO MAP 2 · STUDIO',
-        newMetro: 'New metro',
+        studio: 'CELESTIAL MAP · CONSTELLATION',
+        newMetro: 'New constellation',
         close: 'Close',
         mapName: 'Map name',
-        createTitle: 'Build a new city from your music',
-        createDescription: 'Use taste groups as lines, or grow genre routes outward from one seed track.',
-        tasteMode: 'Build from taste lines',
-        tasteModeDesc: 'Use the taste groups classified in your Taste Field as routes.',
-        seedMode: 'Grow from one track',
-        seedModeDesc: 'Place one track at the center and branch out by genre.',
-        chooseLines: 'Taste lines to include',
-        chooseLinesDesc: 'Choose a few routes or include them all.',
-        chooseSeed: 'Center track',
-        chooseBranches: 'Genre branches',
+        createTitle: 'Unfold a new constellation from your music',
+        createDescription: 'Weave taste orbits, or radiate outward from one central seed star.',
+        tasteMode: 'Build from taste orbits',
+        tasteModeDesc: 'Use the taste groups classified in your Taste Field as constellation orbits.',
+        seedMode: 'Radiate from seed star',
+        seedModeDesc: 'Place one star at the center and expand outward by genre.',
+        chooseLines: 'Taste orbits to include',
+        chooseLinesDesc: 'Choose a few orbits or include them all.',
+        chooseSeed: 'Central star',
+        chooseBranches: 'Genre orbits',
         searchTrack: 'Search track or artist',
-        detailedSettings: 'Generation settings',
-        maxPerLine: 'Max stations per line',
-        maxTotal: 'Max stations overall',
-        densityHint: 'When there are too many tracks, selection balances route coverage and popularity.',
-        transferRule: 'Transfer tracks',
+        detailedSettings: 'Constellation settings',
+        maxPerLine: 'Max stars per orbit',
+        maxTotal: 'Max stars overall',
+        densityHint: 'When there are too many tracks, selection balances orbit coverage and popularity.',
+        transferRule: 'Crossing stars (Nodes)',
         transferAuto: 'Automatic',
         transferManual: 'Choose manually',
-        transferNone: 'No transfers',
-        transferCount: 'Number of transfers',
-        transferCandidates: 'Transfer candidates',
-        create: 'Create metro map',
+        transferNone: 'No crossing stars',
+        transferCount: 'Number of crossing stars',
+        transferCandidates: 'Crossing candidates',
+        create: 'Unfold constellation',
         cancel: 'Cancel',
-        lines: 'Lines',
-        stations: 'Stations',
-        transfers: 'Transfers',
-        seed: 'Seed',
-        editMap: 'Edit metro',
-        addLine: 'Add line',
-        addTrack: 'Add track',
-        lineEmpty: 'There are no more taste lines to add.',
-        selectLineFirst: 'Choose the line that should receive the track first.',
-        availableTracks: 'Available tracks',
+        lines: 'Orbits',
+        stations: 'Stars',
+        transfers: 'Nodes',
+        seed: 'Seed star',
+        editMap: 'Edit constellation',
+        addLine: 'Add orbit',
+        addTrack: 'Add star',
+        lineEmpty: 'There are no more taste orbits to add.',
+        selectLineFirst: 'Choose the orbit to receive the star first.',
+        availableTracks: 'Available stars',
         noTracks: 'There are no tracks left to add.',
-        stationDetail: 'Station detail',
-        selectStation: 'Select a station on the map to see its track and editing options.',
-        makeTransfer: 'Make transfer station',
-        removeStation: 'Remove station',
-        removeLine: 'Remove line',
+        stationDetail: 'Star detail',
+        selectStation: 'Select a star on the map to see its track and editing options.',
+        makeTransfer: 'Make crossing star',
+        removeStation: 'Remove star',
+        removeLine: 'Remove orbit',
         duplicate: 'Duplicate',
         deleteMap: 'Delete map',
-        saveSvg: 'Save SVG',
+        saveSvg: 'Save Constellation SVG',
         fit: 'Fit',
         libraryScope: 'Uses tracks from the current Taste Field.',
         autoSaved: 'Saved automatically in this browser',
-        mapTypeTaste: 'Taste mix',
+        mapTypeTaste: 'Taste constellation',
         mapTypeSeed: 'Seed radial',
         allSelected: 'Select all',
         clear: 'Clear',
-        songs: 'tracks',
+        songs: 'stars',
         zoom: 'Zoom',
-        stationRemoved: 'The seed station cannot be removed.',
+        stationRemoved: 'The seed star cannot be removed.',
         resetLayout: 'Reset layout',
-        trains: 'Trains',
-        trainControl: 'Train service',
-        trainControlDesc: 'Create a train, then drag it directly onto any line and position on the map.',
-        addTrain: 'Place train',
-        newTrain: 'New train',
-        trainName: 'Train name',
-        trainNamePlaceholder: 'e.g. Evening train',
-        trainColor: 'Train color',
-        trainSpeed: 'Travel speed',
+        trains: 'Comet (Voyager)',
+        trainControl: 'Orbital Voyage',
+        trainControlDesc: 'Drag the comet directly onto any orbit and star to voyage across your music cosmos.',
+        addTrain: 'Launch comet',
+        newTrain: 'New comet',
+        trainName: 'Comet name',
+        trainNamePlaceholder: 'e.g. Milky Way Voyager',
+        trainColor: 'Aura color',
+        trainSpeed: 'Voyage speed',
         slower: 'Slower',
         faster: 'Faster',
-        routeMethod: 'Journey route',
-        lineRoute: 'Choose a line',
-        customRoute: 'Pick stations',
-        customRouteHint: 'Only the brightly marked stations can be chosen as the next stop.',
-        customRouteEmpty: 'Choose the first station on the map.',
-        customRouteInvalid: 'Choose a station directly connected to the current stop.',
-        routeSongs: 'Route song bundle',
-        currentLocation: 'Current position',
-        nextStation: 'Next station',
-        running: 'Running',
+        routeMethod: 'Voyage route',
+        lineRoute: 'Choose an orbit',
+        customRoute: 'Pick stars',
+        customRouteHint: 'Only glowing stars can be chosen as the next stop.',
+        customRouteEmpty: 'Choose the first star on the map.',
+        customRouteInvalid: 'Choose a star directly connected to the current node.',
+        routeSongs: 'Route star cluster',
+        currentLocation: 'Current coordinates',
+        nextStation: 'Next star',
+        running: 'Voyaging',
         paused: 'Paused',
         pause: 'Pause',
-        resume: 'Depart',
-        resetTrain: 'Back to start',
-        removeTrain: 'Remove train',
-        noTrains: 'There are no trains in service yet.',
-        selectAtLeastTwo: 'Choose at least two connected stations.',
-        removeLastStop: 'Undo last stop',
-        playlistReady: 'Playlist ready',
-        dragTrainHint: 'Grab a train and move it to another line or position.',
-        dropTrainHint: 'It snaps to the nearest line when dropped.',
-        trainMoved: 'Train moved to a new line.',
-        youtubeNoVideos: 'No playable YouTube videos were found on this route.',
+        resume: 'Launch',
+        resetTrain: 'Back to origin',
+        removeTrain: 'Extinguish comet',
+        noTrains: 'No comets voyaging yet.',
+        selectAtLeastTwo: 'Choose at least two connected stars.',
+        removeLastStop: 'Undo last star',
+        playlistReady: 'Constellation playlist ready',
+        dragTrainHint: 'Grab the comet and steer it to another orbit or star.',
+        dropTrainHint: 'Snaps to the nearest orbit when released.',
+        trainMoved: 'Comet entered a new orbit.',
+        youtubeNoVideos: 'No playable YouTube videos were found on this orbit.',
         previousTrack: 'Previous track',
         nextTrack: 'Next track',
         seekPlayback: 'Seek track playback',
-        routeProgress: 'Full route progress',
-        oneTrainOnly: 'Only one train can run on this map.',
+        routeProgress: 'Full orbit progress',
+        oneTrainOnly: 'Only one comet can voyage on this map.',
         myGroup: 'My group',
         exportPlaylist: 'Export',
         exportSoon: 'Playlist export is coming soon.',
-        nowPassing: 'Now passing',
+        nowPassing: 'Passing star',
     },
 };
 
@@ -742,10 +742,23 @@ function MetroTrainGlyph({ trainView, selected, dragging, onSelect, onDragStart,
                 onSelect(train.id);
             }}
         >
-            {selected || dragging ? <rect x="-29" y="-16" width="58" height="32" rx="12" fill="#ffffff" opacity={dragging ? 0.24 : 0.16} /> : null}
-            <rect x="-23" y="-11" width="46" height="22" rx="7" fill={color} stroke="#f7fbfd" strokeWidth="3" />
-            <rect x="-12" y="-4" width="21" height="8" rx="2" fill="#17242b" />
-            <circle cx="17" cy="0" r="2.5" fill="#f7fbfd" />
+            {/* Comet aura glow */}
+            <circle cx="0" cy="0" r={dragging ? 34 : 26} fill={color} opacity={dragging ? 0.32 : 0.18} />
+            {selected || dragging ? (
+                <circle cx="0" cy="0" r="22" fill="none" stroke="#ffffff" strokeWidth="2" strokeDasharray="3 3" opacity="0.8" />
+            ) : null}
+            {/* Comet ethereal tail */}
+            <path
+                d="M -32 0 L -8 -6 L 8 0 L -8 6 Z"
+                fill={color}
+                opacity="0.45"
+            />
+            {/* Comet glowing core */}
+            <circle cx="0" cy="0" r="10" fill={color} stroke="#ffffff" strokeWidth="2.5" />
+            <circle cx="0" cy="0" r="4.5" fill="#ffffff" />
+            {/* Starlight sparkles */}
+            <circle cx="-16" cy="-4" r="1.8" fill="#ffffff" opacity="0.75" />
+            <circle cx="-24" cy="3" r="1.4" fill="#ffffff" opacity="0.6" />
         </g>
     );
 }
@@ -759,12 +772,13 @@ function CurrentTrackTrainGlyph({ trainView }) {
             transform={`translate(${trainView.position.x} ${trainView.position.y}) rotate(${trainView.position.angle || 0})`}
             aria-label={trainView.train.name}
         >
-            <circle r="37" fill={color} opacity="0.12" />
-            <circle r="29" fill="none" stroke={color} strokeWidth="3" opacity="0.7" />
-            <rect x="-24" y="-12" width="48" height="24" rx="8" fill={color} stroke="#071015" strokeWidth="4" />
-            <rect x="-14" y="-6" width="28" height="11" rx="3" fill="#13202a" />
-            <circle cx="-14" cy="13" r="3.5" fill="#071015" />
-            <circle cx="14" cy="13" r="3.5" fill="#071015" />
+            <circle r="42" fill={color} opacity="0.14" />
+            <circle r="30" fill="none" stroke={color} strokeWidth="2.2" strokeDasharray="4 4" opacity="0.85" />
+            {/* Star pulse tail */}
+            <path d="M -36 0 L -10 -7 L 10 0 L -10 7 Z" fill={color} opacity="0.5" />
+            <circle r="12" fill={color} stroke="#ffffff" strokeWidth="2.5" />
+            <circle r="5" fill="#ffffff" />
+            <circle cx="0" cy="0" r="20" fill="none" stroke="#ffffff" strokeWidth="1" opacity="0.5" />
         </g>
     );
 }
@@ -824,20 +838,28 @@ function MetroMapSvg({
             fontFamily="Pretendard, system-ui, sans-serif"
         >
             <defs>
+                {/* Celestial coordinate & stardust pattern */}
                 <pattern id={`tm2-grid-${safeMapId}`} width={METRO_GRID_SIZE} height={METRO_GRID_SIZE} patternUnits="userSpaceOnUse">
-                    <path d={`M ${METRO_GRID_SIZE} 0 L 0 0 0 ${METRO_GRID_SIZE}`} fill="none" stroke="#24313a" strokeWidth="1" />
-                    <circle cx="0" cy="0" r="2.4" fill="#40515e" />
+                    <circle cx="0" cy="0" r="1.5" fill="#3a4d6b" opacity="0.35" />
+                    <circle cx={METRO_GRID_SIZE / 2} cy={METRO_GRID_SIZE / 2} r="1" fill="#6985ad" opacity="0.25" />
+                    <path d={`M ${METRO_GRID_SIZE} 0 L 0 0 0 ${METRO_GRID_SIZE}`} fill="none" stroke="#1d273a" strokeWidth="0.7" opacity="0.4" />
                 </pattern>
+                {/* Radial nebula gradient */}
+                <radialGradient id={`tm2-nebula-${safeMapId}`} cx="50%" cy="50%" r="65%">
+                    <stop offset="0%" stopColor="#141c33" stopOpacity="0.85" />
+                    <stop offset="50%" stopColor="#0b1021" stopOpacity="0.95" />
+                    <stop offset="100%" stopColor="#050814" stopOpacity="1" />
+                </radialGradient>
                 {layout.stations.map((station, stationIndex) => {
-                    const size = station.isSeed ? 54 : (station.isTransfer ? 46 : 40);
+                    const radius = station.isSeed ? 23 : (station.isTransfer ? 19 : 15);
                     return (
                         <clipPath key={station.trackId} id={`tm2-cover-${safeMapId}-${stationIndex}`}>
-                            <rect x={station.x - (size / 2) + 3} y={station.y - (size / 2) + 3} width={size - 6} height={size - 6} rx="7" />
+                            <circle cx={station.x} cy={station.y} r={radius} />
                         </clipPath>
                     );
                 })}
             </defs>
-            <rect width={layout.width} height={layout.height} fill="#0c1319" data-tm2-background="true" onClick={interactive ? onCanvasSelect : undefined} />
+            <rect width={layout.width} height={layout.height} fill={`url(#tm2-nebula-${safeMapId})`} data-tm2-background="true" onClick={interactive ? onCanvasSelect : undefined} />
             <rect width={layout.width} height={layout.height} fill={`url(#tm2-grid-${safeMapId})`} data-tm2-background="true" onClick={interactive ? onCanvasSelect : undefined} />
 
             {layout.lines.map((line) => {
@@ -855,29 +877,62 @@ function MetroMapSvg({
                         onMouseEnter={interactive ? () => onLineHover?.(line.key) : undefined}
                         onMouseLeave={interactive ? () => onLineHover?.(null) : undefined}
                     >
-                        {highlighted ? (
-                            <path d={line.pathData} fill="none" stroke={line.color} strokeWidth="18" opacity="0.16" strokeLinecap="round" strokeLinejoin="round" />
-                        ) : null}
-                        <path d={line.pathData} fill="none" stroke="#080d12" strokeWidth="13" strokeLinecap="round" strokeLinejoin="round" />
-                        <path d={line.pathData} fill="none" stroke={line.color} strokeWidth={highlighted ? 8 : 7} strokeLinecap="round" strokeLinejoin="round" />
+                        {/* Outer starlight glow */}
+                        <path
+                            d={line.pathData}
+                            fill="none"
+                            stroke={line.color}
+                            strokeWidth={highlighted ? 20 : 12}
+                            opacity={highlighted ? 0.28 : 0.12}
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                        />
+                        {/* Constellation primary link */}
+                        <path
+                            d={line.pathData}
+                            fill="none"
+                            stroke={line.color}
+                            strokeWidth={highlighted ? 4.5 : 3.2}
+                            opacity={active ? 0.95 : 0.35}
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                        />
+                        {/* Starlight inner beam */}
+                        <path
+                            d={line.pathData}
+                            fill="none"
+                            stroke="#ffffff"
+                            strokeWidth={highlighted ? 1.8 : 1.2}
+                            opacity={highlighted ? 0.9 : 0.65}
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                        />
                         <g transform={`translate(${line.labelPoint.x} ${line.labelPoint.y})`}>
                             <rect
                                 x={labelOnRight ? -(labelWidth + 30) : 30}
                                 y="-15"
                                 width={labelWidth}
                                 height="30"
-                                rx="8"
-                                fill="#111a21"
+                                rx="15"
+                                fill="#070c18"
                                 stroke={line.color}
-                                strokeWidth="2"
+                                strokeWidth="1.6"
+                                opacity="0.92"
+                            />
+                            <circle
+                                cx={labelOnRight ? -18 : 18}
+                                cy="0"
+                                r="4"
+                                fill={line.color}
                             />
                             <text
-                                x={labelOnRight ? -(labelWidth + 18) : 42}
+                                x={labelOnRight ? -(labelWidth + 16) : 42}
                                 y="5"
                                 textAnchor="start"
-                                fill="#edf2f5"
-                                fontSize="13"
-                                fontWeight="750"
+                                fill="#edf2f8"
+                                fontSize="12"
+                                fontWeight="800"
+                                letterSpacing="0.02em"
                             >
                                 {line.label.length > 18 ? `${line.label.slice(0, 17)}…` : line.label}
                             </text>
@@ -902,8 +957,7 @@ function MetroMapSvg({
                 const dragging = station.trackId === draggingStationId;
                 const focusedLineKey = selectedLineKey || hoveredLineKey;
                 const dimmed = focusedLineKey && !station.lineKeys.includes(focusedLineKey);
-                const nodeSize = station.isSeed ? 54 : (station.isTransfer ? 46 : 40);
-                const halfSize = nodeSize / 2;
+                const nodeRadius = station.isSeed ? 26 : (station.isTransfer ? 22 : 18);
                 const routeSelected = draftStationSet.has(station.trackId);
                 const routeSelectable = selectableStationSet.has(station.trackId);
                 const routeUnavailable = routePicking && !routeSelected && !routeSelectable;
@@ -942,84 +996,86 @@ function MetroMapSvg({
                     >
                         {dragging && dragSnapTarget && dragMagnetStrength > 0 ? (
                             <g className="tm2-snap-target" aria-hidden="true" opacity={0.3 + (dragMagnetStrength * 0.7)}>
-                                <circle cx={dragSnapTarget.x} cy={dragSnapTarget.y} r={halfSize + 15} fill="none" stroke={color} strokeWidth="2" strokeDasharray="4 5" />
-                                <path d={`M ${dragSnapTarget.x - halfSize - 20} ${dragSnapTarget.y} H ${dragSnapTarget.x + halfSize + 20} M ${dragSnapTarget.x} ${dragSnapTarget.y - halfSize - 20} V ${dragSnapTarget.y + halfSize + 20}`} stroke={color} strokeWidth="1.5" opacity="0.7" />
+                                <circle cx={dragSnapTarget.x} cy={dragSnapTarget.y} r={nodeRadius + 18} fill="none" stroke={color} strokeWidth="1.8" strokeDasharray="3 4" />
+                                <circle cx={dragSnapTarget.x} cy={dragSnapTarget.y} r="3" fill={color} />
                             </g>
                         ) : null}
-                        {(selected || hovered) ? (
-                            <rect
-                                x={station.x - halfSize - 7}
-                                y={station.y - halfSize - 7}
-                                width={nodeSize + 14}
-                                height={nodeSize + 14}
-                                rx="13"
-                                fill={color}
-                                opacity={selected ? 0.2 : 0.1}
-                            />
-                        ) : null}
-                        <rect
-                            x={station.x - halfSize}
-                            y={station.y - halfSize}
-                            width={nodeSize}
-                            height={nodeSize}
-                            rx="10"
-                            fill="#10181f"
-                            stroke={station.isTransfer || station.isSeed ? '#eef2f3' : color}
-                            strokeWidth={station.isTransfer || station.isSeed ? 4 : 3}
+                        {/* Outer celestial glow aura */}
+                        <circle
+                            cx={station.x}
+                            cy={station.y}
+                            r={nodeRadius + (selected ? 14 : (hovered ? 10 : 6))}
+                            fill={color}
+                            opacity={selected ? 0.36 : (hovered ? 0.24 : (station.isSeed ? 0.28 : 0.12))}
+                        />
+                        {/* Star core circular base */}
+                        <circle
+                            cx={station.x}
+                            cy={station.y}
+                            r={nodeRadius}
+                            fill="#0c1322"
+                            stroke={station.isTransfer || station.isSeed ? '#ffffff' : color}
+                            strokeWidth={selected ? 3.5 : (station.isTransfer || station.isSeed ? 3 : 2.2)}
                         />
                         {station.track.coverUrl ? (
                             <image
                                 href={station.track.coverUrl}
-                                x={station.x - halfSize + 3}
-                                y={station.y - halfSize + 3}
-                                width={nodeSize - 6}
-                                height={nodeSize - 6}
+                                x={station.x - nodeRadius + 3}
+                                y={station.y - nodeRadius + 3}
+                                width={(nodeRadius - 3) * 2}
+                                height={(nodeRadius - 3) * 2}
                                 preserveAspectRatio="xMidYMid slice"
                                 clipPath={`url(#tm2-cover-${safeMapId}-${stationIndex})`}
                             />
                         ) : (
                             <g aria-hidden="true">
-                                <rect x={station.x - halfSize + 3} y={station.y - halfSize + 3} width={nodeSize - 6} height={nodeSize - 6} rx="7" fill={color} opacity="0.34" />
-                                <text x={station.x} y={station.y + 6} textAnchor="middle" fill="#eef3f5" fontSize="18" fontWeight="750">♪</text>
+                                <circle cx={station.x} cy={station.y} r={nodeRadius - 3} fill={color} opacity="0.3" />
+                                <text x={station.x} y={station.y + 4} textAnchor="middle" fill="#ffffff" fontSize="12" fontWeight="800">★</text>
                             </g>
                         )}
-                        <rect
-                            x={station.x - halfSize}
-                            y={station.y - halfSize}
-                            width={nodeSize}
-                            height={nodeSize}
-                            rx="10"
-                            fill="none"
-                            stroke="#071015"
-                            strokeWidth="1.5"
-                            opacity="0.72"
-                        />
-                        {station.isTransfer && station.lineKeys.slice(0, 4).map((lineKey, index) => (
+                        {/* Starlight ring or seed halo */}
+                        {station.isSeed ? (
                             <circle
-                                key={lineKey}
-                                cx={station.x - (((Math.min(4, station.lineKeys.length) - 1) * 5) / 2) + (index * 5)}
-                                cy={station.y + halfSize + 6}
-                                r="3.2"
-                                fill={lineByKey.get(lineKey)?.color || color}
-                                stroke={lineByKey.get(lineKey)?.color || color}
-                                strokeWidth="1"
+                                cx={station.x}
+                                cy={station.y}
+                                r={nodeRadius + 6}
+                                fill="none"
+                                stroke="#fceabb"
+                                strokeWidth="2"
+                                strokeDasharray="4 3"
+                                opacity="0.9"
                             />
-                        ))}
-                        {station.isSeed ? <circle cx={station.x + halfSize - 2} cy={station.y - halfSize + 2} r="6" fill="#f2f5f5" stroke="#0c1319" strokeWidth="3" /> : null}
+                        ) : null}
+                        {/* Crossing star orbital dots */}
+                        {station.isTransfer && station.lineKeys.slice(0, 4).map((lineKey, index) => {
+                            const angle = (index * (Math.PI * 2)) / Math.min(4, station.lineKeys.length);
+                            const dotX = station.x + Math.cos(angle) * (nodeRadius + 4);
+                            const dotY = station.y + Math.sin(angle) * (nodeRadius + 4);
+                            return (
+                                <circle
+                                    key={lineKey}
+                                    cx={dotX}
+                                    cy={dotY}
+                                    r="3"
+                                    fill={lineByKey.get(lineKey)?.color || color}
+                                    stroke="#070c17"
+                                    strokeWidth="1.2"
+                                />
+                            );
+                        })}
                         {routeSelected ? (
-                            <circle cx={station.x + halfSize - 1} cy={station.y - halfSize + 1} r="8" fill="#75d7ff" stroke="#071015" strokeWidth="3" />
+                            <circle cx={station.x + nodeRadius - 2} cy={station.y - nodeRadius + 2} r="6" fill="#80c8ff" stroke="#050a14" strokeWidth="2.5" />
                         ) : null}
                         {routeSelectable ? (
-                            <rect
+                            <circle
                                 className="tm2-route-choice-ring"
-                                x={station.x - halfSize - 9}
-                                y={station.y - halfSize - 9}
-                                width={nodeSize + 18}
-                                height={nodeSize + 18}
-                                rx="15"
+                                cx={station.x}
+                                cy={station.y}
+                                r={nodeRadius + 9}
                                 fill="none"
-                                stroke="#91e6ff"
-                                strokeWidth="4"
+                                stroke="#80c8ff"
+                                strokeWidth="2.8"
+                                strokeDasharray="5 3"
                             />
                         ) : null}
                     </g>
@@ -1167,17 +1223,17 @@ function MiniMetroMap({
     };
 
     return (
-        <aside className="tm2-mini" aria-label={lang === 'en' ? 'Now playing metro map' : '현재 곡 미니 메트로 맵'}>
+        <aside className="tm2-mini" aria-label={lang === 'en' ? 'Now voyaging celestial map' : '현재 곡 미니 별자리 지도'}>
             <header className="tm2-mini-head">
                 <div>
-                    <span><i /> LIVE METRO</span>
-                    <strong>{map?.name || (lang === 'en' ? 'Taste Metro' : '취향 메트로')}</strong>
+                    <span><i /> CELESTIAL ORBIT</span>
+                    <strong>{map?.name || (lang === 'en' ? 'Taste Constellation' : '취향 별자리')}</strong>
                 </div>
                 <div className="tm2-mini-head-actions">
-                    <button type="button" onClick={onExpand} aria-label={lang === 'en' ? 'Open full metro map' : '메트로 맵 전체 화면'}>
+                    <button type="button" onClick={onExpand} aria-label={lang === 'en' ? 'Open full constellation map' : '별자리 지도 전체 화면'}>
                         <span aria-hidden>↗</span>
                     </button>
-                    <button type="button" onClick={onDismiss} aria-label={lang === 'en' ? 'Close mini metro map' : '미니 메트로 맵 닫기'}>×</button>
+                    <button type="button" onClick={onDismiss} aria-label={lang === 'en' ? 'Close mini map' : '미니 별자리 지도 닫기'}>×</button>
                 </div>
             </header>
 
@@ -1222,8 +1278,8 @@ function MiniMetroMap({
                     </div>
                 ) : (
                     <div className="tm2-mini-empty">
-                        <span>⌁</span>
-                        <strong>{lang === 'en' ? 'Build your first metro map' : '첫 노선도를 만들어 보세요'}</strong>
+                        <span>★</span>
+                        <strong>{lang === 'en' ? 'Build your first constellation' : '첫 별자리 지도를 만들어 보세요'}</strong>
                     </div>
                 )}
                 <div className="tm2-mini-zoom" onPointerDown={(event) => event.stopPropagation()}>
@@ -1236,11 +1292,11 @@ function MiniMetroMap({
                         <div className="tm2-mini-details-head">
                             <div>
                                 <span>{trackContext.source === 'recommendation'
-                                    ? (lang === 'en' ? 'RECOMMENDATION' : '추천 곡')
-                                    : (lang === 'en' ? 'MY TASTE FIELD' : '내 취향 필드')}</span>
-                                <strong>{trackContext.cluster?.label?.name || (lang === 'en' ? 'New territory' : '새로운 영역')}</strong>
+                                    ? (lang === 'en' ? 'RECOMMENDATION' : '추천 별')
+                                    : (lang === 'en' ? 'MY TASTE FIELD' : '내 취향 성역')}</span>
+                                <strong>{trackContext.cluster?.label?.name || (lang === 'en' ? 'New territory' : '새로운 성운')}</strong>
                             </div>
-                            <button type="button" onClick={() => setDetailsOpen(false)} aria-label={lang === 'en' ? 'Close track info' : '곡 정보 닫기'}>×</button>
+                            <button type="button" onClick={() => setDetailsOpen(false)} aria-label={lang === 'en' ? 'Close star info' : '별 정보 닫기'}>×</button>
                         </div>
                         <div className="tm2-mini-detail-values">
                             <b>{trackContext.xLabel} {trackContext.xValue}</b>
@@ -1257,13 +1313,13 @@ function MiniMetroMap({
 
             <footer className="tm2-mini-footer">
                 <div className="tm2-mini-now">
-                    {selectedTrack?.coverUrl ? <img src={selectedTrack.coverUrl} alt="" /> : <span className="tm2-mini-cover-fallback">♪</span>}
+                    {selectedTrack?.coverUrl ? <img src={selectedTrack.coverUrl} alt="" /> : <span className="tm2-mini-cover-fallback">★</span>}
                     <div>
-                        <span>{lang === 'en' ? 'TRAIN AT CURRENT TRACK' : '현재 곡 위치의 열차'}</span>
-                        <strong>{selectedTrack?.name || (lang === 'en' ? 'Select a track' : '곡을 선택하세요')}</strong>
+                        <span>{lang === 'en' ? 'VOYAGER AT CURRENT STAR' : '현재 별의 보이저'}</span>
+                        <strong>{selectedTrack?.name || (lang === 'en' ? 'Select a star' : '별을 선택하세요')}</strong>
                         <small>{selectedTrack?.artists || currentLine?.label || '-'}</small>
                     </div>
-                    <b style={{ '--tm2-current-line': currentLine?.color || '#78a8ff' }}>{currentLine?.label || (lang === 'en' ? 'Metro' : '메트로')}</b>
+                    <b style={{ '--tm2-current-line': currentLine?.color || '#78a8ff' }}>{currentLine?.label || (lang === 'en' ? 'Orbit' : '궤도')}</b>
                 </div>
                 <nav className="tm2-mini-actions" aria-label={lang === 'en' ? 'Track actions' : '곡 기능'}>
                     <button type="button" disabled={!trackContext?.cluster} onClick={onExploreTrack}>
@@ -2992,7 +3048,7 @@ export default function TasteMapMetroStudio({
                         ) : null}
 
                         <header className="tm2-map-heading">
-                            <span className="tm2-map-kicker">Metro Map 2</span>
+                            <span className="tm2-map-kicker">Constellation Map</span>
                             <input
                                 aria-label={copy.mapName}
                                 value={activeMap.name}
@@ -3000,7 +3056,7 @@ export default function TasteMapMetroStudio({
                                 onChange={(event) => updateActiveMap((map) => ({ ...map, name: event.target.value }))}
                             />
                             <p>
-                                <span>● LIVE MAP</span>
+                                <span>● LIVE CONSTELLATION</span>
                                 {activeMap.mode === 'seed' ? copy.mapTypeSeed : copy.mapTypeTaste}
                                 <b>{activeMap.lines.length} {copy.lines}</b>
                                 <b>{stationCountForMap(activeMap)} {copy.stations}</b>

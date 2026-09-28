@@ -50,6 +50,7 @@ function MobileConstellation({ tracks, status, progress, storageKey }) {
     const [exportImage, setExportImage] = useState(null);
     const [exportError, setExportError] = useState('');
     const stageRef = useRef(null);
+    const selectedTrackRef = useRef(null);
     const dialogRef = useRef(null);
     const [now] = useState(() => Date.now());
     const [stored] = useState(() => { try { return loadReflection(localStorage, storageKey); } catch { return { decisions: [], snapshot: null }; } });
@@ -70,6 +71,17 @@ function MobileConstellation({ tracks, status, progress, storageKey }) {
     const avatar = useMemo(() => buildAvatarState(taste, library, session.decisions), [taste, library, session.decisions]);
     const previous = stored.snapshot;
     const selectedTrack = uniqueTracks([...library, ...session.decisions.map((choice) => choice.track)]).find((item) => item.id === selectedId);
+    const selectedTrackId = selectedTrack?.id;
+    useEffect(() => {
+        if (!selectedTrackId) return undefined;
+        const frame = window.requestAnimationFrame(() => {
+            selectedTrackRef.current?.scrollIntoView({
+                behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth',
+                block: 'center',
+            });
+        });
+        return () => window.cancelAnimationFrame(frame);
+    }, [selectedTrackId]);
     useEffect(() => {
         if (!library.length) return undefined;
         const timer = setTimeout(() => {
@@ -220,10 +232,12 @@ function MobileConstellation({ tracks, status, progress, storageKey }) {
                 </section>
                 <p className="tmm-library-count">{en ? `${library.length.toLocaleString()} tracks, one Spectra` : `${library.length.toLocaleString()}곡이 만든 하나의 스펙트라`}</p>
                 {status === 'enriching' && <p className="tmm-progress" role="status">{en ? 'Adding stars' : '별을 더 불러오는 중'} · {progress.done}/{progress.total}</p>}
-                {selectedTrack && <aside className="tmm-selected" aria-live="polite">
-                    <div><span className="tmm-eyebrow">IN YOUR SPECTRA</span><h2>{selectedTrack.name}</h2><p>{selectedTrack.artists}</p></div>
-                    <button type="button" onClick={() => openExternal(selectedTrack)}>{en ? 'Listen ↗' : '듣기 ↗'}</button>
-                    <button type="button" aria-label={en ? 'Close track' : '곡 정보 닫기'} onClick={() => setSelectedId(null)}>×</button>
+                {selectedTrack && <aside ref={selectedTrackRef} className="tmm-selected" aria-live="polite">
+                    <div className="tmm-selected-head">
+                        <div className="tmm-selected-copy"><span className="tmm-eyebrow">IN YOUR SPECTRA</span><h2>{selectedTrack.name}</h2><p>{selectedTrack.artists}</p></div>
+                        <button className="tmm-selected-close" type="button" aria-label={en ? 'Close track' : '곡 정보 닫기'} onClick={() => setSelectedId(null)}>×</button>
+                    </div>
+                    <button className="tmm-selected-listen" type="button" onClick={() => openExternal(selectedTrack)}>{en ? 'Listen on Spotify ↗' : 'Spotify에서 듣기 ↗'}</button>
                 </aside>}
                 {/* 360° Spectra Orbit Tour Showcase */}
                 <SpectraOrbitTour
@@ -232,13 +246,7 @@ function MobileConstellation({ tracks, status, progress, storageKey }) {
                     avatar={avatar}
                     lang={lang}
                     onListen={openExternal}
-                    onSelectTrack={(trackId) => {
-                        setSelectedId(trackId);
-                        stageRef.current?.scrollIntoView({
-                            behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth',
-                            block: 'center',
-                        });
-                    }}
+                    onSelectTrack={setSelectedId}
                     onCameraChange={setTourCameraTarget}
                 />
 

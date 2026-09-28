@@ -1,0 +1,354 @@
+/* ==========================================================================
+   Constellation Cluster Popup (Track Constellation Preview & Voyage Launcher)
+   ========================================================================== */
+
+.ccp-card {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    width: 380px;
+    max-width: calc(100vw - 32px);
+    max-height: calc(100dvh - 48px);
+    overflow-y: auto;
+    z-index: 920;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+    background: rgba(11, 17, 33, 0.94);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.13);
+    border-radius: 14px;
+    box-shadow:
+        0 24px 60px rgba(0, 0, 0, 0.72),
+        0 0 32px rgba(100, 150, 255, 0.16),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    color: #f8fafc;
+    animation: ccp-slide-up 320ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    user-select: none;
+}
+
+@keyframes ccp-slide-up {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.97);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Header & Constellation Pill Badge */
+.ccp-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.ccp-badge-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    flex: 1;
+}
+
+.ccp-constellation-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--ccp-accent, #93c5fd);
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    box-shadow: 0 0 12px rgba(147, 197, 253, 0.2);
+}
+
+.ccp-symbol {
+    font-size: 13px;
+    display: inline-flex;
+    align-items: center;
+}
+
+.ccp-essence-text {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.6);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ccp-close-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.75);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background 160ms, color 160ms, transform 160ms;
+}
+
+.ccp-close-btn:hover {
+    background: rgba(255, 255, 255, 0.18);
+    color: #ffffff;
+    transform: scale(1.08);
+}
+
+/* Constellation Canvas Preview */
+.ccp-constellation-canvas {
+    position: relative;
+    width: 100%;
+    height: 190px;
+    border-radius: 12px;
+    background: radial-gradient(circle at 50% 50%, rgba(20, 32, 60, 0.6) 0%, rgba(8, 12, 24, 0.85) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    box-shadow: inset 0 4px 18px rgba(0, 0, 0, 0.42), inset 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 0 rgba(235, 242, 255, 0.06);
+    overflow: hidden;
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) auto;
+    gap: 8px;
+    padding: 10px 10px 12px;
+}
+
+.ccp-constellation-svg {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    pointer-events: none;
+}
+
+/* Star pulse ring animation */
+.ccp-pulse-ring {
+    transform-origin: center;
+    animation: ccp-pulse-expand 2.2s infinite cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes ccp-pulse-expand {
+    0% {
+        r: 6;
+        opacity: 0.9;
+    }
+    50% {
+        r: 22;
+        opacity: 0.25;
+    }
+    100% {
+        r: 28;
+        opacity: 0;
+    }
+}
+
+.ccp-display-name {
+    margin: 0;
+    padding: 0 10px;
+    font-size: 14px;
+    line-height: 1.3;
+    font-weight: 650;
+    color: #edf4ff;
+    text-align: center;
+    letter-spacing: 0.01em;
+}
+
+/* Track Box (Prescribed Track Card) */
+.ccp-track-box {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 12px;
+    box-shadow: 0 9px 22px -8px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(235, 242, 255, 0.08);
+}
+
+.ccp-track-info-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.ccp-track-cover {
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
+    object-fit: cover;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    flex-shrink: 0;
+}
+
+.ccp-track-cover--fallback {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.ccp-track-meta {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.ccp-track-eyebrow {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--ccp-accent, #93c5fd);
+    text-transform: uppercase;
+}
+
+.ccp-track-name {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: #ffffff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.3;
+}
+
+.ccp-track-artist {
+    margin: 0;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.55);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Voyage Launch CTA Button */
+.ccp-voyage-launch-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 44px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.07);
+    color: #edf3ff;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 6px 14px -5px rgba(0, 0, 0, 0.52), inset 0 1px 0 rgba(235, 242, 255, 0.13);
+    transition: background 160ms, transform 160ms;
+}
+
+.ccp-voyage-launch-btn:hover {
+    background: rgba(255, 255, 255, 0.14);
+}
+
+.ccp-voyage-launch-btn:active {
+    transform: translateY(1px);
+}
+
+.ccp-voyage-launch-icon {
+    font-size: 13px;
+}
+
+.ccp-primary-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 8px;
+}
+
+.ccp-listen-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 44px;
+    padding: 8px 10px;
+    border: 0;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--ccp-accent, #3b82f6), #6366f1);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 9px 20px -7px rgba(64, 77, 187, 0.62), inset 0 1px 0 rgba(255, 255, 255, 0.23);
+}
+
+.ccp-listen-btn:hover { filter: brightness(1.1); }
+.ccp-listen-btn:active { transform: translateY(1px); }
+
+/* Secondary Quick Action Bar */
+.ccp-action-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    padding-top: 4px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.ccp-action-label {
+    flex-basis: 100%;
+    color: rgba(255, 255, 255, 0.52);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+}
+
+.ccp-action-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 36px;
+    padding: 7px 10px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    box-shadow: 0 5px 12px -5px rgba(0, 0, 0, 0.52), inset 0 1px 0 rgba(235, 242, 255, 0.1);
+    transition: background 140ms, color 140ms, border-color 140ms;
+}
+
+.ccp-action-chip:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.12);
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.ccp-action-chip:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.ccp-card button:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+}
+
+/* Responsive adjustment for Mobile */
+@media (max-width: 640px) {
+    .ccp-card {
+        bottom: 16px;
+        right: 12px;
+        left: 12px;
+        width: auto;
+        max-width: none;
+        max-height: calc(100dvh - 32px);
+    }
+}

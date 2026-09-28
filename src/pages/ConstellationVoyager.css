@@ -1,0 +1,513 @@
+/* ════════════════════════════════════════════════════════════
+   CONSTELLATION VOYAGER (Spaceship Cruise & Star Playback)
+   ════════════════════════════════════════════════════════════ */
+
+/* Dimming for elements outside the active constellation in voyage mode */
+.tm-root.is-voyage-mode .tm-bubble-item:not(.tm-voyage-star) {
+    opacity: 0.08 !important;
+    filter: blur(1.5px) grayscale(0.5);
+    pointer-events: none !important;
+    transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), filter 0.6s ease;
+}
+
+.tm-root.is-voyage-mode .tm-bubble-item.tm-voyage-star {
+    opacity: 1 !important;
+    z-index: 10;
+    transition: opacity 0.4s ease, transform 0.3s ease;
+}
+
+.tm-root.is-voyage-mode .tm-bubble-item.tm-voyage-star:hover {
+    transform: scale(1.18);
+    filter: drop-shadow(0 0 16px rgba(120, 200, 255, 0.8));
+    cursor: pointer;
+}
+
+/* Hide ambient UI / bottom dock / controls when voyage HUD is active */
+.tm-root.is-voyage-mode .tm-axis-panel,
+.tm-root.is-voyage-mode .tm-header,
+.tm-root.is-voyage-mode .tm-playback-dock,
+.tm-root.is-voyage-mode .tm-group-panel,
+.tm-root.is-voyage-mode .tm-map-tag-strip,
+.tm-root.is-voyage-mode .tm-bubble-map-controls,
+.tm-root.is-voyage-mode .tm-navigator-dock,
+.tm-root.is-voyage-mode .tm-zoom-indicator,
+.tm-root.is-voyage-mode .tm-region-label-layer,
+.tm-root.is-voyage-mode .tm-heatmap-layer,
+.tm-root.is-voyage-mode .tm-discovery-lens,
+.tm-root.is-voyage-mode .tm-node-detail-card,
+.tm-root.is-voyage-mode .tm2-mini,
+.tm-root.is-voyage-mode .tm2-studio {
+    display: none !important;
+}
+
+/* Constellation line highlighting in voyage mode */
+.tm-root.is-voyage-mode .tm-constellation-lines line:not(.is-voyage-edge) {
+    opacity: 0.02 !important;
+    transition: opacity 0.5s ease;
+}
+
+.tm-root.is-voyage-mode .tm-constellation-lines line.is-voyage-edge {
+    stroke-width: 2.4 !important;
+    opacity: 0.95 !important;
+    filter: drop-shadow(0 0 8px var(--tm-constellation-color, rgba(112, 214, 255, 0.8)));
+    animation: tm-voyage-line-pulse 3s ease-in-out infinite alternate;
+}
+
+@keyframes tm-voyage-line-pulse {
+    0% {
+        stroke-width: 2px;
+        opacity: 0.85;
+    }
+    100% {
+        stroke-width: 3.2px;
+        opacity: 1;
+        filter: drop-shadow(0 0 14px var(--tm-constellation-color, rgba(160, 220, 255, 0.95)));
+    }
+}
+
+/* Star highlighting & background dimming in voyage mode */
+.tm-root.is-voyage-mode .tm-bubble-item.is-voyage-dimmed {
+    opacity: 0.12 !important;
+    pointer-events: none;
+    filter: blur(0.4px);
+    transition: opacity 0.5s ease, filter 0.5s ease;
+}
+
+.tm-root.is-voyage-mode .tm-bubble-item.tm-voyage-star {
+    opacity: 1 !important;
+    z-index: 80 !important;
+    transition: opacity 0.4s ease;
+}
+
+.tm-root.is-voyage-mode .tm-bubble-item.tm-voyage-star .tm-bubble-float {
+    filter: drop-shadow(0 0 12px var(--tm-bubble-color, rgba(147, 197, 253, 0.75)));
+}
+
+.tm-root.is-voyage-mode .tm-bubble-item.is-voyage-active-star {
+    z-index: 100 !important;
+}
+
+.tm-root.is-voyage-mode .tm-bubble-item.is-voyage-active-star .tm-bubble-float {
+    animation: cv-active-star-pulse 2s infinite ease-in-out;
+}
+
+@keyframes cv-active-star-pulse {
+    0% {
+        transform: scale(1);
+        filter: drop-shadow(0 0 10px #ffffff);
+    }
+    50% {
+        transform: scale(1.18);
+        filter: drop-shadow(0 0 22px #ffffff) drop-shadow(0 0 35px var(--tm-bubble-color, #70d6ff));
+    }
+    100% {
+        transform: scale(1);
+        filter: drop-shadow(0 0 10px #ffffff);
+    }
+}
+
+/* ── Spaceship & Thruster Animation ── */
+.cv-spaceship {
+    pointer-events: none;
+}
+
+.cv-thruster-flame {
+    animation: cv-flame-flicker 120ms infinite alternate ease-in-out;
+    transform-origin: center top;
+}
+
+@keyframes cv-flame-flicker {
+    0% {
+        opacity: 0.8;
+        transform: scaleY(0.9) scaleX(0.95);
+    }
+    100% {
+        opacity: 1;
+        transform: scaleY(1.3) scaleX(1.1);
+    }
+}
+
+/* ── Active Star Pulse Waves ── */
+.cv-star-pulse-ring,
+.cv-star-pulse-ring-outer {
+    transform-box: fill-box;
+    transform-origin: center;
+    pointer-events: none;
+}
+
+.cv-star-pulse-ring {
+    animation: cv-ring-expand 2.2s cubic-bezier(0.2, 0.8, 0.25, 1) infinite;
+}
+
+.cv-star-pulse-ring-outer {
+    animation: cv-ring-expand 2.2s cubic-bezier(0.2, 0.8, 0.25, 1) infinite 0.6s;
+}
+
+@keyframes cv-ring-expand {
+    0% {
+        transform: scale(0.65);
+        opacity: 0.9;
+        stroke-width: 2px;
+    }
+    100% {
+        transform: scale(2.4);
+        opacity: 0;
+        stroke-width: 0.5px;
+    }
+}
+
+/* ── Top Constellation Banner (Header) ── */
+.cv-header-banner {
+    position: fixed;
+    top: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 80;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 10px 18px 10px 14px;
+    border: 1px solid rgba(160, 190, 245, 0.22);
+    border-radius: 14px;
+    background: radial-gradient(circle at 10% 0%, rgba(120, 168, 255, 0.12), transparent 45%), rgba(9, 13, 22, 0.92);
+    box-shadow: 0 20px 48px -10px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(24px) saturate(130%);
+    animation: cv-slide-down 350ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes cv-slide-down {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -18px) scale(0.96);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, 0) scale(1);
+    }
+}
+
+.cv-badge-icon {
+    width: 30px;
+    height: 30px;
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+    border: 1px solid rgba(125, 211, 252, 0.4);
+    border-radius: 9px;
+    background: rgba(56, 189, 248, 0.1);
+    color: #7dd3fc;
+}
+
+.cv-icon {
+    display: block;
+    width: 18px;
+    height: 18px;
+    flex: 0 0 auto;
+}
+
+.cv-badge-icon .cv-icon {
+    width: 19px;
+    height: 19px;
+}
+
+.cv-cruise-toggle-btn .cv-icon {
+    width: 16px;
+    height: 16px;
+}
+
+.cv-header-titles {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.cv-constellation-title {
+    font-family: var(--tm-font-display, var(--tm-font-en));
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: #f1f5f9;
+}
+
+.cv-constellation-subtitle {
+    font-family: var(--tm-font-ui);
+    font-size: 11px;
+    font-weight: 500;
+    color: #94a3b8;
+}
+
+.cv-star-counter {
+    margin-left: 6px;
+    padding: 2px 7px;
+    border-radius: 6px;
+    background: rgba(56, 189, 248, 0.14);
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    color: #7dd3fc;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ── Top-right Exit Button ── */
+.cv-exit-btn {
+    position: fixed;
+    top: 24px;
+    right: 24px;
+    z-index: 80;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    height: 40px;
+    padding: 0 16px;
+    border: 1px solid rgba(160, 190, 245, 0.2);
+    border-radius: 14px;
+    background: rgba(13, 17, 26, 0.92);
+    color: #cbd5e1;
+    font-size: 12px;
+    font-weight: 600;
+    box-shadow: 0 16px 36px -8px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(20px);
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cv-exit-btn:hover {
+    color: #ffffff;
+    border-color: rgba(160, 190, 245, 0.4);
+    background: rgba(22, 28, 42, 0.95);
+    transform: translateY(-1.5px);
+    box-shadow: 0 20px 44px -8px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.cv-exit-btn:active {
+    transform: translateY(0.5px);
+}
+
+.cv-exit-key {
+    font-size: 9px;
+    padding: 2px 5px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    color: #94a3b8;
+    letter-spacing: 0.06em;
+}
+
+/* ── Bottom Voyager HUD Dock ── */
+.cv-dock {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 80;
+    width: min(720px, calc(100vw - 32px));
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 18px;
+    border: 1px solid rgba(160, 190, 245, 0.22);
+    border-radius: 14px;
+    background: radial-gradient(circle at 15% 0%, rgba(120, 168, 255, 0.1), transparent 50%), rgba(10, 15, 25, 0.94);
+    box-shadow: 0 26px 64px -12px rgba(0, 0, 0, 0.75), 0 12px 28px -6px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.09);
+    backdrop-filter: blur(28px) saturate(135%);
+    animation: cv-slide-up 350ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes cv-slide-up {
+    from {
+        opacity: 0;
+        transform: translate(-50%, 24px) scale(0.96);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, 0) scale(1);
+    }
+}
+
+/* Left: Track Information */
+.cv-track-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+
+.cv-track-cover {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    overflow: hidden;
+    flex-shrink: 0;
+    background: #182234;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+.cv-track-cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.cv-track-texts {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    gap: 3px;
+}
+
+.cv-track-title {
+    font-family: var(--tm-font-display, var(--tm-font-en));
+    font-size: 13.5px;
+    font-weight: 700;
+    color: #ffffff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.cv-track-artist {
+    font-family: var(--tm-font-ui);
+    font-size: 11.5px;
+    color: #94a3b8;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Center: Voyage Cruise Controls */
+.cv-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.cv-ctrl-btn {
+    width: 36px;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 10px;
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.035));
+    color: #cbd5e1;
+    font-size: 14px;
+    cursor: pointer;
+    box-shadow: 0 6px 14px -5px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(235, 242, 255, 0.13);
+    transition: all 0.16s ease;
+}
+
+.cv-ctrl-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: #ffffff;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.cv-ctrl-btn:active {
+    transform: translateY(1px);
+}
+
+.cv-ctrl-btn:disabled {
+    opacity: 0.38;
+    cursor: default;
+    transform: none;
+    box-shadow: none;
+}
+
+/* Main Cruise Play Button */
+.cv-cruise-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    height: 40px;
+    padding: 0 16px;
+    border: 1px solid rgba(125, 211, 252, 0.4);
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(2, 132, 199, 0.35) 0%, rgba(14, 165, 233, 0.2) 100%);
+    color: #e0f2fe;
+    font-family: var(--tm-font-display, var(--tm-font-en));
+    font-size: 12.5px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    box-shadow: 0 8px 24px -4px rgba(2, 132, 199, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cv-cruise-toggle-btn:hover {
+    border-color: rgba(125, 211, 252, 0.65);
+    background: linear-gradient(135deg, rgba(2, 132, 199, 0.48) 0%, rgba(14, 165, 233, 0.3) 100%);
+    box-shadow: 0 12px 28px -4px rgba(2, 132, 199, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    transform: translateY(-1.5px);
+}
+
+.cv-cruise-toggle-btn.is-cruising {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.35) 0%, rgba(5, 150, 105, 0.2) 100%);
+    border-color: rgba(110, 231, 183, 0.45);
+    color: #d1fae5;
+    box-shadow: 0 8px 24px -4px rgba(16, 185, 129, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+/* Right: Actions (Video toggle, external) */
+.cv-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.cv-action-icon-btn {
+    width: 36px;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: #94a3b8;
+    font-size: 15px;
+    cursor: pointer;
+    transition: all 0.16s ease;
+}
+
+.cv-action-icon-btn:hover {
+    color: #f1f5f9;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.cv-action-icon-btn.active {
+    color: #38bdf8;
+    background: rgba(56, 189, 248, 0.14);
+}
+
+/* Responsive adjustment */
+@media (max-width: 640px) {
+    .cv-dock {
+        grid-template-columns: 1fr;
+        gap: 10px;
+        padding: 10px 14px;
+        bottom: 16px;
+    }
+    .cv-controls {
+        justify-content: center;
+    }
+    .cv-actions {
+        display: none;
+    }
+    .cv-header-banner {
+        top: 16px;
+        max-width: calc(100vw - 32px);
+    }
+    .cv-exit-btn {
+        top: 16px;
+        right: 16px;
+        padding: 0 10px;
+    }
+    .cv-exit-key {
+        display: none;
+    }
+}

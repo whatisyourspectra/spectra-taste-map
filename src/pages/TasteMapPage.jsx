@@ -1,11 +1,15 @@
 import AccountButton from '../auth/AccountButton';
-import { buildConstellationTopology } from '../taste/constellationTopology';
+import { buildConstellationTopology, buildSeedConstellation, buildVoyageSequence, getVoyageNeighbor } from '../taste/constellationTopology';
 import { getGenreIdentity } from '../taste/genreIdentity';
 import React, { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useTasteData } from '../context/TasteDataContext';
 import TasteMapMetroStudio from './TasteMapMetroStudio';
 import MetroYouTubePlayer from './MetroYouTubePlayer';
+import ConstellationVoyagerHUD from './ConstellationVoyager';
+import ConstellationClusterPopup from './ConstellationClusterPopup';
 import './TasteMapPage.css';
+import './ConstellationVoyager.css';
+import './ConstellationClusterPopup.css';
 
 const FeatureBar = ({ label, value }) => (
     <div className="tm-feat-row">
@@ -1686,6 +1690,13 @@ export default function TasteMapPage() {
     const [showUtilityControls, setShowUtilityControls] = useState(false);
     const [dashboardOpen, setDashboardOpen] = useState(false);
     const [metroStudioOpen, setMetroStudioOpen] = useState(false);
+    const [voyageState, setVoyageState] = useState({
+        active: false,
+        clusterId: null,
+        trackId: null,
+        startTrackId: null,
+        isPlaying: false,
+    });
     const [ambientUiVisible, setAmbientUiVisible] = useState(false);
     const [formationPhase, setFormationPhase] = useState('idle'); // idle | dark | seed | organize | labels | settled
     const [formationPlayed, setFormationPlayed] = useState(false);
@@ -4021,6 +4032,60 @@ export default function TasteMapPage() {
         setBubbleZoom(targetZoom);
         setCamera(targetCamera);
     }, [bubbleRenderItems, bubbleFieldSize.w, bubbleFieldSize.h, clampCamera, clampZoom, animateCameraTo]);
+
+    const focusCluster = useCallback((targetClusterId, options = {}) => {
+        if (!bubbleRenderItems.length || !bubbleFieldSize.w || !bubbleFieldSize.h) return;
+        const clusterItems = bubbleRenderItems.filter((item) => item.clusterId === targetClusterId);
+        const targets = clusterItems.length ? clusterItems : bubbleRenderItems;
+        if (!targets.length) return;
+
+        const minX = Math.min(...targets.map((item) => item.worldX - item.sizePx / 2));
+        const maxX = Math.max(...targets.map((item) => item.worldX + item.sizePx / 2));
+        const minY = Math.min(...targets.map((item) => item.worldY - item.sizePx / 2));
+        const maxY = Math.max(...targets.map((item) => item.worldY + item.sizePx / 2));
+        const boxW = Math.max(1, maxX - minX);
+        const boxH = Math.max(1, maxY - minY);
+        const margin = 140;
+
+        const fitZoomX = bubbleFieldSize.w / (boxW + margin * 2);
+        const fitZoomY = bubbleFieldSize.h / (boxH + margin * 2);
+        const targetZoom = clampZoom(Math.min(fitZoomX, fitZoomY, 1.45));
+        const viewportW = bubbleFieldSize.w / targetZoom;
+        const viewportH = bubbleFieldSize.h / targetZoom;
+        const centerX = (minX + maxX) / 2;
+        const centerY = (minY + maxY) / 2;
+        const targetCamera = clampCamera(centerX - viewportW / 2, centerY - viewportH / 2, targetZoom);
+
+        animateCameraTo(targetCamera, targetZoom, options.duration || 680);
+    }, [bubbleRenderItems, bubbleFieldSize.w, bubbleFieldSize.h, clampCamera, clampZoom, animateCameraTo]);
+
+    const focusConstellation = useCallback((targetTrackIds, options = {}) => {
+        if (!bubbleRenderItems.length || !bubbleFieldSize.w || !bubbleFieldSize.h || !targetTrackIds?.length) return;
+        const targetIdSet = new Set(targetTrackIds);
+        const constellationItems = bubbleRenderItems.filter((item) => targetIdSet.has(item.node.track.id));
+        const targets = constellationItems.length ? constellationItems : bubbleRenderItems;
+        if (!targets.length) return;
+
+        const minX = Math.min(...targets.map((item) => item.worldX - item.sizePx / 2));
+        const maxX = Math.max(...targets.map((item) => item.worldX + item.sizePx / 2));
+        const minY = Math.min(...targets.map((item) => item.worldY - item.sizePx / 2));
+        const maxY = Math.max(...targets.map((item) => item.worldY + item.sizePx / 2));
+        const boxW = Math.max(1, maxX - minX);
+        const boxH = Math.max(1, maxY - minY);
+        const margin = 110;
+
+        const fitZoomX = bubbleFieldSize.w / (boxW + margin * 2);
+        const fitZoomY = bubbleFieldSize.h / (boxH + margin * 2);
+        const targetZoom = clampZoom(Math.min(fitZoomX, fitZoomY, 1.85));
+        const viewportW = bubbleFieldSize.w / targetZoom;
+        const viewportH = bubbleFieldSize.h / targetZoom;
+        const centerX = (minX + maxX) / 2;
+        const centerY = (minY + maxY) / 2;
+        const targetCamera = clampCamera(centerX - viewportW / 2, centerY - viewportH / 2, targetZoom);
+
+        animateCameraTo(targetCamera, targetZoom, options.duration || 680);
+    }, [bubbleRenderItems, bubbleFieldSize.w, bubbleFieldSize.h, clampCamera, clampZoom, animateCameraTo]);
+
     const showFullTasteField = useCallback(() => {
         const hadActiveFilter = selectedCluster !== null || Boolean(spectraExpandTrackId);
         if (hadActiveFilter) {
@@ -4266,6 +4331,7 @@ export default function TasteMapPage() {
         if (service === 'youtube' && t) {
             setBubblePlaybackTrack(t);
             setNowPlayingTrackId(trackId);
+            setSelectedTrackCard(null);
             return;
         }
         const query = `${t?.artists || ''} ${t?.name || ''}`.trim();
@@ -4275,14 +4341,13 @@ export default function TasteMapPage() {
         if (url && typeof window !== 'undefined') {
             window.open(url, '_blank', 'noopener,noreferrer');
         }
-        setNowPlayingTrackId(trackId);
     }, [tracks, exploreRecs]);
 
     const openTrackCard = useCallback((track, source = 'library') => {
         if (!track?.id) return;
         setSelectedTrackCard({ track, source });
-        setBubblePlaybackTrack(track);
-        setNowPlayingTrackId(track.id);
+        setBubblePlaybackTrack(null);
+        setNowPlayingTrackId(null);
         setBubbleContextMenu(null);
         setHoveredBubbleId(source === 'library' ? track.id : null);
     }, []);
@@ -4319,29 +4384,6 @@ export default function TasteMapPage() {
         recordDecision,
     ]);
 
-    const handleBubbleClick = useCallback((track) => {
-        const justPanned = Date.now() - (panRef.current.lastMoveAt || 0) < 120;
-        const justDragged = Date.now() - (bubbleDragRef.current.lastMoveAt || 0) < 180;
-        if (panRef.current.moved || justPanned || justDragged) return;
-        if (isSpectraExpandMode && track.id === spectraExpandTrackId) {
-            setExploreEnabled(false);
-            setSpectraExpandTrackId(null);
-            setExploreRecs([]);
-            setHoveredExploreId(null);
-            setSelectedTrackCard(null);
-            setHoveredBubbleId(null);
-            return;
-        }
-        openTrackCard(track, 'library');
-    }, [openTrackCard, isSpectraExpandMode, spectraExpandTrackId]);
-
-    const handleBubbleLayerClick = useCallback((event) => {
-        const bubbleElement = event.target?.closest?.('[data-bubble-id]');
-        if (!bubbleElement) return;
-        const track = trackLookupById.get(bubbleElement.dataset.bubbleId);
-        if (track) handleBubbleClick(track);
-    }, [trackLookupById, handleBubbleClick]);
-
     const focusBubbleTrack = useCallback((trackId, { ensureZoom = 0, duration = 560 } = {}) => {
         if (!trackId || !bubbleRenderItems.length || !bubbleFieldSize.w || !bubbleFieldSize.h) return false;
         const item = bubbleRenderItems.find((entry) => entry.node.track.id === trackId);
@@ -4356,6 +4398,183 @@ export default function TasteMapPage() {
         animateCameraTo(clampCamera(nextX, nextY, targetZoom), targetZoom, duration);
         return true;
     }, [bubbleRenderItems, bubbleFieldSize.w, bubbleFieldSize.h, bubbleZoom, animateCameraTo, clampCamera]);
+
+    const startConstellationVoyage = useCallback((track) => {
+        if (!track?.id) return;
+        const clusterId = assignmentByTrackId.get(track.id);
+        const resolvedClusterId = Number.isInteger(clusterId) ? clusterId : null;
+
+        // Extract a focused seed constellation of 8 stars around the selected track
+        const seedConstellation = buildSeedConstellation(track, bubbleNodesResult, { maxStars: 8 });
+
+        setVoyageState({
+            active: true,
+            clusterId: resolvedClusterId,
+            trackId: track.id,
+            startTrackId: track.id,
+            isPlaying: true,
+            curatedTracks: seedConstellation.tracks,
+            curatedEdges: seedConstellation.edges,
+            curatedTrackIds: seedConstellation.trackIds,
+        });
+
+        setActiveMapView('constellation');
+        setBubblePlaybackTrack(null);
+        setNowPlayingTrackId(track.id);
+        setSelectedTrackCard(null);
+        setMetroStudioOpen(false);
+        setBubbleContextMenu(null);
+
+        if (seedConstellation.trackIds.length > 0) {
+            focusConstellation(seedConstellation.trackIds, { duration: 680 });
+        } else if (resolvedClusterId !== null) {
+            focusCluster(resolvedClusterId, { duration: 680 });
+        } else {
+            focusBubbleTrack(track.id, { ensureZoom: 1.3, duration: 680 });
+        }
+    }, [assignmentByTrackId, bubbleNodesResult, focusConstellation, focusCluster, focusBubbleTrack]);
+
+    const exitConstellationVoyage = useCallback(() => {
+        setVoyageState({
+            active: false,
+            clusterId: null,
+            trackId: null,
+            startTrackId: null,
+            isPlaying: false,
+        });
+        setBubblePlaybackTrack(null);
+        setNowPlayingTrackId(null);
+        handleMapViewChange('spotify');
+    }, [handleMapViewChange]);
+
+    const handleBubbleClick = useCallback((track) => {
+        const justPanned = Date.now() - (panRef.current.lastMoveAt || 0) < 120;
+        const justDragged = Date.now() - (bubbleDragRef.current.lastMoveAt || 0) < 180;
+        if (panRef.current.moved || justPanned || justDragged) return;
+        if (isSpectraExpandMode && track.id === spectraExpandTrackId) {
+            setExploreEnabled(false);
+            setSpectraExpandTrackId(null);
+            setExploreRecs([]);
+            setHoveredExploreId(null);
+            setSelectedTrackCard(null);
+            setHoveredBubbleId(null);
+            return;
+        }
+
+        const trackClusterId = assignmentByTrackId.get(track.id);
+        const isCuratedVoyageTrack = Array.isArray(voyageState.curatedTrackIds)
+            ? voyageState.curatedTrackIds.includes(track.id)
+            : (Number.isInteger(trackClusterId) && voyageState.clusterId === trackClusterId);
+
+        if (voyageState.active && isCuratedVoyageTrack) {
+            setVoyageState((prev) => ({
+                ...prev,
+                trackId: track.id,
+                isPlaying: true,
+            }));
+            setNowPlayingTrackId(track.id);
+            return;
+        }
+
+        openTrackCard(track, knownTrackIds.has(track.id) ? 'library' : 'recommendation');
+    }, [isSpectraExpandMode, spectraExpandTrackId, voyageState.active, voyageState.curatedTrackIds, voyageState.clusterId, assignmentByTrackId, openTrackCard, knownTrackIds]);
+
+    const handleBubbleLayerClick = useCallback((event) => {
+        const bubbleElement = event.target?.closest?.('[data-bubble-id]');
+        if (!bubbleElement) return;
+        const track = trackLookupById.get(bubbleElement.dataset.bubbleId);
+        if (track) handleBubbleClick(track);
+    }, [trackLookupById, handleBubbleClick]);
+
+    const voyageCluster = useMemo(() => {
+        if (!voyageState.active || voyageState.clusterId === null) return null;
+        return clusterById[voyageState.clusterId] || null;
+    }, [voyageState.active, voyageState.clusterId, clusterById]);
+
+    const voyageTracks = useMemo(() => {
+        if (!voyageState.active) return [];
+        if (voyageState.curatedTracks?.length) return voyageState.curatedTracks;
+        if (voyageCluster?.members) return voyageCluster.members;
+        return tracks.filter((t) => assignmentByTrackId.get(t.id) === voyageState.clusterId);
+    }, [voyageState.active, voyageState.curatedTracks, voyageCluster, tracks, assignmentByTrackId, voyageState.clusterId]);
+
+    const voyageEdges = useMemo(() => {
+        if (!voyageState.active) return [];
+        if (voyageState.curatedEdges?.length) return voyageState.curatedEdges;
+        if (voyageState.clusterId === null) return [];
+        return constellationTopology.filter((e) => e.clusterId === voyageState.clusterId);
+    }, [voyageState.active, voyageState.curatedEdges, voyageState.clusterId, constellationTopology]);
+
+    const voyageTrackIdSet = useMemo(
+        () => new Set(voyageTracks.map((t) => t.id)),
+        [voyageTracks],
+    );
+
+    const voyageRenderEdges = useMemo(() => {
+        if (!isConstellationView || !voyageState.active || !voyageEdges.length) return [];
+        const pointById = new Map(bubbleRenderItems.map((item) => [item.node.track.id, item]));
+        return voyageEdges.map((edge) => {
+            const from = pointById.get(edge.from);
+            const to = pointById.get(edge.to);
+            if (!from || !to) return null;
+            return {
+                ...edge,
+                fromItem: from,
+                toItem: to,
+                active: true,
+                focused: true,
+                selected: voyageState.trackId === edge.from || voyageState.trackId === edge.to,
+            };
+        }).filter(Boolean);
+    }, [isConstellationView, voyageState.active, voyageEdges, bubbleRenderItems, voyageState.trackId]);
+
+    const voyageSequence = useMemo(() => {
+        if (!voyageState.active || voyageTracks.length === 0) return [];
+        return buildVoyageSequence(voyageTracks, voyageEdges, voyageState.startTrackId);
+    }, [voyageState.active, voyageTracks, voyageEdges, voyageState.startTrackId]);
+
+    const currentVoyageTrack = useMemo(() => {
+        if (!voyageState.active || !voyageState.trackId) return null;
+        return trackLookupById.get(voyageState.trackId)
+            || voyageTracks.find((track) => track.id === voyageState.trackId)
+            || null;
+    }, [voyageState.active, voyageState.trackId, trackLookupById, voyageTracks]);
+
+    const handleVoyageNextStar = useCallback(() => {
+        const nextId = getVoyageNeighbor(voyageSequence, voyageState.trackId, 1);
+        const nextTrack = trackLookupById.get(nextId) || voyageTracks.find((track) => track.id === nextId);
+        if (nextTrack) {
+            setVoyageState((prev) => ({ ...prev, trackId: nextId, isPlaying: true }));
+            setNowPlayingTrackId(nextId);
+        }
+    }, [voyageSequence, voyageState.trackId, trackLookupById, voyageTracks]);
+
+    const handleVoyagePrevStar = useCallback(() => {
+        const prevId = getVoyageNeighbor(voyageSequence, voyageState.trackId, -1);
+        const prevTrack = trackLookupById.get(prevId) || voyageTracks.find((track) => track.id === prevId);
+        if (prevTrack) {
+            setVoyageState((prev) => ({ ...prev, trackId: prevId, isPlaying: true }));
+            setNowPlayingTrackId(prevId);
+        }
+    }, [voyageSequence, voyageState.trackId, trackLookupById, voyageTracks]);
+
+    const handleVoyageFinished = useCallback(() => {
+        setVoyageState((prev) => ({ ...prev, isPlaying: false }));
+        setNowPlayingTrackId(null);
+    }, []);
+
+    const handleVoyagePlaybackState = useCallback((state) => {
+        if (state !== 'playing' && state !== 'paused') return;
+        const isPlaying = state === 'playing';
+        setNowPlayingTrackId(isPlaying ? voyageState.trackId : null);
+        setVoyageState((prev) => (
+            prev.active && prev.isPlaying !== isPlaying ? { ...prev, isPlaying } : prev
+        ));
+    }, [voyageState.trackId]);
+
+    const handleVoyageTogglePlay = useCallback(() => {
+        setVoyageState((prev) => ({ ...prev, isPlaying: !prev.isPlaying }));
+    }, []);
 
     const openBubbleContextMenu = useCallback((event, track) => {
         event.preventDefault();
@@ -4463,9 +4682,9 @@ export default function TasteMapPage() {
 
     const handleContextPlayTrack = useCallback(() => {
         if (!bubbleContextMenu?.track) return;
-        openTrackCard(bubbleContextMenu.track);
+        openTrackExternal(bubbleContextMenu.track, 'youtube');
         setBubbleContextMenu(null);
-    }, [bubbleContextMenu, openTrackCard]);
+    }, [bubbleContextMenu, openTrackExternal]);
 
     const handleContextSaveTrack = useCallback(() => {
         if (!bubbleContextMenu?.track) return;
@@ -4837,6 +5056,18 @@ export default function TasteMapPage() {
             alreadyInField: knownTrackIds.has(track.id) || Boolean(savedFromRecIds[track.id]),
         };
     }, [selectedTrackCard, assignmentByTrackId, clusterById, xAxis, xMeta.short, yAxis, yMeta.short, knownTrackIds, savedFromRecIds]);
+    const selectedSeedConstellation = useMemo(() => {
+        const track = selectedTrackDetails?.track;
+        if (!track?.id || !bubbleNodesResult.length) return null;
+        return buildSeedConstellation(track, bubbleNodesResult, { maxStars: 8 });
+    }, [selectedTrackDetails?.track, bubbleNodesResult]);
+    const selectedPreviewNodes = useMemo(() => {
+        const mapPositions = new Map(bubbleRenderItems.map((item) => [item.node.track.id, item]));
+        return (selectedSeedConstellation?.nodes || []).map((node) => {
+            const position = mapPositions.get(node.track?.id || node.id);
+            return position ? { ...node, previewX: position.worldX, previewY: position.worldY } : node;
+        });
+    }, [selectedSeedConstellation, bubbleRenderItems]);
     const followedArtistPreview = useMemo(
         () => (librarySummary?.followedArtists || []),
         [librarySummary],
@@ -4968,7 +5199,7 @@ export default function TasteMapPage() {
     const dashboardToggleLabel = dashboardOpen ? copy.dashboardHide : copy.dashboardShow;
 
     return (
-        <div className={`tm-root tm-lang-${lang}${mapFullscreen ? ' tm-root-fullscreen' : ''}`} ref={containerRef}>
+        <div className={`tm-root tm-lang-${lang}${mapFullscreen ? ' tm-root-fullscreen' : ''}${voyageState.active ? ' is-voyage-mode' : ''}`} ref={containerRef}>
             {/* Header */}
             <header className="tm-header">
                 <div className="tm-header-main">
@@ -5557,47 +5788,49 @@ export default function TasteMapPage() {
                                     <span>{mapFullscreen ? copy.mapZoomOut : copy.mapZoomIn}</span>
                                 </button>
                             </div>
-                            <div
-                                className="tm-map-tag-strip tm-region-cloud tm-region-cloud-emotion"
-                                data-active-region={activeEmotionRegion || undefined}
-                                ref={mapTagStripRef}
-                                onPointerDown={handleMapTagPointerDown}
-                                onPointerMove={handleMapTagPointerMove}
-                                onPointerUp={handleMapTagPointerEnd}
-                                onPointerCancel={handleMapTagPointerEnd}
-                                onClickCapture={handleMapTagClickCapture}
-                            >
-                                <button
-                                    type="button"
-                                    className={`tm-map-tag-chip tm-map-tag-chip--all tm-inspector-chip tm-region-tag${selectedCluster === null && !spectraExpandTrackId ? ' active' : ''}`}
-                                    onClick={showFullTasteField}
-                                    title={lang === 'en' ? 'Show the full taste field' : '필터를 해제하고 전체 취향 보기'}
+                            {!voyageState.active && (
+                                <div
+                                    className="tm-map-tag-strip tm-region-cloud tm-region-cloud-emotion"
+                                    data-active-region={activeEmotionRegion || undefined}
+                                    ref={mapTagStripRef}
+                                    onPointerDown={handleMapTagPointerDown}
+                                    onPointerMove={handleMapTagPointerMove}
+                                    onPointerUp={handleMapTagPointerEnd}
+                                    onPointerCancel={handleMapTagPointerEnd}
+                                    onClickCapture={handleMapTagClickCapture}
                                 >
-                                    <span className="tm-all-chip-mark" aria-hidden>⊙</span>
-                                    <span>{lang === 'en' ? 'All' : '전체'}</span>
-                                </button>
-                                {clusterStats.slice(0, 6).map((cluster) => (
                                     <button
-                                        key={`map-chip-${cluster.j}`}
                                         type="button"
-                                        className={`tm-map-tag-chip tm-inspector-chip tm-region-tag tm-region-tag-emotion${selectedCluster === cluster.j ? ' active' : ''}${activeEmotionRegion === `cluster-${cluster.j}` ? ' is-region-active' : ''}${activeEmotionRegion && activeEmotionRegion !== `cluster-${cluster.j}` ? ' is-region-dim' : ''}`}
-                                        data-region={`cluster-${cluster.j}`}
-                                        style={getEmotionRegionStyle(cluster.color, `cluster-${cluster.j}`)}
-                                        onClick={() => handleClusterSelect(cluster.j)}
-                                        onMouseEnter={() => handleEmotionRegionEnter(`cluster-${cluster.j}`)}
-                                        onMouseLeave={(event) => {
-                                            clearEmotionRegionFocus();
-                                            resetRegionLight(event);
-                                        }}
-                                        onMouseMove={handleRegionLightMove}
-                                        onFocus={() => handleEmotionRegionEnter(`cluster-${cluster.j}`)}
-                                        onBlur={clearEmotionRegionFocus}
+                                        className={`tm-map-tag-chip tm-map-tag-chip--all tm-inspector-chip tm-region-tag${selectedCluster === null && !spectraExpandTrackId ? ' active' : ''}`}
+                                        onClick={showFullTasteField}
+                                        title={lang === 'en' ? 'Show the full taste field' : '필터를 해제하고 전체 취향 보기'}
                                     >
-                                        <SpectraSymbol symbol={cluster.label.symbol || 'headset'} className="tm-symbol-inline" />
-                                        <span>{cluster.label.name}</span>
+                                        <span className="tm-all-chip-mark" aria-hidden>⊙</span>
+                                        <span>{lang === 'en' ? 'All' : '전체'}</span>
                                     </button>
-                                ))}
-                            </div>
+                                    {clusterStats.slice(0, 6).map((cluster) => (
+                                        <button
+                                            key={`map-chip-${cluster.j}`}
+                                            type="button"
+                                            className={`tm-map-tag-chip tm-inspector-chip tm-region-tag tm-region-tag-emotion${selectedCluster === cluster.j ? ' active' : ''}${activeEmotionRegion === `cluster-${cluster.j}` ? ' is-region-active' : ''}${activeEmotionRegion && activeEmotionRegion !== `cluster-${cluster.j}` ? ' is-region-dim' : ''}`}
+                                            data-region={`cluster-${cluster.j}`}
+                                            style={getEmotionRegionStyle(cluster.color, `cluster-${cluster.j}`)}
+                                            onClick={() => handleClusterSelect(cluster.j)}
+                                            onMouseEnter={() => handleEmotionRegionEnter(`cluster-${cluster.j}`)}
+                                            onMouseLeave={(event) => {
+                                                clearEmotionRegionFocus();
+                                                resetRegionLight(event);
+                                            }}
+                                            onMouseMove={handleRegionLightMove}
+                                            onFocus={() => handleEmotionRegionEnter(`cluster-${cluster.j}`)}
+                                            onBlur={clearEmotionRegionFocus}
+                                        >
+                                            <SpectraSymbol symbol={cluster.label.symbol || 'headset'} className="tm-symbol-inline" />
+                                            <span>{cluster.label.name}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
                             </div>
                             <div
                                 className={`tm-bubble-wrap tm-form-phase-${formationPhase}${isConstellationView ? ' tm-constellation-view' : ''}`}
@@ -5608,30 +5841,34 @@ export default function TasteMapPage() {
                                         : (mapTheme === 'day' ? '#ffffff' : '#12161d'),
                                 }}
                             >
-                                    <canvas
-                                        ref={heatmapCanvasRef}
-                                        className={`tm-heatmap-layer${mapTheme === 'day' ? ' day' : ''}`}
-                                        aria-hidden
-                                    />
-                                    <div
-                                        className={`tm-region-label-layer${mapTheme === 'day' ? ' day' : ''}`}
-                                        style={{ opacity: bubbleZoom < 1.35 ? 1 : 0.45 }}
-                                        aria-hidden
-                                    >
-                                        {bubbleRegionLabels.map((region) => (
-                                            <span
-                                                key={`region-label-${region.id}`}
-                                                className="tm-region-map-label"
-                                                style={{
-                                                    left: `${region.x}px`,
-                                                    top: `${region.y}px`,
-                                                    '--tm-region-label-color': region.color,
-                                                }}
+                                    {!voyageState.active && (
+                                        <>
+                                            <canvas
+                                                ref={heatmapCanvasRef}
+                                                className={`tm-heatmap-layer${mapTheme === 'day' ? ' day' : ''}`}
+                                                aria-hidden
+                                            />
+                                            <div
+                                                className={`tm-region-label-layer${mapTheme === 'day' ? ' day' : ''}`}
+                                                style={{ opacity: bubbleZoom < 1.35 ? 1 : 0.45 }}
+                                                aria-hidden
                                             >
-                                                {region.name}
-                                            </span>
-                                        ))}
-                                    </div>
+                                                {bubbleRegionLabels.map((region) => (
+                                                    <span
+                                                        key={`region-label-${region.id}`}
+                                                        className="tm-region-map-label"
+                                                        style={{
+                                                            left: `${region.x}px`,
+                                                            top: `${region.y}px`,
+                                                            '--tm-region-label-color': region.color,
+                                                        }}
+                                                    >
+                                                        {region.name}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </>
+                                    )}
                                     <div
                                         ref={magneticCursorRef}
                                         className={`tm-magnetic-cursor${magneticPullEnabled ? ' enabled' : ''}`}
@@ -5823,12 +6060,12 @@ export default function TasteMapPage() {
                                                 preserveAspectRatio="none"
                                                 aria-hidden
                                             >
-                                                {constellationEdges.map((edge) => (
+                                                {(voyageState.active && voyageRenderEdges.length ? voyageRenderEdges : constellationEdges).map((edge) => (
                                                     <line
                                                         key={`${edge.from}--${edge.to}`}
                                                         data-from={edge.from}
                                                         data-to={edge.to}
-                                                        className={`${edge.secondary ? 'secondary' : 'primary'}${edge.active ? ' is-active' : ' is-muted'}${edge.focused ? ' is-focused' : ''}${edge.selected ? ' is-selected' : ''}`}
+                                                        className={`${edge.secondary ? 'secondary' : 'primary'}${edge.active ? ' is-active' : ' is-muted'}${edge.focused ? ' is-focused' : ''}${edge.selected ? ' is-selected' : ''}${voyageState.active ? ' is-voyage-edge' : ''}`}
                                                         x1={edge.fromItem.xPx}
                                                         y1={edge.fromItem.yPx}
                                                         x2={edge.toItem.xPx}
@@ -5849,11 +6086,15 @@ export default function TasteMapPage() {
                                             const detailSelected = selectedTrackCard?.track?.id === node.track.id;
                                             const spectraBlur = isSpectraExpandMode && node.track.id !== spectraExpandTrackId;
                                             const spectraAnchor = isSpectraExpandMode && node.track.id === spectraExpandTrackId;
+                                            const nodeClusterId = assignmentByTrackId.get(node.track.id);
+                                            const isVoyageStar = voyageState.active && voyageTrackIdSet.has(node.track.id);
+                                            const isVoyageActive = voyageState.active && node.track.id === voyageState.trackId;
+                                            const isVoyageDimmed = voyageState.active && !isVoyageStar;
                                             return (
                                                 <div
                                                     key={node.track.id}
                                                     data-bubble-id={node.track.id}
-                                                    className={`tm-bubble-item${isConstellationView ? ' tm-constellation-item' : ''}${constellationCoverZoomed ? ' is-cover-zoom' : ''}${active ? '' : ' muted'}${showLabel ? ' show-label' : ''}${hovered ? ' hovered' : ''}${detailSelected ? ' detail-selected' : ''}${picked ? ' picked' : ''}${nowPlaying ? ' now-playing' : ''}${clusterFocused ? ' cluster-focus' : ''}${clusterExpandPulsing ? ' cluster-expand-pulse' : ''}${spectraBlur ? ' spectra-blur' : ''}${spectraAnchor ? ' spectra-anchor' : ''}`}
+                                                    className={`tm-bubble-item${isConstellationView ? ' tm-constellation-item' : ''}${constellationCoverZoomed ? ' is-cover-zoom' : ''}${active ? '' : ' muted'}${showLabel ? ' show-label' : ''}${hovered ? ' hovered' : ''}${detailSelected ? ' detail-selected' : ''}${picked ? ' picked' : ''}${nowPlaying ? ' now-playing' : ''}${clusterFocused ? ' cluster-focus' : ''}${clusterExpandPulsing ? ' cluster-expand-pulse' : ''}${spectraBlur ? ' spectra-blur' : ''}${spectraAnchor ? ' spectra-anchor' : ''}${isVoyageStar ? ' tm-voyage-star' : ''}${isVoyageActive ? ' is-voyage-active-star' : ''}${isVoyageDimmed ? ' is-voyage-dimmed' : ''}`}
                                                     onPointerDown={(isConstellationView || shareMode) ? undefined : (event) => handleBubbleDragStart(event, node.track.id)}
                                                     onPointerMove={(isConstellationView || shareMode) ? undefined : handleBubbleDragMove}
                                                     onPointerUp={(isConstellationView || shareMode) ? undefined : handleBubbleDragEnd}
@@ -5872,7 +6113,14 @@ export default function TasteMapPage() {
                                                 >
                                                     <div className="tm-bubble-float">
                                                         <button
+                                                            type="button"
                                                             className={`tm-bubble${isConstellationView ? ' tm-constellation-point' : ''}`}
+                                                            onClick={(e) => {
+                                                                if (!shareMode) {
+                                                                    e.stopPropagation();
+                                                                    handleBubbleClick(node.track);
+                                                                }
+                                                            }}
                                                             style={isConstellationView ? {
                                                                 backgroundColor: node.style['--tm-bubble-color'],
                                                             } : {
@@ -6316,65 +6564,114 @@ export default function TasteMapPage() {
                 </>
             )}
 
-            <div className={metroStudioOpen ? 'tm-playback-dock-expanded' : `tm-playback-dock${bubblePlaybackTrack ? ' has-video' : ''}`}>
-            {bubblePlaybackTrack && !metroStudioOpen ? (
-                    <MetroYouTubePlayer
-                        key={bubblePlaybackTrack.id}
-                        track={bubblePlaybackTrack}
-                        trainName={lang === 'en' ? 'Now playing' : '현재 재생 중'}
-                        color="#f5d75f"
-                        lang={lang}
-                        autoplayRequested
-                        embedded
-                        queuePosition={1}
-                        queueLength={1}
-                        onClose={() => {
-                            setBubblePlaybackTrack(null);
-                            setNowPlayingTrackId(null);
-                        }}
-                    />
-            ) : null}
+            {!voyageState.active && !selectedTrackDetails && (
+                <div className={metroStudioOpen ? 'tm-playback-dock-expanded' : `tm-playback-dock${bubblePlaybackTrack ? ' has-video' : ''}`}>
+                    {bubblePlaybackTrack && !metroStudioOpen ? (
+                        <MetroYouTubePlayer
+                            key={bubblePlaybackTrack.id}
+                            track={bubblePlaybackTrack}
+                            trainName={lang === 'en' ? 'Now playing' : '현재 재생 중'}
+                            color="#a9b8ff"
+                            lang={lang}
+                            autoplayRequested
+                            embedded
+                            queuePosition={1}
+                            queueLength={1}
+                            onClose={() => {
+                                setBubblePlaybackTrack(null);
+                                setNowPlayingTrackId(null);
+                            }}
+                        />
+                    ) : null}
+                </div>
+            )}
 
-            <TasteMapMetroStudio
-                open={Boolean(selectedTrackDetails) || metroStudioOpen}
-                expanded={metroStudioOpen}
-                onClose={() => setMetroStudioOpen(false)}
-                onExpand={() => {
-                    setBubblePlaybackTrack(null);
-                    setMetroStudioOpen(true);
-                }}
-                onDismiss={() => {
-                    setMetroStudioOpen(false);
-                    setSelectedTrackCard(null);
-                    setHoveredBubbleId(null);
-                }}
-                onTrackSelect={(track) => openTrackCard(
-                    track,
-                    knownTrackIds.has(track.id) ? 'library' : 'recommendation',
-                )}
-                trackContext={selectedTrackDetails}
-                onExploreTrack={() => {
-                    if (selectedTrackDetails?.cluster) {
-                        applySpectraExpandByTrackId(selectedTrackDetails.track.id);
-                    }
-                }}
-                onAddTrack={() => {
-                    if (selectedTrackDetails?.track) saveTrackToMyBubble(selectedTrackDetails.track);
-                }}
-                onOpenTrack={(service) => {
-                    if (selectedTrackDetails?.track) openTrackExternal(selectedTrackDetails.track, service);
-                }}
-                selectedTrack={selectedTrackDetails?.track || null}
-                tracks={tracks}
-                activeTrackIds={activeTrackIds}
-                assignmentByTrackId={assignmentByTrackId}
-                clusterById={clusterById}
-                customGroups={customGroups}
-                libraryId={mapId || cacheUserId}
-                lang={lang}
-            />
+            {!voyageState.active && selectedTrackDetails && !metroStudioOpen && (
+                <ConstellationClusterPopup
+                    trackContext={selectedTrackDetails}
+                    clusterNodes={selectedPreviewNodes}
+                    clusterEdges={selectedSeedConstellation?.edges || []}
+                    onStartVoyage={startConstellationVoyage}
+                    onClose={() => {
+                        setSelectedTrackCard(null);
+                        setHoveredBubbleId(null);
+                    }}
+                    onExploreTrack={() => {
+                        if (selectedTrackDetails?.cluster) {
+                            applySpectraExpandByTrackId(selectedTrackDetails.track.id);
+                        }
+                    }}
+                    onAddTrack={() => {
+                        if (selectedTrackDetails?.track) {
+                            saveTrackToMyBubble(selectedTrackDetails.track);
+                        }
+                    }}
+                    onOpenTrack={(service) => {
+                        if (selectedTrackDetails?.track) {
+                            openTrackExternal(selectedTrackDetails.track, service);
+                        }
+                    }}
+                    lang={lang}
+                />
+            )}
 
-            </div>
+            {voyageState.active && (
+                <ConstellationVoyagerHUD
+                    cluster={voyageCluster}
+                    tracks={voyageTracks}
+                    currentTrack={currentVoyageTrack}
+                    sequence={voyageSequence}
+                    isPlaying={voyageState.isPlaying}
+                    onTogglePlay={handleVoyageTogglePlay}
+                    onNextStar={handleVoyageNextStar}
+                    onPrevStar={handleVoyagePrevStar}
+                    onFinish={handleVoyageFinished}
+                    onPlaybackChange={handleVoyagePlaybackState}
+                    onClose={exitConstellationVoyage}
+                    lang={lang}
+                />
+            )}
+
+            {!voyageState.active && (
+                <TasteMapMetroStudio
+                    open={metroStudioOpen}
+                    expanded={metroStudioOpen}
+                    onClose={() => setMetroStudioOpen(false)}
+                    onExpand={() => {
+                        setBubblePlaybackTrack(null);
+                        setMetroStudioOpen(true);
+                    }}
+                    onDismiss={() => {
+                        setMetroStudioOpen(false);
+                        setSelectedTrackCard(null);
+                        setHoveredBubbleId(null);
+                    }}
+                    onTrackSelect={(track) => openTrackCard(
+                        track,
+                        knownTrackIds.has(track.id) ? 'library' : 'recommendation',
+                    )}
+                    trackContext={selectedTrackDetails}
+                    onExploreTrack={() => {
+                        if (selectedTrackDetails?.cluster) {
+                            applySpectraExpandByTrackId(selectedTrackDetails.track.id);
+                        }
+                    }}
+                    onAddTrack={() => {
+                        if (selectedTrackDetails?.track) saveTrackToMyBubble(selectedTrackDetails.track);
+                    }}
+                    onOpenTrack={(service) => {
+                        if (selectedTrackDetails?.track) openTrackExternal(selectedTrackDetails.track, service);
+                    }}
+                    selectedTrack={selectedTrackDetails?.track || null}
+                    tracks={tracks}
+                    activeTrackIds={activeTrackIds}
+                    assignmentByTrackId={assignmentByTrackId}
+                    clusterById={clusterById}
+                    customGroups={customGroups}
+                    libraryId={mapId || cacheUserId}
+                    lang={lang}
+                />
+            )}
 
             {/* Hover tooltip */}
             {viewMode === 'map' && hoveredTrack && (
