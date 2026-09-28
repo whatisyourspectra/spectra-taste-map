@@ -138,7 +138,9 @@ export default function MonthlyConstellationCalendar({
                     <div className="mcc-modal-sheet" onClick={(e) => e.stopPropagation()}>
                         <header className="mcc-modal-header">
                             <div>
-                                <span className="mcc-modal-badge">{inspectingRecord.moonSymbol} {inspectingRecord.moonName}</span>
+                                <span className="mcc-modal-badge">{inspectingRecord.moonName
+                                    ? `${inspectingRecord.moonSymbol || ''} ${inspectingRecord.moonName}`
+                                    : (en ? 'YOUR SKY' : '나의 별자리')}</span>
                                 <h4 className="mcc-modal-date">{inspectingRecord.dateDisplay}</h4>
                             </div>
                             <button type="button" className="mcc-modal-close" onClick={() => setInspectingRecord(null)}>✕</button>
@@ -148,17 +150,31 @@ export default function MonthlyConstellationCalendar({
                             <div className="mcc-modal-context">
                                 <span className="mcc-modal-label">{en ? 'Your Moment' : '그날 나의 순간'}</span>
                                 <p className="mcc-modal-moment-text">
-                                    {inspectingRecord.context?.emoji} {inspectingRecord.context?.label}
+                                    {inspectingRecord.result
+                                        ? (en ? inspectingRecord.result.contextEn || inspectingRecord.result.context : inspectingRecord.result.context)
+                                        : `${inspectingRecord.context?.emoji || ''} ${inspectingRecord.context?.label || ''}`}
                                 </p>
                             </div>
 
                             <div className="mcc-modal-constellation">
                                 <span className="mcc-modal-label">{en ? 'Recorded Constellation' : '기록된 별자리'}</span>
+                                {inspectingRecord.result?.nodes?.length > 0 && (
+                                    <svg className="mcc-modal-constellation-svg" viewBox="0 0 360 320" role="img" aria-label={en ? 'Your saved constellation' : '기록된 나의 별자리'}>
+                                        {inspectingRecord.result.edges?.map(([fromIndex, toIndex], index) => {
+                                            const from = inspectingRecord.result.nodes[fromIndex];
+                                            const to = inspectingRecord.result.nodes[toIndex];
+                                            return from && to ? <line key={index} x1={from.x} y1={from.y} x2={to.x} y2={to.y} stroke={inspectingRecord.result.color} /> : null;
+                                        })}
+                                        {inspectingRecord.result.nodes.map((node) => (
+                                            <circle key={node.id} cx={node.x} cy={node.y} r={node.isSelected ? 5 : 3} fill="#f8faff" />
+                                        ))}
+                                    </svg>
+                                )}
                                 <div className="mcc-modal-symbol-row">
                                     <span className="mcc-modal-symbol">{inspectingRecord.constellation?.symbol}</span>
                                     <div>
-                                        <h5 className="mcc-modal-symbol-name">{inspectingRecord.constellation?.name}</h5>
-                                        <p className="mcc-modal-symbol-essence">{inspectingRecord.constellation?.essence}</p>
+                                        <h5 className="mcc-modal-symbol-name">{en ? (inspectingRecord.result?.nameEn || inspectingRecord.constellation?.name) : inspectingRecord.constellation?.name}</h5>
+                                        <p className="mcc-modal-symbol-essence">{en ? (inspectingRecord.result?.lineEn || inspectingRecord.constellation?.essence) : inspectingRecord.constellation?.essence}</p>
                                     </div>
                                 </div>
                             </div>

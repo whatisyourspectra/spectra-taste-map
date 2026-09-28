@@ -1,6 +1,7 @@
 /* Constellation Oracle & Daily Tear-off Page Styling */
 .sco-root {
     margin: 32px 0 20px;
+    scroll-margin-top: 20px;
     display: flex;
     flex-direction: column;
     gap: 16px;
@@ -53,6 +54,14 @@
 .sco-moon {
     font-size: 0.95rem;
     line-height: 1;
+}
+
+.sco-moon-disc {
+    width: 13px;
+    height: 13px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 32% 28%, #f3f6ff, #a9b8dc 70%);
+    box-shadow: 0 0 13px rgba(178, 197, 255, 0.35), inset -3px -2px 3px rgba(62, 75, 110, 0.34);
 }
 
 /* Main Tear-off Sheet */
@@ -177,6 +186,16 @@
 .sco-chip-emoji {
     font-size: 1.15rem;
     line-height: 1;
+}
+
+.sco-chip-spark {
+    width: 13px;
+    height: 13px;
+    flex: 0 0 auto;
+    border: 1px solid #a9b8ff;
+    transform: rotate(45deg);
+    background: linear-gradient(135deg, rgba(184, 201, 255, 0.7), rgba(126, 150, 235, 0.06));
+    box-shadow: 0 0 14px rgba(139, 163, 255, 0.3);
 }
 
 .sco-chip-text {
@@ -343,6 +362,16 @@
 
 .sco-shift-emoji {
     font-size: 1.25rem;
+}
+
+.sco-shift-mark {
+    width: 18px;
+    height: 18px;
+    display: block;
+    border: 1px solid var(--sco-accent);
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--sco-accent) 0 2px, transparent 3px);
+    box-shadow: 0 0 16px var(--sco-accent);
 }
 
 .sco-shift-element {
@@ -586,5 +615,396 @@
     to {
         opacity: 1;
         transform: perspective(600px) rotateX(0deg) translateY(0);
+    }
+}
+
+/* The result uses the same track-derived geometry in the page and shared image. */
+.sco-result-heading {
+    text-align: center;
+    padding: 5px 0 13px;
+}
+
+.sco-result-heading h3 {
+    margin: 8px 0 6px;
+    color: #f4f6ff;
+    font-family: var(--font-display, inherit);
+    font-size: clamp(1.45rem, 6vw, 1.9rem);
+    line-height: 1.25;
+    letter-spacing: -0.035em;
+    word-break: keep-all;
+}
+
+.sco-result-heading p {
+    margin: 0;
+    color: #b7c5e1;
+    font-size: 0.86rem;
+    line-height: 1.5;
+}
+
+.sco-step-prescribed .sco-constellation-art {
+    min-height: 266px;
+    justify-content: center;
+    margin: 0 0 15px;
+    padding: 12px 8px 10px;
+    overflow: hidden;
+    border: 1px solid rgba(153, 180, 239, 0.14);
+    border-radius: 13px;
+    background: radial-gradient(circle at 50% 43%, rgba(97, 120, 204, 0.18), transparent 50%), #090e1c;
+    box-shadow: inset 0 5px 22px rgba(0, 0, 0, 0.38), 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.sco-step-prescribed .sco-constellation-svg {
+    width: 100%;
+    max-width: 360px;
+    height: 226px;
+    overflow: visible;
+}
+
+.sco-result-edge {
+    stroke-width: 1.5;
+    stroke-opacity: 0.78;
+    stroke-linecap: round;
+    filter: drop-shadow(0 0 5px var(--sco-result-color));
+    stroke-dasharray: 500;
+    stroke-dashoffset: 500;
+    animation: sco-connect 1s ease-out forwards;
+}
+
+.sco-result-node {
+    opacity: 0;
+    animation: sco-star-appear 450ms ease-out 400ms forwards;
+}
+
+.sco-result-node.is-selected {
+    animation-delay: 100ms;
+}
+
+.sco-result-node[role="button"] {
+    cursor: pointer;
+}
+
+.sco-star-hit-area {
+    fill: transparent;
+}
+
+.sco-star-focus-ring {
+    fill: none;
+    stroke: var(--sco-result-color);
+    stroke-width: 1.5;
+    opacity: 0;
+    filter: drop-shadow(0 0 5px var(--sco-result-color));
+    transition: opacity 180ms ease;
+}
+
+.sco-result-node.is-active .sco-star-focus-ring,
+.sco-result-node:focus-visible .sco-star-focus-ring {
+    opacity: 1;
+}
+
+.sco-result-count {
+    margin: 0;
+    color: #91a3c9;
+    font-size: 0.72rem;
+    letter-spacing: 0.03em;
+}
+
+.sco-star-tracklist {
+    margin: 0 0 15px;
+    overflow: hidden;
+    border: 1px solid rgba(153, 180, 239, 0.17);
+    border-radius: 13px;
+    background: linear-gradient(155deg, rgba(25, 36, 61, 0.94), rgba(11, 17, 32, 0.98));
+    box-shadow: 0 10px 28px -16px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.sco-star-tracklist__heading {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 13px 14px 4px;
+}
+
+.sco-star-tracklist__heading h4 {
+    margin: 0;
+    color: #eaf1ff;
+    font-size: 0.82rem;
+    font-weight: 750;
+}
+
+.sco-star-tracklist__heading span {
+    flex: none;
+    color: #7290bc;
+    font-size: 0.58rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+}
+
+.sco-star-tracklist__description {
+    margin: 0;
+    padding: 0 14px 10px;
+    color: #8499bb;
+    font-size: 0.66rem;
+    line-height: 1.4;
+}
+
+.sco-star-tracklist ol {
+    margin: 0;
+    padding: 0 8px 8px;
+    list-style: none;
+}
+
+.sco-star-tracklist li {
+    display: flex;
+    align-items: stretch;
+    min-width: 0;
+    border-top: 1px solid rgba(158, 180, 221, 0.08);
+    border-radius: 7px;
+}
+
+.sco-star-tracklist li.is-active {
+    background: color-mix(in srgb, var(--sco-result-color) 13%, transparent);
+}
+
+.sco-star-tracklist__select {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    gap: 8px;
+    min-width: 0;
+    min-height: 51px;
+    padding: 6px 7px;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.sco-star-tracklist__number {
+    flex: none;
+    color: var(--sco-result-color);
+    font-size: 0.67rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+}
+
+.sco-star-tracklist__cover {
+    position: relative;
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    overflow: hidden;
+    border: 1px solid rgba(155, 181, 228, 0.22);
+    border-radius: 6px;
+    background: radial-gradient(circle at 35% 30%, rgba(106, 142, 214, 0.28), transparent 65%), #10192d;
+    box-shadow: 0 3px 9px rgba(0, 0, 0, 0.25);
+}
+
+.sco-star-tracklist__cover svg {
+    width: 28px;
+    height: 28px;
+    stroke: var(--sco-result-color);
+    stroke-width: 1;
+    opacity: 0.68;
+}
+
+.sco-star-tracklist__cover img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.sco-star-tracklist__copy {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.sco-star-tracklist__copy strong {
+    color: #ecf2ff;
+    font-size: 0.76rem;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.sco-star-tracklist__copy small {
+    color: #8d9fbc;
+    font-size: 0.66rem;
+    overflow-wrap: anywhere;
+}
+
+.sco-star-tracklist__today {
+    flex: none;
+    padding: 3px 5px;
+    border: 1px solid rgba(132, 186, 255, 0.3);
+    border-radius: 5px;
+    color: #a8ceff;
+    font-size: 0.57rem;
+    font-weight: 750;
+}
+
+.sco-star-tracklist__listen {
+    flex: none;
+    width: 40px;
+    min-height: 44px;
+    margin: 3px 2px 3px 0;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: #a9c5f4;
+    font: inherit;
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+.sco-star-tracklist__select:hover,
+.sco-star-tracklist__select:focus-visible,
+.sco-star-tracklist__listen:hover,
+.sco-star-tracklist__listen:focus-visible {
+    background: rgba(143, 173, 231, 0.1);
+    outline: none;
+}
+
+.sco-star-tracklist__select:focus-visible,
+.sco-star-tracklist__listen:focus-visible {
+    box-shadow: inset 0 0 0 2px var(--sco-result-color);
+}
+
+.sco-result-moment {
+    margin-bottom: 14px;
+    padding: 11px 14px;
+    border-left: 2px solid var(--sco-result-color);
+    background: rgba(149, 173, 241, 0.06);
+}
+
+.sco-result-moment span {
+    color: #90a7d4;
+    font-size: 0.64rem;
+    font-weight: 750;
+    letter-spacing: 0.1em;
+}
+
+.sco-result-moment p {
+    margin: 5px 0 0;
+    color: #e1e8f8;
+    font-size: 0.82rem;
+    line-height: 1.45;
+    word-break: keep-all;
+}
+
+.sco-step-prescribed .sco-track-box {
+    margin-bottom: 11px;
+    box-shadow: 0 8px 22px -8px rgba(0, 0, 0, 0.52), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+
+.sco-track-reason {
+    margin-top: 5px;
+    color: #8096ba;
+    font-size: 0.68rem;
+    line-height: 1.35;
+}
+
+.sco-share-btn {
+    width: 100%;
+    min-height: 46px;
+    border: 1px solid rgba(184, 196, 255, 0.6);
+    border-radius: 12px;
+    background: linear-gradient(135deg, #435a9a, #675aab);
+    color: #fff;
+    font: inherit;
+    font-size: 0.88rem;
+    font-weight: 750;
+    cursor: pointer;
+    box-shadow: 0 11px 24px -8px rgba(89, 90, 188, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+.sco-share-btn:hover:not(:disabled),
+.sco-share-btn:focus-visible:not(:disabled) {
+    filter: brightness(1.12);
+}
+
+.sco-share-btn:disabled {
+    opacity: 0.6;
+    cursor: wait;
+}
+
+.sco-link-btn {
+    display: block;
+    width: 100%;
+    margin-top: 3px;
+    padding: 9px 12px;
+    border: 0;
+    background: transparent;
+    color: #a6bbf1;
+    font: inherit;
+    font-size: 0.76rem;
+    font-weight: 650;
+    cursor: pointer;
+}
+
+.sco-link-btn:hover,
+.sco-link-btn:focus-visible {
+    color: #d9e3ff;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.sco-share-status {
+    margin: 7px 0 0;
+    color: #afc9f8;
+    font-size: 0.75rem;
+    text-align: center;
+}
+
+.sco-step-prescribed .sco-tear-actions {
+    margin-top: 9px;
+}
+
+.sco-step-prescribed .sco-tear-btn {
+    border: 1px solid rgba(165, 183, 225, 0.25);
+    background: rgba(119, 143, 204, 0.09);
+    color: #d4ddf3;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+    font-size: 0.81rem;
+    font-weight: 650;
+}
+
+.sco-empty-result {
+    padding: 20px 6px 4px;
+    color: #cbd5e1;
+    text-align: center;
+}
+
+.sco-empty-result button {
+    padding: 9px 13px;
+    border: 1px solid rgba(147, 197, 253, 0.35);
+    border-radius: 9px;
+    background: rgba(87, 116, 180, 0.15);
+    color: #e7efff;
+    cursor: pointer;
+}
+
+@keyframes sco-connect {
+    to { stroke-dashoffset: 0; }
+}
+
+@keyframes sco-star-appear {
+    to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sco-result-edge,
+    .sco-result-node {
+        animation: none;
+        stroke-dashoffset: 0;
+        opacity: 1;
     }
 }

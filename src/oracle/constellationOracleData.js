@@ -44,29 +44,59 @@ export function getContextMoments(date = new Date()) {
     if (hour >= 5 && hour < 12) {
         // Morning
         return [
-            { id: 'ctx_dawn', label: '차분하게 시작하는 아침', emoji: '☕️', archetypeKey: 'clarity' },
-            { id: 'ctx_commute', label: '기분 좋은 출근길의 긴장감', emoji: '🚶', archetypeKey: 'focus' },
-            { id: 'ctx_awake', label: '아직 덜 깬 몽롱한 머릿속', emoji: '🌫️', archetypeKey: 'solace' },
+            { id: 'ctx_dawn', label: '오늘은 조용히 시작하고 싶어요', labelEn: 'I want a quiet start today', emoji: '☕️', archetypeKey: 'clarity' },
+            { id: 'ctx_commute', label: '출근길인데 벌써 하루가 길게 느껴져요', labelEn: 'The day already feels long on my commute', emoji: '🚶', archetypeKey: 'focus' },
+            { id: 'ctx_awake', label: '눈은 떴는데 마음은 아직 침대에 있어요', labelEn: 'I am awake, but my mind is still in bed', emoji: '🌫️', archetypeKey: 'solace' },
         ];
     } else if (hour >= 12 && hour < 18) {
         // Afternoon
         return [
-            { id: 'ctx_burnout', label: '카페에서 일하다 집중이 깨졌을 때', emoji: '☕️', archetypeKey: 'burnout' },
-            { id: 'ctx_escape', label: '어디론가 훌쩍 뛰쳐나가고 싶을 때', emoji: '💨', archetypeKey: 'wanderlust' },
-            { id: 'ctx_pause', label: '멍하니 멈춰 서서 한숨 돌릴 때', emoji: '🌿', archetypeKey: 'stillness' },
+            { id: 'ctx_burnout', label: '일하다가 갑자기 집중이 끊겼어요', labelEn: 'I suddenly lost focus at work', emoji: '☕️', archetypeKey: 'burnout' },
+            { id: 'ctx_escape', label: '잠깐이라도 어디론가 떠나고 싶어요', labelEn: 'I want to get away, even for a moment', emoji: '💨', archetypeKey: 'wanderlust' },
+            { id: 'ctx_pause', label: '사람들 속에서 혼자 숨 고르고 싶어요', labelEn: 'I need a breath of my own in the crowd', emoji: '🌿', archetypeKey: 'stillness' },
         ];
     } else {
         // Night & Midnight
         return [
-            { id: 'ctx_bed', label: '잠들기 전, 오늘 있었던 후회를 지울 때', emoji: '🛌', archetypeKey: 'regret' },
-            { id: 'ctx_nightwalk', label: '비 오는 밤, 퇴근길의 고요', emoji: '🌧️', archetypeKey: 'solitude' },
-            { id: 'ctx_deepwork', label: '모두가 잠든 밤, 오롯한 나의 시간', emoji: '🌌', archetypeKey: 'flow' },
+            { id: 'ctx_bed', label: '잠들기 전, 낮에 한 말이 자꾸 떠올라요', labelEn: 'I keep replaying something I said today', emoji: '🛌', archetypeKey: 'regret' },
+            { id: 'ctx_nightwalk', label: '퇴근했는데 머리가 아직 바빠요', labelEn: 'I am home, but my mind is still at work', emoji: '🌧️', archetypeKey: 'solitude' },
+            { id: 'ctx_deepwork', label: '모두 잠든 뒤에야 내 시간이 와요', labelEn: 'My own time begins after everyone sleeps', emoji: '🌌', archetypeKey: 'flow' },
         ];
     }
 }
 
 // Saju / Tarot Archetype Mirror data
 export const ARCHETYPE_MIRRORS = {
+    custom: {
+        tarot: 'Your moment',
+        element: '오늘의 선택',
+        korean: '지금의 마음에 맞는 방향을 골라보세요.',
+        english: 'Choose the direction that feels right for this moment.',
+        shifts: [
+            {
+                id: 'shift_custom_calm',
+                name: '조금 천천히 가기',
+                nameEn: 'Slow down a little',
+                desc: '마음의 속도를 낮추는 음악을 들어요',
+                descEn: 'Listen to music that slows your pace',
+                color: '#8db9f4',
+                constellation: 'anchor',
+                targetEnergy: 0.28,
+                camera: { yaw: 0.08, pitch: -0.06, zoom: 1.35 },
+            },
+            {
+                id: 'shift_custom_move',
+                name: '한 걸음 움직이기',
+                nameEn: 'Take one step',
+                desc: '지금의 공기를 바꿀 리듬을 들어요',
+                descEn: 'Listen to a rhythm that changes the air',
+                color: '#b49af5',
+                constellation: 'arrow',
+                targetEnergy: 0.72,
+                camera: { yaw: 0.62, pitch: 0.12, zoom: 1.35 },
+            },
+        ],
+    },
     burnout: {
         tarot: 'The Star (별자리)',
         element: '화(火)의 피로',

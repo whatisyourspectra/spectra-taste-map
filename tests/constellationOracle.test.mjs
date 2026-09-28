@@ -8,6 +8,7 @@ import {
     getMoonPhase,
     localDay,
 } from '../src/oracle/constellationOracleData.js';
+import { buildOracleResult } from '../src/oracle/oracleResult.js';
 
 test('getContextMoments returns 3 moments with valid metadata', () => {
     const morning = getContextMoments(new Date('2026-09-22T08:00:00'));
@@ -88,4 +89,39 @@ test('getMoonPhase returns valid moon symbol and name', () => {
     const moon = getMoonPhase(new Date());
     assert.ok(moon.symbol);
     assert.ok(moon.name);
+});
+
+test('today’s constellation uses library tracks and keeps its own geometry stable', () => {
+    const library = Array.from({ length: 9 }, (_, index) => ({
+        id: `track-${index}`,
+        name: `Track ${index}`,
+        artists: `Artist ${index}`,
+        coverUrl: index === 0 ? 'https://example.com/cover.jpg' : null,
+        valence: index / 8,
+        energy: (8 - index) / 8,
+    }));
+    const context = { id: 'ctx_burnout', label: '일하다 집중이 깨졌어요', archetypeKey: 'burnout' };
+    const shift = { id: 'shift_calm', targetEnergy: 0.25, color: '#60a5fa' };
+    const result = buildOracleResult(library, context, shift, library[0], '2026-09-28');
+    const repeated = buildOracleResult([...library].reverse(), context, shift, library[0], '2026-09-28');
+
+    assert.equal(result.name, '숨 고르는 파도자리');
+    assert.equal(result.nodes[0].id, library[0].id);
+    assert.equal(result.nodes[0].coverUrl, library[0].coverUrl);
+    assert.equal(result.nodes.length, 8);
+    assert.equal(new Set(result.nodes.map((node) => node.id)).size, 8);
+    assert.ok(result.nodes.every((node) => {
+        const track = library.find((item) => item.id === node.id);
+        return track && node.name === track.name && node.artists === track.artists;
+    }));
+    assert.equal(result.edges.length, 7);
+    assert.deepEqual(result.nodes, repeated.nodes);
+    assert.deepEqual(result.edges, repeated.edges);
+    assert.ok(result.nodes.every((node) => Number.isFinite(node.x) && Number.isFinite(node.y)));
+    assert.ok(result.edges.every(([from, to]) => result.nodes[from] && result.nodes[to]));
+
+    const changedLibrary = library.map((track, index) => index === 6 ? { ...track, valence: 0.03 } : track);
+    const changed = buildOracleResult(changedLibrary, context, shift, library[0], '2026-09-28');
+    assert.notDeepEqual(result.nodes.map(({ x, y }) => [x, y]), changed.nodes.map(({ x, y }) => [x, y]));
+    assert.equal(buildOracleResult([], context, shift, null, '2026-09-28'), null);
 });

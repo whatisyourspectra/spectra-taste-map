@@ -39,6 +39,16 @@ function openExternal(track) {
 
 function MobileConstellation({ tracks, status, progress, storageKey }) {
     const navigate = useNavigate();
+    useEffect(() => {
+        if (new URLSearchParams(window.location.search).get('oracle') !== '1') return undefined;
+        const timer = window.setTimeout(() => {
+            document.getElementById('today-constellation')?.scrollIntoView({
+                behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth',
+                block: 'start',
+            });
+        }, 350);
+        return () => window.clearTimeout(timer);
+    }, []);
     const [lang, setLang] = useState(() => {
         try { return localStorage.getItem('spectra-tastemap-lang-v1') === 'en' ? 'en' : 'ko'; }
         catch { return 'ko'; }
@@ -231,6 +241,11 @@ function MobileConstellation({ tracks, status, progress, storageKey }) {
                     </div>
                 </section>
                 <p className="tmm-library-count">{en ? `${library.length.toLocaleString()} tracks, one Spectra` : `${library.length.toLocaleString()}곡이 만든 하나의 스펙트라`}</p>
+                <button type="button" className="tmm-oracle-jump" onClick={() => document.getElementById('today-constellation')?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'start' })}>
+                    <span className="tmm-oracle-jump-mark" aria-hidden="true" />
+                    <span><strong>{en ? 'Find today’s constellation' : '오늘의 별자리 찾기'}</strong><small>{en ? 'Your moment, drawn from your music' : '지금의 순간을 내 음악으로 그려요'}</small></span>
+                    <span className="tmm-oracle-jump-arrow" aria-hidden="true">↗</span>
+                </button>
                 {status === 'enriching' && <p className="tmm-progress" role="status">{en ? 'Adding stars' : '별을 더 불러오는 중'} · {progress.done}/{progress.total}</p>}
                 {selectedTrack && <aside ref={selectedTrackRef} className="tmm-selected" aria-live="polite">
                     <div className="tmm-selected-head">
