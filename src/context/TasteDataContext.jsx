@@ -190,6 +190,14 @@ export function TasteDataProvider({ children, ownerId = null }) {
                 });
             }
 
+            if (typeof options.onPreviewReady === 'function') {
+                try {
+                    options.onPreviewReady();
+                } catch (e) {
+                    console.error('[TasteData] onPreviewReady callback failed:', e);
+                }
+            }
+
             return { ok: true };
         }
 
@@ -295,6 +303,13 @@ export function TasteDataProvider({ children, ownerId = null }) {
             // Stop blocking the whole screen as soon as a representative map
             // can be drawn. The remaining catalog matching continues below.
             publish(remaining.length > 0 ? 'enriching' : 'ready');
+            if (typeof options.onPreviewReady === 'function') {
+                try {
+                    options.onPreviewReady();
+                } catch (e) {
+                    console.error('[TasteData] onPreviewReady callback failed:', e);
+                }
+            }
 
             if (remaining.length > 0) {
                 const chunks = [];

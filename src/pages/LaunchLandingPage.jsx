@@ -27,8 +27,20 @@ export default function LaunchLandingPage({
   const fileInputRef = useRef(null);
   const dragDepthRef = useRef(0);
 
-  const busy = importStatus === 'importing' || importStatus === 'enriching';
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Screen is only blocked during initial import / preview calculation.
+  // Once the preview is ready, status switches to 'enriching' and user enters the 3D map.
+  const busy = isSubmitting || importStatus === 'importing';
   const pct = progress.total > 0 ? Math.round((progress.done / progress.total) * 100) : 0;
+
+  // React to status transition as soon as preview is published
+  React.useEffect(() => {
+    if (isSubmitting && (importStatus === 'enriching' || importStatus === 'ready')) {
+      setIsSubmitting(false);
+      navigate('/taste-map');
+    }
+  }, [isSubmitting, importStatus, navigate]);
 
   const updateFromText = useCallback((text) => {
     setRawText(text);
@@ -64,21 +76,47 @@ export default function LaunchLandingPage({
     if (file) handleFile(file);
   }, [handleFile]);
 
-  const handleGenerate = useCallback(async () => {
+  const handleGenerate = useCallback(() => {
     const parsed = parseInfo?.tracks || parseTrackList(rawText);
     if (!parsed || parsed.length === 0) return;
-    const res = await onImportTracks(parsed);
-    if (res?.ok !== false) {
-      navigate('/taste-map');
-    }
+    setIsSubmitting(true);
+    let navigated = false;
+    const navigateToMap = () => {
+      if (!navigated) {
+        navigated = true;
+        navigate('/taste-map');
+      }
+    };
+
+    onImportTracks(parsed, {
+      onPreviewReady: () => {
+        setIsSubmitting(false);
+        navigateToMap();
+      },
+    }).then((res) => {
+      setIsSubmitting(false);
+      if (res?.ok !== false) {
+        navigateToMap();
+      }
+    }).catch((err) => {
+      setIsSubmitting(false);
+      console.error('[LaunchLandingPage] Import failed:', err);
+    });
   }, [parseInfo, rawText, onImportTracks, navigate]);
 
   const handleSelectDemo = useCallback(async (universe) => {
     if (busy || !universe) return;
-    const enriched = getEnrichedDemoTracks(universe);
-    const res = await onImportTracks(enriched, { preEnriched: true });
-    if (res?.ok !== false) {
-      navigate('/taste-map');
+    setIsSubmitting(true);
+    try {
+      const enriched = getEnrichedDemoTracks(universe);
+      const res = await onImportTracks(enriched, { preEnriched: true });
+      if (res?.ok !== false) {
+        navigate('/taste-map');
+      }
+    } catch (err) {
+      console.error('[LaunchLandingPage] Demo select failed:', err);
+    } finally {
+      setIsSubmitting(false);
     }
   }, [busy, onImportTracks, navigate]);
 
@@ -133,7 +171,7 @@ export default function LaunchLandingPage({
                 onClick={() => navigate('/taste-map')}
                 title="현재 열려 있는 3D taste맵으로 돌아가기"
               >
-                <span>taste맵으로 돌아가기</span>
+                <span>taste맵으로 돌아가기{importStatus === 'enriching' && pct > 0 ? ` (${pct}%)` : ''}</span>
                 <span className="llp-nav-return-arrow">↗</span>
               </button>
             )}
