@@ -2118,6 +2118,23 @@ export default function TasteMapPage() {
         return map;
     }, [tracks, assignments]);
 
+    const voyageCluster = useMemo(() => {
+        if (!voyageState.active || voyageState.clusterId === null) return null;
+        return clusterById[voyageState.clusterId] || null;
+    }, [voyageState.active, voyageState.clusterId, clusterById]);
+
+    const voyageTracks = useMemo(() => {
+        if (!voyageState.active) return [];
+        if (voyageState.curatedTracks?.length) return voyageState.curatedTracks;
+        if (voyageCluster?.members) return voyageCluster.members;
+        return tracks.filter((t) => assignmentByTrackId.get(t.id) === voyageState.clusterId);
+    }, [voyageState.active, voyageState.curatedTracks, voyageCluster, tracks, assignmentByTrackId, voyageState.clusterId]);
+
+    const voyageTrackIdSet = useMemo(
+        () => new Set(voyageTracks.map((t) => t.id)),
+        [voyageTracks],
+    );
+
     const activeTrackIds = useMemo(() => {
         const set = new Set();
         tracks.forEach((track, idx) => {
@@ -3127,7 +3144,15 @@ export default function TasteMapPage() {
         // A small fixed raw-blend preserves feature direction without coupling layout to zoom.
         const t = hasTrackFilter ? 0.26 : 0.18;
 
-        const items = bubbleNodesResult.map((node) => {
+        // PERFORMANCE OPTIMIZATION: When in constellation voyage mode, ONLY compute and position
+        // the stars in the constellation!
+        // Do NOT compute positions or run label collision algorithms for 5,000 unrelated songs!
+        const isVoyageActive = voyageState.active && voyageTrackIdSet.size > 0;
+        const sourceNodes = isVoyageActive
+            ? bubbleNodesResult.filter((node) => voyageTrackIdSet.has(node.track.id))
+            : bubbleNodesResult;
+
+        const items = sourceNodes.map((node) => {
             const worldX = (node.nX + (node.nRawX - node.nX) * t) * vW;
             const worldY = (node.nY + (node.nRawY - node.nY) * t) * vH;
             const xPercent = viewportW ? ((worldX - camera.x) / viewportW) * 100 : 50;
@@ -3158,6 +3183,14 @@ export default function TasteMapPage() {
                     + sizePx,
             };
         });
+
+        // In constellation voyage mode, always show labels for all constellation stars!
+        if (isVoyageActive) {
+            return items.map((item) => ({
+                ...item,
+                showLabel: true,
+            }));
+        }
 
         const visibleLabels = new Set();
         const occupied = [];
@@ -3206,11 +3239,18 @@ export default function TasteMapPage() {
         activeTrackIds,
         selectedCluster,
         expandedClusterPulseId,
+        voyageState.active,
+        voyageTrackIdSet,
     ]);
 
     // Only mount bubbles near the viewport. Analytics and clustering still use
     // the complete import, while the DOM cost stays bounded for huge libraries.
     const visibleBubbleRenderItems = useMemo(() => {
+        if (voyageState.active && voyageTrackIdSet.size > 0) {
+            // When in constellation voyage mode, only mount the curated constellation stars!
+            return bubbleRenderItems.filter((item) => voyageTrackIdSet.has(item.node.track.id));
+        }
+
         const overscan = 240;
         const visible = bubbleRenderItems.filter((item) => (
             item.xPx >= -overscan
@@ -3246,16 +3286,20 @@ export default function TasteMapPage() {
         spectraExpandTrackId,
         selectedTrackCard,
         hoveredBubbleId,
+        voyageState.active,
+        voyageTrackIdSet,
     ]);
 
     const isConstellationView = activeMapView === 'constellation';
     const constellationCoverZoomed = isConstellationView && bubbleZoom >= CONSTELLATION_COVER_ZOOM;
     const constellationTopology = useMemo(
-        () => buildConstellationTopology(bubbleNodesResult),
-        [bubbleNodesResult],
+        () => (isConstellationView && (!voyageState.active || !voyageState.curatedEdges?.length)
+            ? buildConstellationTopology(bubbleNodesResult)
+            : []),
+        [isConstellationView, voyageState.active, voyageState.curatedEdges, bubbleNodesResult],
     );
     const constellationEdges = useMemo(() => {
-        if (!isConstellationView || constellationTopology.length === 0) return [];
+        if (!isConstellationView || voyageState.active || constellationTopology.length === 0) return [];
         const pointById = new Map(bubbleRenderItems.map((item) => [item.node.track.id, item]));
         const overscan = 160;
         return constellationTopology.map((edge) => {
@@ -4494,29 +4538,12 @@ export default function TasteMapPage() {
         if (track) handleBubbleClick(track);
     }, [trackLookupById, handleBubbleClick]);
 
-    const voyageCluster = useMemo(() => {
-        if (!voyageState.active || voyageState.clusterId === null) return null;
-        return clusterById[voyageState.clusterId] || null;
-    }, [voyageState.active, voyageState.clusterId, clusterById]);
-
-    const voyageTracks = useMemo(() => {
-        if (!voyageState.active) return [];
-        if (voyageState.curatedTracks?.length) return voyageState.curatedTracks;
-        if (voyageCluster?.members) return voyageCluster.members;
-        return tracks.filter((t) => assignmentByTrackId.get(t.id) === voyageState.clusterId);
-    }, [voyageState.active, voyageState.curatedTracks, voyageCluster, tracks, assignmentByTrackId, voyageState.clusterId]);
-
     const voyageEdges = useMemo(() => {
         if (!voyageState.active) return [];
         if (voyageState.curatedEdges?.length) return voyageState.curatedEdges;
         if (voyageState.clusterId === null) return [];
         return constellationTopology.filter((e) => e.clusterId === voyageState.clusterId);
     }, [voyageState.active, voyageState.curatedEdges, voyageState.clusterId, constellationTopology]);
-
-    const voyageTrackIdSet = useMemo(
-        () => new Set(voyageTracks.map((t) => t.id)),
-        [voyageTracks],
-    );
 
     const voyageRenderEdges = useMemo(() => {
         if (!isConstellationView || !voyageState.active || !voyageEdges.length) return [];

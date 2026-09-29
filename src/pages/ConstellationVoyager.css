@@ -2,12 +2,9 @@
    CONSTELLATION VOYAGER (Spaceship Cruise & Star Playback)
    ════════════════════════════════════════════════════════════ */
 
-/* Dimming for elements outside the active constellation in voyage mode */
+/* Hide elements outside the active constellation in voyage mode to eliminate GPU filter lag */
 .tm-root.is-voyage-mode .tm-bubble-item:not(.tm-voyage-star) {
-    opacity: 0.08 !important;
-    filter: blur(1.5px) grayscale(0.5);
-    pointer-events: none !important;
-    transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), filter 0.6s ease;
+    display: none !important;
 }
 
 .tm-root.is-voyage-mode .tm-bubble-item.tm-voyage-star {
@@ -40,10 +37,9 @@
     display: none !important;
 }
 
-/* Constellation line highlighting in voyage mode */
+/* Constellation line highlighting in voyage mode: hide non-voyage edges */
 .tm-root.is-voyage-mode .tm-constellation-lines line:not(.is-voyage-edge) {
-    opacity: 0.02 !important;
-    transition: opacity 0.5s ease;
+    display: none !important;
 }
 
 .tm-root.is-voyage-mode .tm-constellation-lines line.is-voyage-edge {
