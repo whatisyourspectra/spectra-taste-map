@@ -1,7 +1,8 @@
+import React, { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import AccountButton from '../auth/AccountButton';
 import { buildConstellationTopology, buildSeedConstellation, buildVoyageSequence, getVoyageNeighbor } from '../taste/constellationTopology';
 import { getGenreIdentity } from '../taste/genreIdentity';
-import React, { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useTasteData } from '../context/TasteDataContext';
 import TasteMapMetroStudio from './TasteMapMetroStudio';
 import MetroYouTubePlayer from './MetroYouTubePlayer';
@@ -1564,6 +1565,13 @@ export default function TasteMapPage() {
         recordDecision,
         reset,
     } = useTasteData();
+    const navigate = useNavigate();
+    const handleGoHome = useCallback(() => {
+        navigate('/');
+    }, [navigate]);
+    const isDemoUniverse = useMemo(() => {
+        return Array.isArray(importedTracks) && importedTracks.length > 0 && String(importedTracks[0]?.id || '').startsWith('demo-');
+    }, [importedTracks]);
     const user = null; // no account model — taste comes from the imported list
     const login = reset; // "re-import" replaces the old "re-login"
     const canvasRef = useRef(null);
@@ -5203,7 +5211,30 @@ export default function TasteMapPage() {
             {/* Header */}
             <header className="tm-header">
                 <div className="tm-header-main">
-                    <span className="tm-pill">S P E C T R A</span>
+                    <div className="tm-header-nav-row">
+                        <button
+                            type="button"
+                            className="tm-back-home-btn"
+                            onClick={handleGoHome}
+                            title={lang === 'en' ? 'Return to Launch Home (Pick other demo or import music)' : '런칭 홈으로 돌아가기 (다른 taste맵 선택 및 음악 가져오기)'}
+                        >
+                            <span className="tm-back-arrow">←</span>
+                            <span>{lang === 'en' ? 'Launch Home' : '런칭 홈'}</span>
+                        </button>
+                        <span
+                            className="tm-pill"
+                            onClick={handleGoHome}
+                            role="button"
+                            tabIndex={0}
+                            style={{ cursor: 'pointer' }}
+                            title={lang === 'en' ? 'Return to Launch Home' : '런칭 홈으로 이동'}
+                        >
+                            S P E C T R A
+                        </span>
+                        {isDemoUniverse && (
+                            <span className="tm-demo-badge" title="체험용 데모 은하입니다">DEMO FIELD</span>
+                        )}
+                    </div>
                     <h1 className="tm-title">
                         <span className="tm-title-brand">{explorerNickname}</span>
                         {' Taste Field'}
@@ -5238,6 +5269,15 @@ export default function TasteMapPage() {
                     </div>
                 </div>
                 <div className="tm-header-side">
+                    <button
+                        type="button"
+                        className="tm-nav-home-btn"
+                        onClick={handleGoHome}
+                        title={lang === 'en' ? 'Launch Home' : '런칭 홈으로 이동'}
+                    >
+                        <span className="tm-nav-home-icon">✦</span>
+                        <span>{lang === 'en' ? 'Launch Home' : '런칭 홈'}</span>
+                    </button>
                     <AccountButton lang={lang} />
                     <div className="tm-lang-toggle" role="tablist" aria-label="language toggle">
                         <button

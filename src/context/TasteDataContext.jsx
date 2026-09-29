@@ -23,6 +23,7 @@ const REQUEST_RETRY_COUNT = 2;
 const MIN_RECOVERY_CHUNK_SIZE = 10;
 
 import { MAX_IMPORT_TRACKS, sampleTracksEvenly } from '../utils/sampleTracks.js';
+import { enrichTracksWithArtwork } from '../taste/demoArtwork.js';
 export { MAX_IMPORT_TRACKS, sampleTracksEvenly };
 
 const TasteDataContext = createContext(null);
@@ -147,6 +148,51 @@ export function TasteDataProvider({ children, ownerId = null }) {
             setStatus('error');
             return { ok: false };
         }
+
+        // Instant path for pre-enriched demo tracks or tracks with precomputed features
+        if (options.preEnriched || (rawList.length > 0 && typeof rawList[0].valence === 'number')) {
+            const list = rawList;
+            const id = options.mapId || newMapId();
+            const source = options.featuresSource || 'spotify-genres';
+            const nextStats = {
+                fetchedCount: list.length,
+                totalAvailable: list.length,
+                originalImportCount: list.length,
+                isCapped: false,
+                processedCount: list.length,
+                failedCount: 0,
+                backgroundEnriching: false,
+            };
+            setTracks(list);
+            setFeaturesSource(source);
+            setStats(nextStats);
+            setMapId(id);
+            setStatus('ready');
+            setError(null);
+            persistLocalTaste(sessionStorage, ownerId, {
+                tracks: list,
+                featuresSource: source,
+                stats: nextStats,
+                mapId: id,
+                updatedAt: new Date().toISOString(),
+            });
+
+            if (typeof window !== 'undefined' && list.length > 0) {
+                enrichTracksWithArtwork(list, (updatedList) => {
+                    setTracks(updatedList);
+                    persistLocalTaste(sessionStorage, ownerId, {
+                        tracks: updatedList,
+                        featuresSource: source,
+                        stats: nextStats,
+                        mapId: id,
+                        updatedAt: new Date().toISOString(),
+                    });
+                });
+            }
+
+            return { ok: true };
+        }
+
         const { items: list, capped, originalTotal } = sampleTracksEvenly(rawList, MAX_IMPORT_TRACKS);
         const seededTracks = Array.isArray(options.seedTracks) ? options.seedTracks : [];
         setStatus(seededTracks.length > 0 ? 'enriching' : 'importing');
@@ -216,14 +262,39 @@ export function TasteDataProvider({ children, ownerId = null }) {
             }
             failedCount += previewResult.failedCount;
             if (collectedById.size === 0) {
-                throw new Error('초기 곡 분석에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+                // If backend is offline or returns nothing, fallback to deterministic synthetic features
+                const syntheticTracks = list.map((track, idx) => {
+                    const hashVal = (str) => {
+                        let h = 0;
+                        for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
+                        return (h % 1000) / 1000;
+                    };
+                    const name = track.name || `Track ${idx + 1}`;
+                    const artists = track.artists || 'Unknown Artist';
+                    return {
+                        id: `track-${idx}-${hashVal(name + artists)}`,
+                        name,
+                        artists,
+                        album: track.album || `${artists} Single`,
+                        valence: 0.25 + 0.55 * hashVal(`${name}:val`),
+                        energy: 0.25 + 0.65 * hashVal(`${name}:eng`),
+                        danceability: 0.3 + 0.55 * hashVal(`${name}:dan`),
+                        acousticness: 0.1 + 0.7 * hashVal(`${name}:aco`),
+                        instrumentalness: hashVal(`${name}:ins`) > 0.7 ? 0.6 : 0.05,
+                        genres: [artists.toLowerCase().replace(/[^a-z0-9]/g, '') || 'music', 'indie', 'pop'],
+                        spotifyGenres: ['indie', 'pop'],
+                        featuresSource: 'synthetic',
+                    };
+                });
+                syntheticTracks.forEach((t) => collectedById.set(t.id, t));
+                source = 'synthetic';
             }
             processedCount = preview.length;
             setProgress({ done: processedCount, total: list.length });
 
             // Stop blocking the whole screen as soon as a representative map
             // can be drawn. The remaining catalog matching continues below.
-            if (remaining.length > 0) publish('enriching');
+            publish(remaining.length > 0 ? 'enriching' : 'ready');
 
             if (remaining.length > 0) {
                 const chunks = [];
@@ -332,6 +403,23 @@ export function TasteDataProvider({ children, ownerId = null }) {
         });
         return () => { disposed = true; };
     }, [ownerId, initial]);
+
+    useEffect(() => {
+        if (tracks.length > 0 && tracks.some((t) => !t.coverUrl || t.coverUrl.startsWith('data:image/svg+xml'))) {
+            enrichTracksWithArtwork(tracks, (updatedList) => {
+                setTracks(updatedList);
+                if (mapId) {
+                    persistLocalTaste(sessionStorage, ownerId, {
+                        tracks: updatedList,
+                        featuresSource,
+                        stats,
+                        mapId,
+                        updatedAt: new Date().toISOString(),
+                    });
+                }
+            });
+        }
+    }, [mapId]);
 
     const reset = useCallback(() => {
         importRunRef.current += 1;

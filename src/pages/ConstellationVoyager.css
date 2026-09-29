@@ -484,6 +484,156 @@
     background: rgba(56, 189, 248, 0.14);
 }
 
+/* ── Voyager Floating YouTube PiP Window ── */
+.cv-youtube-pip {
+    position: fixed;
+    right: 24px;
+    bottom: 96px;
+    z-index: 85;
+    width: 360px;
+    max-width: calc(100vw - 32px);
+    border-radius: 14px;
+    overflow: hidden;
+    background: rgba(13, 21, 26, 0.96);
+    border: 1px solid rgba(112, 214, 255, 0.35);
+    box-shadow: 0 20px 48px rgba(0, 0, 0, 0.75), 0 0 24px rgba(56, 189, 248, 0.18);
+    backdrop-filter: blur(20px);
+    transition: opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1), transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cv-youtube-pip.is-hidden {
+    position: fixed !important;
+    right: -9999px !important;
+    bottom: -9999px !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transform: translateY(12px) scale(0.96);
+}
+
+.cv-youtube-pip.is-visible {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0) scale(1);
+}
+
+/* Reset default absolute positioning and offsets from metro studio */
+.cv-youtube-pip .tm2-youtube-player {
+    position: relative !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: auto !important;
+    bottom: auto !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    animation: none !important;
+}
+
+/* Compact PiP Header */
+.cv-youtube-pip .tm2-youtube-player > header {
+    position: relative;
+    min-height: 42px !important;
+    height: 42px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 0 12px 0 14px !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+    background: rgba(17, 28, 34, 0.95) !important;
+    cursor: default !important;
+    touch-action: auto !important;
+}
+
+.cv-youtube-pip .tm2-youtube-player > header::before {
+    display: none !important;
+}
+
+.cv-youtube-pip .tm2-youtube-player > header > div {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    min-width: 0 !important;
+}
+
+.cv-youtube-pip .tm2-youtube-player > header span {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+    color: #ff746d !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    flex-shrink: 0 !important;
+}
+
+.cv-youtube-pip .tm2-youtube-player > header span i {
+    width: 6px !important;
+    height: 6px !important;
+    border-radius: 50% !important;
+    background: #ff4e45 !important;
+    box-shadow: 0 0 8px rgba(255, 78, 69, 0.8) !important;
+}
+
+.cv-youtube-pip .tm2-youtube-player > header strong {
+    color: #f1f5f9 !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    max-width: 210px !important;
+}
+
+.cv-youtube-pip .tm2-youtube-player > header button {
+    flex: 0 0 auto !important;
+    width: 26px !important;
+    height: 26px !important;
+    display: grid !important;
+    place-items: center !important;
+    border: none !important;
+    border-radius: 6px !important;
+    background: rgba(255, 255, 255, 0.08) !important;
+    color: #cbd5e1 !important;
+    font-size: 16px !important;
+    cursor: pointer !important;
+    transition: all 0.16s ease !important;
+}
+
+.cv-youtube-pip .tm2-youtube-player > header button:hover {
+    background: rgba(255, 255, 255, 0.2) !important;
+    color: #ffffff !important;
+}
+
+/* 16:9 Video Frame */
+.cv-youtube-pip .tm2-youtube-frame {
+    position: relative !important;
+    width: 100% !important;
+    aspect-ratio: 16 / 9 !important;
+    min-height: 0 !important;
+    background: #000000 !important;
+    overflow: hidden !important;
+}
+
+.cv-youtube-pip .tm2-youtube-frame iframe,
+.cv-youtube-pip .tm2-youtube-frame > div:first-child {
+    width: 100% !important;
+    height: 100% !important;
+    border: none !important;
+    display: block !important;
+}
+
+/* Hide duplicate transport / now-playing / footer since Voyager HUD dock has them */
+.cv-youtube-pip .tm2-youtube-now,
+.cv-youtube-pip .tm2-youtube-transport,
+.cv-youtube-pip .tm2-youtube-player > footer,
+.cv-youtube-pip .tm2-youtube-start-hint,
+.cv-youtube-pip .tm2-youtube-player > button {
+    display: none !important;
+}
+
 /* Responsive adjustment */
 @media (max-width: 640px) {
     .cv-dock {
@@ -509,5 +659,10 @@
     }
     .cv-exit-key {
         display: none;
+    }
+    .cv-youtube-pip {
+        right: 16px;
+        bottom: 80px;
+        width: calc(100vw - 32px);
     }
 }

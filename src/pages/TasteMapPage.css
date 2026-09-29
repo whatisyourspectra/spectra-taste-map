@@ -3991,12 +3991,65 @@
     pointer-events: auto;
 }
 
+.tm-header-nav-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.tm-back-home-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: rgba(112, 214, 255, 0.12);
+    border: 1px solid rgba(112, 214, 255, 0.32);
+    color: #70d6ff;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 0.02em;
+    transition: all 0.2s ease;
+}
+
+.tm-back-home-btn:hover {
+    background: rgba(112, 214, 255, 0.25);
+    border-color: #70d6ff;
+    color: #ffffff;
+    transform: translateX(-2px);
+    box-shadow: 0 0 12px rgba(112, 214, 255, 0.3);
+}
+
+.tm-back-arrow {
+    font-size: 12px;
+}
+
+.tm-demo-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 7px;
+    border-radius: 6px;
+    background: rgba(255, 112, 166, 0.16);
+    border: 1px solid rgba(255, 112, 166, 0.38);
+    color: #ff70a6;
+    font-size: 9.5px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+}
+
 .tm-header .tm-pill {
     padding: 0;
     background: transparent;
     color: rgba(190, 208, 246, 0.64);
     font-size: 10.5px;
     letter-spacing: 0.18em;
+    transition: color 0.2s ease;
+}
+
+.tm-header .tm-pill:hover {
+    color: #ffffff;
 }
 
 .tm-header .tm-title {
@@ -4058,6 +4111,38 @@
 .tm-header-side {
     align-items: flex-end;
     pointer-events: auto;
+    display: flex;
+    gap: 8px;
+}
+
+.tm-nav-home-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 32px;
+    padding: 0 13px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, rgba(56, 189, 248, 0.16), rgba(99, 102, 241, 0.14));
+    border: 1px solid rgba(112, 214, 255, 0.35);
+    color: #70d6ff;
+    font-size: 11.5px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+    backdrop-filter: blur(14px);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.tm-nav-home-btn:hover {
+    background: linear-gradient(135deg, rgba(56, 189, 248, 0.28), rgba(99, 102, 241, 0.25));
+    border-color: #70d6ff;
+    color: #ffffff;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(56, 189, 248, 0.28);
+}
+
+.tm-nav-home-icon {
+    font-size: 12px;
 }
 
 .tm-header .tm-lang-toggle {

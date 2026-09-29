@@ -205,15 +205,35 @@ function MobileConstellation({ tracks, status, progress, storageKey }) {
         <main className="tmm-root">
             <div className="tmm-shell">
                 <header className="tmm-appbar">
-                    <a href="/taste-map/mobile" className="tmm-brand" aria-label="SPECTRA home"><span className="tmm-brand-mark" aria-hidden="true" />SPECTRA</a>
-                    <details className="tmm-menu">
-                        <summary aria-label={en ? 'More options' : '더 보기'}>···</summary>
-                        <div className="tmm-menu-panel">
-                            <AccountButton lang={lang} />
-                            <button type="button" onClick={() => setLang(en ? 'ko' : 'en')}>{en ? '한국어' : 'English'}</button>
-                            <button type="button" onClick={() => navigate('/taste-map?view=constellation')}>{en ? 'Detailed map' : '상세 지도'}</button>
-                        </div>
-                    </details>
+                    <button
+                        type="button"
+                        onClick={() => navigate('/')}
+                        className="tmm-brand"
+                        aria-label="SPECTRA home"
+                    >
+                        <span className="tmm-brand-mark" aria-hidden="true" />
+                        SPECTRA
+                    </button>
+                    <div className="tmm-appbar-right">
+                        <button
+                            type="button"
+                            className="tmm-home-pill"
+                            onClick={() => navigate('/')}
+                            aria-label={en ? 'Launch Home' : '런칭 홈'}
+                        >
+                            <span>←</span>
+                            <span>{en ? 'Home' : '런칭 홈'}</span>
+                        </button>
+                        <details className="tmm-menu">
+                            <summary aria-label={en ? 'More options' : '더 보기'}>···</summary>
+                            <div className="tmm-menu-panel">
+                                <button type="button" onClick={() => navigate('/')}>{en ? 'Launch Home' : '런칭 홈 (시작 페이지)'}</button>
+                                <AccountButton lang={lang} />
+                                <button type="button" onClick={() => setLang(en ? 'ko' : 'en')}>{en ? '한국어' : 'English'}</button>
+                                <button type="button" onClick={() => navigate('/taste-map?view=constellation')}>{en ? 'Detailed map' : '상세 지도'}</button>
+                            </div>
+                        </details>
+                    </div>
                 </header>
                 <section className="tmm-living" aria-labelledby="tmm-living-title">
                     <div className="tmm-living-heading">

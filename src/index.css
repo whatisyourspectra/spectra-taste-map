@@ -47,6 +47,18 @@ body {
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+
+p, li, summary, button {
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 
 button,

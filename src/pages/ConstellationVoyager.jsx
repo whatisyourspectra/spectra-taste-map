@@ -395,27 +395,17 @@ export default function ConstellationVoyagerHUD({
                 </div>
             </div>
 
-            {/* Embedded YouTube Playback Engine */}
+            {/* Embedded YouTube Playback Engine & Floating PiP */}
             {currentTrack && (
                 <div
-                    style={{
-                        position: 'fixed',
-                        right: showVideoPip ? '24px' : '-9999px',
-                        bottom: showVideoPip ? '96px' : '-9999px',
-                        zIndex: 85,
-                        width: '320px',
-                        height: '180px',
-                        borderRadius: '12px',
-                        overflow: 'hidden',
-                        boxShadow: '0 20px 48px rgba(0,0,0,0.6)',
-                        border: '1px solid rgba(160, 190, 245, 0.25)',
-                    }}
+                    className={`cv-youtube-pip${showVideoPip ? ' is-visible' : ' is-hidden'}`}
+                    aria-hidden={!showVideoPip}
                 >
                     <MetroYouTubePlayer
                         key={currentTrack.id}
                         track={currentTrack}
                         nextTrack={nextTrack}
-                        trainName={constellationName}
+                        trainName={currentTrack ? `${currentTrack.artists} - ${currentTrack.name}` : constellationName}
                         color={cluster?.color || '#38bdf8'}
                         lang={lang}
                         embedded
@@ -427,10 +417,7 @@ export default function ConstellationVoyagerHUD({
                         onEnded={() => (hasNext ? onNextStar?.() : onFinish?.())}
                         onNext={hasNext ? onNextStar : undefined}
                         onPrevious={hasPrevious ? onPrevStar : undefined}
-                        onClose={() => {
-                            setShowVideoPip(false);
-                            if (isPlaying) onTogglePlay?.();
-                        }}
+                        onClose={() => setShowVideoPip(false)}
                     />
                 </div>
             )}
