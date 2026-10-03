@@ -1,31 +1,34 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { sampleTracksEvenly, MAX_IMPORT_TRACKS } from '../src/utils/sampleTracks.js';
+import { limitImportTracks, MAX_IMPORT_TRACKS } from '../src/utils/sampleTracks.js';
 
-test('sampleTracksEvenly leaves lists within limit untouched', () => {
-    const list = Array.from({ length: 500 }, (_, i) => ({ id: `track-${i}` }));
-    const result = sampleTracksEvenly(list, 2000);
-    assert.equal(result.capped, false);
-    assert.equal(result.items.length, 500);
-    assert.equal(result.originalTotal, 500);
-    assert.deepEqual(result.items, list);
-});
+for (const count of [0, 1000, 1001, 4999, 5000]) {
+    test(`imports all ${count} tracks in source order without reducing similar songs`, () => {
+        const list = Object.freeze(Array.from({ length: count }, (_, i) => ({
+            id: `track-${i}`, artist: 'Same Artist', album: 'Same Album',
+        })));
+        const result = limitImportTracks(list);
+        assert.equal(MAX_IMPORT_TRACKS, 5000);
+        assert.equal(result.items, list);
+        assert.equal(result.capped, false);
+        assert.equal(result.originalTotal, count);
+    });
+}
 
-test('sampleTracksEvenly defaults to MAX_IMPORT_TRACKS (5000)', () => {
-    const withinLimit = Array.from({ length: 4200 }, (_, i) => ({ id: `track-${i}` }));
-    const resultWithin = sampleTracksEvenly(withinLimit);
-    assert.equal(resultWithin.capped, false);
-    assert.equal(resultWithin.items.length, 4200);
+for (const count of [5001, 8000]) {
+    test(`caps ${count} tracks at the first 5000 without reordering or changing the input`, () => {
+        const list = Object.freeze(Array.from({ length: count }, (_, i) => ({ id: `track-${i}` })));
+        const result = limitImportTracks(list);
+        assert.equal(result.items.length, 5000);
+        assert.deepEqual(result.items, list.slice(0, 5000));
+        assert.equal(result.originalTotal, count);
+        assert.equal(result.capped, true);
+        assert.equal(list.length, count);
+    });
+}
 
-    const exceedLimit = Array.from({ length: 7500 }, (_, i) => ({ id: `track-${i}` }));
-    const resultExceed = sampleTracksEvenly(exceedLimit);
-    assert.equal(resultExceed.capped, true);
-    assert.equal(resultExceed.items.length, MAX_IMPORT_TRACKS);
-    assert.equal(resultExceed.originalTotal, 7500);
-});
-
-test('sampleTracksEvenly handles empty or invalid lists safely', () => {
-    assert.deepEqual(sampleTracksEvenly([]), { items: [], capped: false, originalTotal: 0 });
-    assert.deepEqual(sampleTracksEvenly(null), { items: [], capped: false, originalTotal: 0 });
-    assert.deepEqual(sampleTracksEvenly(undefined), { items: [], capped: false, originalTotal: 0 });
+test('invalid lists are handled safely', () => {
+    for (const list of [null, undefined, {}, 'tracks']) {
+        assert.deepEqual(limitImportTracks(list), { items: [], capped: false, originalTotal: 0 });
+    }
 });

@@ -1,12 +1,12 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './LaunchLandingPage.css';
-import LaunchCosmicScene from './LaunchCosmicScene';
+import LaunchTasteMapHero from './LaunchTasteMapHero';
 import { DEMO_UNIVERSES, getEnrichedDemoTracks } from '../taste/demoUniverses';
 import { parseTrackList } from '../utils/parseTrackList';
 import { MAX_IMPORT_TRACKS } from '../context/TasteDataContext';
 import AccountButton from '../auth/AccountButton';
-import SpectraSymbol from '../components/SpectraSymbol';
+import LaunchTasteJourney, { LaunchDemoPortal, LaunchImportOrbit } from './LaunchTasteJourney';
 
 const TUNE_MY_MUSIC_URL = 'https://www.tunemymusic.com/transfer';
 
@@ -19,6 +19,29 @@ export default function LaunchLandingPage({
   onReset = null,
 }) {
   const navigate = useNavigate();
+  const landingRef = useRef(null);
+  const [chapter, setChapter] = useState('hero');
+  React.useEffect(() => {
+    const root = landingRef.current;
+    const sections = [...root.querySelectorAll('main > section[id]')];
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      let current = 'hero';
+      sections.forEach(section => { if (section.getBoundingClientRect().top < window.innerHeight * 0.42) current = section.id; });
+      setChapter(previous => previous === current ? previous : current);
+      root.style.setProperty('--journey-progress', Math.min(1, window.scrollY / Math.max(1, root.scrollHeight - window.innerHeight)));
+    };
+    const onScroll = () => { if (!frame) frame = requestAnimationFrame(update); };
+    const reveal = new IntersectionObserver(entries => entries.forEach(entry => {
+      if (entry.isIntersecting) { entry.target.classList.add('is-revealed'); reveal.unobserve(entry.target); }
+    }), { threshold: 0.08 });
+    sections.forEach(section => reveal.observe(section));
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+    onScroll();
+    return () => { cancelAnimationFrame(frame); reveal.disconnect(); window.removeEventListener('scroll', onScroll); window.removeEventListener('resize', onScroll); };
+  }, []);
   const [activeTab, setActiveTab] = useState('file'); // 'file' | 'paste'
   const [rawText, setRawText] = useState('');
   const [fileName, setFileName] = useState('');
@@ -128,16 +151,13 @@ export default function LaunchLandingPage({
       const offsetPosition = elementPosition + window.pageYOffset - navOffset;
       window.scrollTo({
         top: offsetPosition,
-        behavior: 'smooth',
+        behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth',
       });
     }
   };
 
   return (
-    <div className="llp-root">
-      {/* 3D WebGL Lusion-inspired Interactive Particle & Nebula Canvas */}
-      <LaunchCosmicScene />
-
+    <div className="llp-root" ref={landingRef} data-chapter={chapter}>
       {/* Ambient background fog layers */}
       <div className="llp-fog llp-fog-top" aria-hidden />
       <div className="llp-fog llp-fog-mid" aria-hidden />
@@ -180,8 +200,8 @@ export default function LaunchLandingPage({
               className="llp-nav-demo-btn"
               onClick={() => handleSelectDemo(DEMO_UNIVERSES[0])}
             >
-              <span>✨</span>
-              <span>1초 체험</span>
+              <span>Explore</span>
+              <span aria-hidden="true">↗</span>
             </button>
             <div className="llp-nav-auth">
               <AccountButton />
@@ -194,234 +214,41 @@ export default function LaunchLandingPage({
       <main className="llp-content">
         {/* ── Section 1: Hero Section ── */}
         <section className="llp-hero-section" id="hero">
-          <div className="llp-hero-badge">
-            <span className="llp-badge-pulse" aria-hidden />
-            <span>ASTRONOMICAL MUSIC TOPOLOGY · 2026</span>
-          </div>
-
-          <h1 className="llp-hero-title">
-            <span className="llp-hero-line-1">당신의 좋아요 음악기록을</span>
-            <span className="llp-hero-line-2">살아나는 취향 지도로</span>
-          </h1>
-
-          <p className="llp-hero-desc">
-            <span className="llp-title-chunk">SPECTRA는 흩어져 있던 음악 기록을</span>{' '}
-            <span className="llp-title-chunk">3D taste맵과 별자리 항해 경험으로 바꿉니다.</span><br className="llp-br-desktop" />
-            <span className="llp-title-chunk">감정의 궤도를 유영하고,</span>{' '}
-            <span className="llp-title-chunk">우주선을 타고 새로운 멜로디를 발견하세요.</span>
-          </p>
-
-          <div className="llp-hero-cta-group">
-            <button
-              type="button"
-              className="llp-btn-primary"
-              onClick={() => handleSelectDemo(DEMO_UNIVERSES[0])}
-              disabled={busy}
-            >
-              <span className="llp-btn-icon">✦</span>
-              <span>원클릭 데모 taste맵 체험하기</span>
-            </button>
-
-            <button
-              type="button"
-              className="llp-btn-secondary"
-              onClick={() => scrollToSection('import')}
-            >
-              <span>내 음악 목록으로 지도 만들기</span>
-              <span className="llp-btn-arrow">↓</span>
-            </button>
-          </div>
-
-          {/* Linear-style Interactive Feature Orbit Preview */}
-          <div className="llp-hero-preview-dock">
-            <div className="llp-preview-card">
-              <div className="llp-preview-head">
-                <span className="llp-preview-dot dot-red" />
-                <span className="llp-preview-dot dot-yellow" />
-                <span className="llp-preview-dot dot-green" />
-                <span className="llp-preview-title">CELESTIAL TASTE PROJECTION · LIVE PREVIEW</span>
-              </div>
-              <div className="llp-preview-body">
-                <div className="llp-stat-chip">
-                  <span className="llp-stat-label">COSMIC NODES</span>
-                  <span className="llp-stat-value">5D SPECTRUM</span>
-                </div>
-                <div className="llp-stat-chip">
-                  <span className="llp-stat-label">TOPOLOGY</span>
-                  <span className="llp-stat-value">PLANAR MST</span>
-                </div>
-                <div className="llp-stat-chip">
-                  <span className="llp-stat-label">VOYAGER</span>
-                  <span className="llp-stat-value">ORBIT CRUISE</span>
-                </div>
-                <div className="llp-stat-chip">
-                  <span className="llp-stat-label">STREAMING</span>
-                  <span className="llp-stat-value">ALL PLATFORMS</span>
-                </div>
-              </div>
+          <LaunchTasteMapHero />
+          <div className="llp-hero-copy">
+            <p className="llp-art-eyebrow">A PERSONAL ATLAS OF SOUND</p>
+            <h1 className="llp-hero-title">
+              <span>Your taste.</span>
+              <em>In spectra.</em>
+            </h1>
+            <p className="llp-hero-desc">당신이 사랑한 음악, 그 사이의 보이지 않는 연결.<br />취향이 하나의 우주가 되는 순간.</p>
+            <div className="llp-hero-cta-group">
+              <button type="button" className="llp-btn-primary" onClick={() => handleSelectDemo(DEMO_UNIVERSES[0])} disabled={busy}>
+                <span>나의 우주를 발견하기</span><span aria-hidden="true">↗</span>
+              </button>
+              <button type="button" className="llp-btn-secondary" onClick={() => scrollToSection('import')}>음악 가져오기</button>
             </div>
           </div>
+          <div className="llp-hero-footnote"><span>EVERY SONG HAS A PLACE.</span><button type="button" onClick={() => scrollToSection('features')}>SCROLL TO EXPLORE <span aria-hidden="true">↓</span></button></div>
         </section>
 
-        {/* ── Section 2: Linear Bento Grid Features ── */}
-        <section className="llp-section" id="features">
-          <div className="llp-section-header">
-            <span className="llp-section-eyebrow">DEEP COSMIC ARCHITECTURE</span>
-            <h2 className="llp-section-title">
-              <span className="llp-title-chunk">취향을 읽는</span>{' '}
-              <span className="llp-title-chunk">4가지 천체 차원</span>
-            </h2>
-            <p className="llp-section-sub">
-              단순한 텍스트 플레이리스트를 넘어, 음악적 유대와 감정의 결을 천문학적 깊이로 시각화합니다.
-            </p>
-          </div>
-
-          <div className="llp-bento-grid">
-            {/* Bento Card 1: 3D Taste Field */}
-            <div className="llp-bento-card bento-wide">
-              <div className="llp-card-glow" style={{ background: 'radial-gradient(circle at 20% 20%, rgba(96, 165, 250, 0.2), transparent 70%)' }} />
-              <div className="llp-card-content">
-                <div className="llp-card-tag">
-                  <SpectraSymbol symbol="sparkle" />
-                  <span>3D TASTE FIELD</span>
-                </div>
-                <h3 className="llp-card-title">
-                  <span className="llp-title-chunk">다차원 취향 성운</span>{' '}
-                  <span className="llp-title-chunk">(Taste Nebula)</span>
-                </h3>
-                <p className="llp-card-desc">
-                  에너지, 밝기(Valence), 댄서빌리티, 어쿠스틱 수치를 물리 좌표로 사상하여 형성되는 거대한 은하수.
-                  비슷한 무드의 곡들이 자성을 띠고 모여 하나의 취향 행성계를 이룹니다.
-                </p>
-                <div className="llp-card-metrics">
-                  <span className="llp-metric-pill">K-Means Spectral Cluster</span>
-                  <span className="llp-metric-pill">5D Space Projection</span>
-                  <span className="llp-metric-pill">Magnetic Bubble Physics</span>
-                </div>
-                <div className="llp-card-action">
-                  <button
-                    type="button"
-                    className="llp-card-btn"
-                    onClick={() => handleSelectDemo(DEMO_UNIVERSES[0])}
-                    disabled={busy}
-                  >
-                    <span>성운 우주 탐험하기</span>
-                    <span className="llp-card-btn-arrow">→</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Bento Card 2: Seed Constellations */}
-            <div className="llp-bento-card">
-              <div className="llp-card-glow" style={{ background: 'radial-gradient(circle at 80% 20%, rgba(192, 132, 252, 0.2), transparent 70%)' }} />
-              <div className="llp-card-content">
-                <div className="llp-card-tag">
-                  <SpectraSymbol symbol="matrix" />
-                  <span>SEED CONSTELLATION</span>
-                </div>
-                <h3 className="llp-card-title">중심별 고유 별자리</h3>
-                <p className="llp-card-desc">
-                  곡 하나를 클릭하면 주변에서 가장 가까운 8개의 별이 유클리드 기하학으로 엮이며 절대 꼬이지 않는 북두칠성 같은 고유 별자리를 탄생시킵니다.
-                </p>
-                <div className="llp-card-metrics">
-                  <span className="llp-metric-pill">Planar Topology</span>
-                  <span className="llp-metric-pill">Zero Crossing Edges</span>
-                </div>
-                <div className="llp-card-action">
-                  <button
-                    type="button"
-                    className="llp-card-btn"
-                    onClick={() => handleSelectDemo(DEMO_UNIVERSES[1])}
-                    disabled={busy}
-                  >
-                    <span>별자리 taste맵 열기</span>
-                    <span className="llp-card-btn-arrow">→</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Bento Card 3: Starlight Voyager */}
-            <div className="llp-bento-card">
-              <div className="llp-card-glow" style={{ background: 'radial-gradient(circle at 20% 80%, rgba(56, 189, 248, 0.2), transparent 70%)' }} />
-              <div className="llp-card-content">
-                <div className="llp-card-tag">
-                  <SpectraSymbol symbol="orbit" />
-                  <span>VOYAGER & CRUISE</span>
-                </div>
-                <h3 className="llp-card-title">별자리 궤도 순항 청음</h3>
-                <p className="llp-card-desc">
-                  우주선에 탑승해 별자리 궤도를 따라 별과 별 사이를 날아다니며 차례대로 음악을 감상합니다. 화면 전체가 시네마틱 천체 플레이어로 전환됩니다.
-                </p>
-                <div className="llp-card-metrics">
-                  <span className="llp-metric-pill">Spaceship Audio Navigation</span>
-                  <span className="llp-metric-pill">Focus Camera 줌인</span>
-                </div>
-                <div className="llp-card-action">
-                  <button
-                    type="button"
-                    className="llp-card-btn"
-                    onClick={() => handleSelectDemo(DEMO_UNIVERSES[2])}
-                    disabled={busy}
-                  >
-                    <span>우주선 순항 탑승</span>
-                    <span className="llp-card-btn-arrow">→</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Bento Card 4: Cosmic Oracle */}
-            <div className="llp-bento-card bento-wide">
-              <div className="llp-card-glow" style={{ background: 'radial-gradient(circle at 80% 80%, rgba(244, 114, 182, 0.2), transparent 70%)' }} />
-              <div className="llp-card-content">
-                <div className="llp-card-tag">
-                  <SpectraSymbol symbol="wave" />
-                  <span>COSMIC ORACLE</span>
-                </div>
-                <h3 className="llp-card-title">
-                  <span className="llp-title-chunk">천체 위상과</span>{' '}
-                  <span className="llp-title-chunk">별자리 오라클</span>
-                </h3>
-                <p className="llp-card-desc">
-                  실시간 달의 위상(Moon Phase)과 12개 별자리 거울을 통해 지금 이 순간 당신의 기분과 취향의 변화를 감응하고 오늘의 처방곡을 점칩니다.
-                </p>
-                <div className="llp-card-metrics">
-                  <span className="llp-metric-pill">Daily Lunar Oracle</span>
-                  <span className="llp-metric-pill">Archetype Mirror</span>
-                  <span className="llp-metric-pill">Calendar Timeline</span>
-                </div>
-                <div className="llp-card-action">
-                  <button
-                    type="button"
-                    className="llp-card-btn"
-                    onClick={() => scrollToSection('demo')}
-                  >
-                    <span>taste맵 둘러보기</span>
-                    <span className="llp-card-btn-arrow">↓</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
+        <LaunchTasteJourney onOpen={handleSelectDemo} busy={busy} />
 
         {/* ── Section 3: One-Click Demo Universes ── */}
         <section className="llp-section" id="demo">
           <div className="llp-section-header">
-            <span className="llp-section-eyebrow">ONE-CLICK DEMO COSMOS</span>
+            <span className="llp-section-eyebrow">02 / CHOOSE YOUR FREQUENCY</span>
             <h2 className="llp-section-title">
-              <span className="llp-title-chunk">파일이 없어도 괜찮아요.</span>{' '}
-              <span className="llp-title-chunk">먼저 둘러보세요.</span>
+              <span className="llp-title-chunk">어떤 무드에</span>{' '}
+              <span className="llp-title-chunk">끌리나요?</span>
             </h2>
             <p className="llp-section-sub">
-              SPECTRA가 엄선한 3가지 테마 성운을 클릭 한 번으로 즉시 펼칠 수 있습니다.
+              버블을 눌러 곡을 살펴보고, 마음에 드는 우주 안으로 들어가세요.
             </p>
           </div>
 
           <div className="llp-demo-grid">
-            {DEMO_UNIVERSES.map((universe) => (
+            {DEMO_UNIVERSES.map((universe, group) => (
               <article key={universe.id} className="llp-demo-card" style={{ '--demo-color': universe.color }}>
                 <div className="llp-demo-card-inner">
                   <div className="llp-demo-header">
@@ -429,6 +256,7 @@ export default function LaunchLandingPage({
                     <span className="llp-demo-symbol" style={{ color: universe.color }}>✦</span>
                   </div>
 
+                  <LaunchDemoPortal group={group} />
                   <h3 className="llp-demo-title">{universe.koreanName}</h3>
                   <p className="llp-demo-desc">{universe.summary}</p>
 
@@ -447,7 +275,7 @@ export default function LaunchLandingPage({
                     onClick={() => handleSelectDemo(universe)}
                     disabled={busy}
                   >
-                    <span>이 taste맵으로 우주 탐험 시작</span>
+                    <span>이 우주로 들어가기</span>
                     <span className="llp-launch-arrow">→</span>
                   </button>
                 </div>
@@ -459,17 +287,22 @@ export default function LaunchLandingPage({
         {/* ── Section 4: The Portal (Import Station) ── */}
         <section className="llp-section llp-import-section" id="import">
           <div className="llp-section-header">
-            <span className="llp-section-eyebrow">THE GATEWAY PORTAL</span>
+            <span className="llp-section-eyebrow">03 / MAKE IT YOURS</span>
             <h2 className="llp-section-title">
               <span className="llp-title-chunk">당신의 음악을</span>{' '}
-              <span className="llp-title-chunk">우주로 쏘아 올리세요</span>
+              <span className="llp-title-chunk">하나의 지도로</span>
             </h2>
             <p className="llp-section-sub">
               Apple Music, Spotify, YouTube Music 플레이리스트를 파일로 내보내어 끌어다 놓으세요.
             </p>
           </div>
 
-          <div className="llp-import-box">
+          <LaunchImportOrbit count={parseInfo?.count || 0} active={dragActive || Boolean(parseInfo)} onChoose={() => {
+            if (activeTab === 'file') fileInputRef.current?.click();
+            else landingRef.current.querySelector('.llp-textarea')?.focus();
+          }} />
+          <div className={`llp-import-box${dragActive ? ' is-receiving' : ''}${parseInfo ? ' has-music' : ''}`}>
+
             {/* Platform Badges */}
             <div className="llp-platform-strip">
               <span className="llp-platform-chip">Apple Music 지원</span>
@@ -526,6 +359,7 @@ export default function LaunchLandingPage({
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
                 onClick={() => fileInputRef.current?.click()}
+                onKeyDown={(event) => { if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); fileInputRef.current?.click(); } }}
                 role="button"
                 tabIndex={0}
               >
@@ -547,7 +381,7 @@ export default function LaunchLandingPage({
                 <div className="llp-dropzone-hint">
                   {parseInfo
                     ? `✦ 총 ${parseInfo.count.toLocaleString()}곡 인식됨 (다른 파일로 바꾸려면 클릭)`
-                    : 'CSV, TXT 형식 지원'}
+                    : `CSV, TXT · 최대 ${MAX_IMPORT_TRACKS.toLocaleString()}곡 전체 가져오기`}
                 </div>
               </div>
             ) : (
@@ -579,8 +413,8 @@ export default function LaunchLandingPage({
 
             {parseInfo && parseInfo.count > MAX_IMPORT_TRACKS && (
               <div className="llp-import-notice">
-                쾌적한 3D taste맵 탐색을 위해 총 {parseInfo.count.toLocaleString()}곡 중 전체 기간을 대표하는{' '}
-                {MAX_IMPORT_TRACKS.toLocaleString()}곡을 균등 선별하여 지도를 구성합니다.
+                한 번에 최대 {MAX_IMPORT_TRACKS.toLocaleString()}곡까지 가져올 수 있습니다. 총 {parseInfo.count.toLocaleString()}곡 중{' '}
+                목록 순서대로 앞의 {MAX_IMPORT_TRACKS.toLocaleString()}곡을 모두 넣습니다.
               </div>
             )}
 
@@ -594,7 +428,7 @@ export default function LaunchLandingPage({
                 ? `취향 은하수 분석 중… ${pct}%`
                 : parseInfo
                 ? (parseInfo.count > MAX_IMPORT_TRACKS
-                  ? `대표 ${MAX_IMPORT_TRACKS.toLocaleString()}곡으로 나의 taste맵 생성하기`
+                  ? `앞의 ${MAX_IMPORT_TRACKS.toLocaleString()}곡으로 나의 taste맵 생성하기`
                   : `${parseInfo.count.toLocaleString()}곡으로 나의 taste맵 생성하기`)
                 : '곡 목록을 입력하거나 파일을 선택하세요'}
             </button>
@@ -607,6 +441,12 @@ export default function LaunchLandingPage({
           </div>
         </section>
       </main>
+
+      <nav className="llp-chapter-nav" aria-label="랜딩 탐색 단계">
+        {[['hero', 'INTRO'], ['features', 'TASTE MAP'], ['demo', 'EXPLORE'], ['import', 'YOUR MUSIC']].map(([id, label], i) => (
+          <button type="button" key={id} aria-current={chapter === id ? 'step' : undefined} onClick={() => scrollToSection(id)}><span>0{i + 1}</span><span>{label}</span></button>
+        ))}
+      </nav>
 
       {/* Footer */}
       <footer className="llp-footer">

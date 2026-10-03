@@ -22,9 +22,9 @@ const BACKGROUND_PUBLISH_EVERY = 5;
 const REQUEST_RETRY_COUNT = 2;
 const MIN_RECOVERY_CHUNK_SIZE = 10;
 
-import { MAX_IMPORT_TRACKS, sampleTracksEvenly } from '../utils/sampleTracks.js';
+import { MAX_IMPORT_TRACKS, limitImportTracks } from '../utils/sampleTracks.js';
 import { enrichTracksWithArtwork } from '../taste/demoArtwork.js';
-export { MAX_IMPORT_TRACKS, sampleTracksEvenly };
+export { MAX_IMPORT_TRACKS, limitImportTracks };
 
 const TasteDataContext = createContext(null);
 
@@ -149,16 +149,17 @@ export function TasteDataProvider({ children, ownerId = null }) {
             return { ok: false };
         }
 
+        const { items: list, capped, originalTotal } = limitImportTracks(rawList);
+
         // Instant path for pre-enriched demo tracks or tracks with precomputed features
         if (options.preEnriched || (rawList.length > 0 && typeof rawList[0].valence === 'number')) {
-            const list = rawList;
             const id = options.mapId || newMapId();
             const source = options.featuresSource || 'spotify-genres';
             const nextStats = {
                 fetchedCount: list.length,
                 totalAvailable: list.length,
-                originalImportCount: list.length,
-                isCapped: false,
+                originalImportCount: originalTotal,
+                isCapped: capped,
                 processedCount: list.length,
                 failedCount: 0,
                 backgroundEnriching: false,
@@ -201,7 +202,6 @@ export function TasteDataProvider({ children, ownerId = null }) {
             return { ok: true };
         }
 
-        const { items: list, capped, originalTotal } = sampleTracksEvenly(rawList, MAX_IMPORT_TRACKS);
         const seededTracks = Array.isArray(options.seedTracks) ? options.seedTracks : [];
         setStatus(seededTracks.length > 0 ? 'enriching' : 'importing');
         setError(null);
