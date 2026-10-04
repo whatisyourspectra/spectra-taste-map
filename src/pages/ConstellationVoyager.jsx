@@ -1,426 +1,171 @@
-import React, {
-    useCallback,
-    useEffect,
-    useMemo,
-    useRef,
-    useState,
-} from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import MetroYouTubePlayer from './MetroYouTubePlayer';
+import ConstellationCanvas from './ConstellationCanvas';
+import ConstellationExplorer, { TrackCover } from './ConstellationExplorer';
+import { voyageTrackKey } from '../taste/voyageExpansion';
 import './ConstellationVoyager.css';
 
-function VoyageIcon({ name, className = '' }) {
-    return (
-        <svg className={`cv-icon ${className}`.trim()} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            {name === 'constellation' && <>
-                <path d="M4 17 10 6l9 11M4 17l15 0" />
-                <circle cx="4" cy="17" r="1.5" fill="currentColor" stroke="none" />
-                <circle cx="10" cy="6" r="1.5" fill="currentColor" stroke="none" />
-                <circle cx="19" cy="17" r="1.5" fill="currentColor" stroke="none" />
-            </>}
-            {name === 'play' && <path d="m8 5 11 7-11 7V5Z" fill="currentColor" stroke="none" />}
-            {name === 'pause' && <><path d="M8 5v14M16 5v14" strokeWidth="2.5" /></>}
-            {name === 'previous' && <><path d="M5 5v14" /><path d="m18 5-10 7 10 7V5Z" fill="currentColor" stroke="none" /></>}
-            {name === 'next' && <><path d="M19 5v14" /><path d="m6 5 10 7-10 7V5Z" fill="currentColor" stroke="none" /></>}
-            {name === 'video' && <><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m10 9 5 3-5 3V9Z" fill="currentColor" stroke="none" /></>}
-            {name === 'external' && <><path d="M13 5h6v6M19 5l-9 9" /><path d="M19 13v5a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5" /></>}
-        </svg>
-    );
+function VoyageIcon({ name }) {
+    return <svg className="cv-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        {name === 'play' && <path d="m8 5 11 7-11 7V5Z" fill="currentColor" stroke="none" />}
+        {name === 'pause' && <path d="M8 5v14M16 5v14" strokeWidth="2.5" />}
+        {name === 'previous' && <><path d="M5 5v14" /><path d="m18 5-10 7 10 7V5Z" fill="currentColor" stroke="none" /></>}
+        {name === 'next' && <><path d="M19 5v14" /><path d="m6 5 10 7-10 7V5Z" fill="currentColor" stroke="none" /></>}
+    </svg>;
 }
 
-/**
- * Spaceship and active star pulse waves rendered inside the SVG coordinate space.
- */
-/**
- * Spaceship and active star pulse waves rendered inside the SVG coordinate space.
- */
-export function ConstellationSpaceshipSVG({
-    currentTrackId,
-    targetTrackId,
-    items,
-    isCruising,
-    onFlightComplete,
-}) {
-    const itemMap = useMemo(() => {
-        const map = new Map();
-        items.forEach((item) => {
-            if (item?.node?.track?.id) {
-                map.set(item.node.track.id, item);
-            }
-        });
-        return map;
-    }, [items]);
-
-    const itemMapRef = useRef(itemMap);
-    itemMapRef.current = itemMap;
-
-    const [flightState, setFlightState] = useState(null);
-    const flightRef = useRef(null);
-    const animRef = useRef(null);
-    const prevTrackIdRef = useRef(currentTrackId);
-    const lastAngleRef = useRef(0);
-
-    // Trigger flight animation when currentTrackId changes
-    useEffect(() => {
-        const prevId = prevTrackIdRef.current;
-        prevTrackIdRef.current = currentTrackId;
-
-        if (!prevId || prevId === currentTrackId) {
-            return;
-        }
-
-        const startItem = itemMapRef.current.get(prevId);
-        const targetItem = itemMapRef.current.get(currentTrackId);
-
-        if (!startItem || !targetItem) {
-            return;
-        }
-
-        const dx = targetItem.xPx - startItem.xPx;
-        const dy = targetItem.yPx - startItem.yPx;
-        const targetAngle = (Math.atan2(dy, dx) * 180) / Math.PI + 90;
-        lastAngleRef.current = targetAngle;
-
-        const startTime = performance.now();
-        const duration = 750;
-
-        if (animRef.current) cancelAnimationFrame(animRef.current);
-
-        flightRef.current = {
-            fromId: prevId,
-            toId: currentTrackId,
-            startTime,
-            duration,
-            angle: targetAngle,
-        };
-
-        const animate = (time) => {
-            if (!flightRef.current) return;
-            const flight = flightRef.current;
-            const elapsed = time - flight.startTime;
-            const progress = Math.min(1, elapsed / flight.duration);
-
-            // Ease-in-out cubic
-            const ease = progress < 0.5
-                ? 4 * progress * progress * progress
-                : 1 - Math.pow(-2 * progress + 2, 3) / 2;
-
-            const from = itemMapRef.current.get(flight.fromId);
-            const to = itemMapRef.current.get(flight.toId);
-
-            if (!from || !to) {
-                flightRef.current = null;
-                setFlightState(null);
-                return;
-            }
-
-            const curX = from.xPx + (to.xPx - from.xPx) * ease;
-            const curY = from.yPx + (to.yPx - from.yPx) * ease;
-
-            setFlightState({
-                x: curX,
-                y: curY,
-                angle: flight.angle,
-                inFlight: true,
-            });
-
-            if (progress < 1) {
-                animRef.current = requestAnimationFrame(animate);
-            } else {
-                flightRef.current = null;
-                setFlightState(null);
-                onFlightComplete?.();
-            }
-        };
-
-        animRef.current = requestAnimationFrame(animate);
-
-        return () => {
-            if (animRef.current) cancelAnimationFrame(animRef.current);
-        };
-    }, [currentTrackId, onFlightComplete]);
-
-    const activeItem = itemMap.get(currentTrackId);
-    if (!activeItem) return null;
-
-    const posX = flightState ? flightState.x : activeItem.xPx;
-    const posY = flightState ? flightState.y : activeItem.yPx;
-    const posAngle = flightState ? flightState.angle : lastAngleRef.current;
-    const showFlame = flightState?.inFlight || isCruising;
-
-    return (
-        <g className="cv-spaceship-layer">
-            <defs>
-                <linearGradient id="cv-thruster-gradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.9" />
-                    <stop offset="60%" stopColor="#0284c7" stopOpacity="0.7" />
-                    <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
-                </linearGradient>
-            </defs>
-
-            {/* Active Star Radar Pulses */}
-            {activeItem && (
-                <g transform={`translate(${activeItem.xPx}, ${activeItem.yPx})`}>
-                    <circle
-                        cx="0"
-                        cy="0"
-                        r="24"
-                        fill="none"
-                        stroke="#38bdf8"
-                        strokeWidth="1.5"
-                        className="cv-star-pulse-ring"
-                    />
-                    <circle
-                        cx="0"
-                        cy="0"
-                        r="36"
-                        fill="none"
-                        stroke="#7dd3fc"
-                        strokeWidth="1"
-                        className="cv-star-pulse-ring-outer"
-                    />
-                </g>
-            )}
-
-            {/* Spaceship */}
-            <g
-                className="cv-spaceship"
-                transform={`translate(${posX}, ${posY}) rotate(${posAngle})`}
-            >
-                {/* Engine Flame */}
-                {showFlame && (
-                    <path
-                        d="M -4 12 Q 0 30 0 34 Q 0 30 4 12 Z"
-                        fill="url(#cv-thruster-gradient)"
-                        className="cv-thruster-flame"
-                    />
-                )}
-
-                {/* Starlight Ambient Glow */}
-                <circle r="18" fill="rgba(56, 189, 248, 0.25)" filter="blur(5px)" />
-
-                {/* Main Spaceship Hull */}
-                <path
-                    d="M 0 -17 L 11 11 L 0 7 L -11 11 Z"
-                    fill="#f8fafc"
-                    stroke="#38bdf8"
-                    strokeWidth="1.5"
-                />
-
-                {/* Cockpit Gem */}
-                <ellipse cx="0" cy="-3" rx="2.5" ry="4.5" fill="#0284c7" />
-
-                {/* Wingtip Navigation Beacons */}
-                <circle cx="-10.5" cy="10" r="1.5" fill="#f43f5e" />
-                <circle cx="10.5" cy="10" r="1.5" fill="#10b981" />
-            </g>
-        </g>
-    );
-}
-
-/**
- * Fullscreen HUD Overlay for Constellation Voyage
- */
 export default function ConstellationVoyagerHUD({
-    cluster,
-    tracks,
-    currentTrack,
-    sequence,
-    isPlaying,
-    onTogglePlay,
-    onNextStar,
-    onPrevStar,
-    onFinish,
-    onPlaybackChange,
-    onClose,
-    lang = 'ko',
+    cluster, nodes, edges, onPlayTrack, onAddTrack, onUndoAdd, discoveryContext,
+    tracks, currentTrack, sequence, isPlaying, onTogglePlay, onNextStar, onPrevStar,
+    onFinish, onPlaybackChange, onClose, lang = 'ko',
 }) {
+    const en = lang === 'en';
+    const dialogRef = useRef(null);
+    const mapRef = useRef(null);
+    const discoveryCache = useRef(new Map());
+    const exploreButtonRef = useRef(null);
+    const [selectedId, setSelectedId] = useState(currentTrack?.id);
+    const [explorationSeedId, setExplorationSeedId] = useState(null);
+    const [exploring, setExploring] = useState(false);
+    const [menuOpen, setMenuOpen] = useState(false);
+    const [playbackIssue, setPlaybackIssue] = useState(null);
     const [showVideoPip, setShowVideoPip] = useState(false);
-
-    const currentIndex = useMemo(() => {
-        if (!currentTrack || !sequence.length) return 0;
-        const idx = sequence.indexOf(currentTrack.id);
-        return idx >= 0 ? idx : 0;
-    }, [currentTrack, sequence]);
-
-    const totalStars = sequence.length || tracks.length;
+    const [addition, setAddition] = useState(null);
+    const [focusRequest, setFocusRequest] = useState(null);
+    const selectedTrack = tracks.find((track) => track.id === selectedId) || tracks[0];
+    const explorationSeed = tracks.find((track) => track.id === explorationSeedId) || selectedTrack;
+    const currentIndex = Math.max(0, sequence.indexOf(currentTrack?.id));
     const hasPrevious = currentIndex > 0;
     const hasNext = currentIndex < sequence.length - 1;
-    const coverUrl = currentTrack?.coverUrl || currentTrack?.albumArt
-        || currentTrack?.imageUrl || currentTrack?.album?.images?.[0]?.url;
-
+    const nextTrack = tracks.find((track) => track.id === sequence[currentIndex + 1]) || null;
     const constellationName = useMemo(() => {
-        if (cluster?.label?.name) {
-            const name = cluster.label.name.replaceAll('성좌', '별자리');
-            return lang === 'en'
-                ? `${cluster.label.name} Constellation`
-                : (name.endsWith('별자리') ? name : `${name} 별자리`);
-        }
-        return lang === 'en' ? 'Starlight Constellation' : '나의 별자리';
-    }, [cluster, lang]);
+        const name = cluster?.label?.name?.replaceAll('성좌', '별자리');
+        return name ? (en || name.endsWith('별자리') ? name : `${name} 별자리`) : (en ? 'My constellation' : '나의 별자리');
+    }, [cluster, en]);
 
-    // Keyboard navigation (ESC: exit, Space: play/pause, Left/Right: prev/next star)
+    const closeExploration = useCallback(() => {
+        setExploring(false);
+        requestAnimationFrame(() => exploreButtonRef.current?.focus({ preventScroll: true }));
+    }, []);
+    const exploreFrom = (track) => {
+        if (!track) return;
+        setExplorationSeedId(track.id);
+        setExploring(true);
+        setMenuOpen(false);
+        setShowVideoPip(false);
+    };
+    const selectStar = (track) => { setSelectedId(track.id); setAddition(null); };
+    const addStar = (track, anchorId) => {
+        if (tracks.some((item) => item.id === track.id || voyageTrackKey(item) === voyageTrackKey(track))) return;
+        onAddTrack(track, anchorId);
+        setAddition({ track, anchorId, previousId: selectedTrack?.id });
+        setSelectedId(track.id);
+        setFocusRequest({ id: track.id, version: Date.now() });
+        closeExploration();
+    };
+    const undoAddition = () => {
+        if (!addition) return;
+        onUndoAdd(addition.track.id);
+        setSelectedId(addition.previousId || addition.anchorId);
+        setFocusRequest({ id: addition.anchorId, version: Date.now() });
+        setAddition(null);
+    };
+
     useEffect(() => {
-        const handleKeyDown = (e) => {
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-            if (e.key === 'Escape') {
-                e.preventDefault();
-                onClose?.();
-            } else if (e.code === 'Space') {
-                e.preventDefault();
-                onTogglePlay?.();
-            } else if (e.key === 'ArrowRight') {
-                e.preventDefault();
-                onNextStar?.();
-            } else if (e.key === 'ArrowLeft') {
-                e.preventDefault();
-                onPrevStar?.();
+        const dialog = dialogRef.current;
+        const siblings = [...dialog.parentElement.children].filter((element) => element !== dialog);
+        const previous = siblings.map((element) => element.inert);
+        const overflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        siblings.forEach((element) => { element.inert = true; });
+        dialog.querySelector('.cv-exit-btn')?.focus({ preventScroll: true });
+        const trapFocus = (event) => {
+            if (event.key !== 'Tab') return;
+            const targets = [...dialog.querySelectorAll('button:not(:disabled), a[href], iframe')].filter((element) => element.getClientRects().length && !element.closest('[inert], .is-hidden'));
+            const first = targets[0]; const last = targets.at(-1);
+            if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+            else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+        };
+        dialog.addEventListener('keydown', trapFocus);
+        return () => {
+            siblings.forEach((element, index) => { element.inert = previous[index]; });
+            document.body.style.overflow = overflow;
+            dialog.removeEventListener('keydown', trapFocus);
+        };
+    }, []);
+    useEffect(() => {
+        if (mapRef.current) mapRef.current.inert = exploring;
+    }, [exploring]);
+    useEffect(() => {
+        const handleKeyDown = (event) => {
+            if (event.defaultPrevented || event.target.isContentEditable || event.target.closest('input, textarea, select')) return;
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                if (showVideoPip) setShowVideoPip(false);
+                else if (menuOpen) setMenuOpen(false);
+                else if (exploring) closeExploration();
+                else onClose?.();
+            } else if (event.code === 'Space' && !event.target.closest('button, a')) {
+                event.preventDefault(); onTogglePlay?.();
+            } else if (!exploring && event.key === 'ArrowRight') {
+                event.preventDefault(); onNextStar?.();
+            } else if (!exploring && event.key === 'ArrowLeft') {
+                event.preventDefault(); onPrevStar?.();
             }
         };
-
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [onClose, onTogglePlay, onNextStar, onPrevStar]);
+    }, [exploring, menuOpen, showVideoPip, closeExploration, onClose, onTogglePlay, onNextStar, onPrevStar]);
 
-    const nextTrack = useMemo(() => {
-        if (!hasNext) return null;
-        const nextId = sequence[currentIndex + 1];
-        return tracks.find((t) => t.id === nextId) || null;
-    }, [sequence, currentIndex, tracks, hasNext]);
+    return <div ref={dialogRef} className={`cv-hud-root${exploring ? ' is-exploring' : ''}`} role="dialog" aria-modal="true" aria-label={en ? 'Constellation' : '별자리 탐색'}>
+        <header className="cv-topbar">
+            <button type="button" className="cv-exit-btn" onClick={onClose} aria-label={en ? 'Return to map' : '지도로 돌아가기'}>← <span>{en ? 'Map' : '지도'}</span></button>
+            <div className="cv-header-titles"><strong className="cv-constellation-title">{constellationName}</strong><span className="cv-star-counter">{en ? `${tracks.length} connected stars` : `${tracks.length}개의 별이 연결되어 있어요`}</span></div>
+            <button type="button" className="cv-more-btn" aria-label={en ? 'More options' : '더 보기'} aria-expanded={menuOpen} onClick={() => setMenuOpen((value) => !value)}>···</button>
+            {menuOpen && <div className="cv-more-menu">
+                <button type="button" onClick={() => { setShowVideoPip(true); setMenuOpen(false); }}>{en ? 'Open video player' : '영상 플레이어 열기'}</button>
+                <button type="button" onClick={() => { window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(`${currentTrack?.artists || ''} ${currentTrack?.name || ''}`)}`, '_blank', 'noopener,noreferrer'); setMenuOpen(false); }}>{en ? 'Find on YouTube ↗' : 'YouTube에서 찾기 ↗'}</button>
+                <button type="button" onClick={() => setMenuOpen(false)}>{en ? 'Close' : '닫기'}</button>
+            </div>}
+        </header>
 
-    return (
-        <div className="cv-hud-root">
-            {/* Top Constellation Banner */}
-            <div className="cv-header-banner">
-                <span className="cv-badge-icon"><VoyageIcon name="constellation" /></span>
-                <div className="cv-header-titles">
-                    <span className="cv-constellation-title">{constellationName}</span>
-                    <span className="cv-constellation-subtitle">
-                        {lang === 'en' ? 'Cruising constellation' : '별자리 탐색 중'}
-                        <span className="cv-star-counter">
-                            STAR {currentIndex + 1} / {totalStars}
-                        </span>
-                    </span>
-                </div>
-            </div>
-
-            {/* Top-Right Exit Button */}
-            <button
-                type="button"
-                className="cv-exit-btn"
-                onClick={onClose}
-                title={lang === 'en' ? 'Return to TasteMap (ESC)' : 'TasteMap으로 돌아가기 (ESC)'}
-            >
-                <span>{lang === 'en' ? 'Return to TasteMap' : 'TasteMap으로 돌아가기'}</span>
-                <span className="cv-exit-key">ESC</span>
-            </button>
-
-            {/* Bottom Voyager HUD Dock */}
-            <div className="cv-dock">
-                {/* Track Information */}
-                <div className="cv-track-info">
-                    <div className="cv-track-cover">
-                        {coverUrl ? (
-                            <img src={coverUrl} alt="" />
-                        ) : (
-                            <div style={{ width: '100%', height: '100%', background: cluster?.color || '#38bdf8' }} />
-                        )}
-                    </div>
-                    <div className="cv-track-texts">
-                        <span className="cv-track-title">{currentTrack?.name || 'Unknown Track'}</span>
-                        <span className="cv-track-artist">{currentTrack?.artists || 'Unknown Artist'}</span>
-                    </div>
-                </div>
-
-                {/* Voyage Controls */}
-                <div className="cv-controls">
-                    <button
-                        type="button"
-                        className="cv-ctrl-btn"
-                        onClick={onPrevStar}
-                        disabled={!hasPrevious}
-                        title={lang === 'en' ? 'Previous Star (Left Arrow)' : '이전 별 (←)'}
-                    >
-                        <VoyageIcon name="previous" />
-                    </button>
-
-                    <button
-                        type="button"
-                        className={`cv-cruise-toggle-btn${isPlaying ? ' is-cruising' : ''}`}
-                        onClick={onTogglePlay}
-                        title={lang === 'en' ? 'Pause or resume voyage (Space)' : '별자리 항해 일시정지/재개 (Space)'}
-                    >
-                        <VoyageIcon name={isPlaying ? 'pause' : 'play'} />
-                        <span>
-                            {isPlaying
-                                ? (lang === 'en' ? 'Cruising' : '항해 중')
-                                : (lang === 'en' ? 'Start Cruise' : '항해 시작')}
-                        </span>
-                    </button>
-
-                    <button
-                        type="button"
-                        className="cv-ctrl-btn"
-                        onClick={onNextStar}
-                        disabled={!hasNext}
-                        title={lang === 'en' ? 'Next Star (Right Arrow)' : '다음 별 (→)'}
-                    >
-                        <VoyageIcon name="next" />
-                    </button>
-                </div>
-
-                {/* Right Action Icons */}
-                <div className="cv-actions">
-                    <button
-                        type="button"
-                        className={`cv-action-icon-btn${showVideoPip ? ' active' : ''}`}
-                        onClick={() => setShowVideoPip((prev) => !prev)}
-                        title={lang === 'en' ? 'Toggle YouTube video window' : 'YouTube 영상 창 열기/닫기'}
-                    >
-                        <VoyageIcon name="video" />
-                    </button>
-
-                    {currentTrack && (
-                        <button
-                            type="button"
-                            className="cv-action-icon-btn"
-                            onClick={() => {
-                                const q = `${currentTrack.artists} ${currentTrack.name}`.trim();
-                                window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`, '_blank', 'noopener,noreferrer');
-                            }}
-                            title={lang === 'en' ? 'Open in YouTube' : 'YouTube에서 보기'}
-                        >
-                            <VoyageIcon name="external" />
-                        </button>
-                    )}
-                </div>
-            </div>
-
-            {/* Embedded YouTube Playback Engine & Floating PiP */}
-            {currentTrack && (
-                <div
-                    className={`cv-youtube-pip${showVideoPip ? ' is-visible' : ' is-hidden'}`}
-                    aria-hidden={!showVideoPip}
-                >
-                    <MetroYouTubePlayer
-                        key={currentTrack.id}
-                        track={currentTrack}
-                        nextTrack={nextTrack}
-                        trainName={currentTrack ? `${currentTrack.artists} - ${currentTrack.name}` : constellationName}
-                        color={cluster?.color || '#38bdf8'}
-                        lang={lang}
-                        embedded
-                        autoplayRequested={isPlaying}
-                        playbackIntent={isPlaying}
-                        queuePosition={currentIndex + 1}
-                        queueLength={totalStars}
-                        onPlaybackState={onPlaybackChange}
-                        onEnded={() => (hasNext ? onNextStar?.() : onFinish?.())}
-                        onNext={hasNext ? onNextStar : undefined}
-                        onPrevious={hasPrevious ? onPrevStar : undefined}
-                        onClose={() => setShowVideoPip(false)}
-                    />
-                </div>
-            )}
+        <div ref={mapRef} className="cv-map-area">
+            <ConstellationCanvas nodes={nodes} edges={edges} tracks={tracks} selectedTrack={selectedTrack} playingTrackId={isPlaying ? currentTrack?.id : null} onSelect={selectStar} focusRequest={focusRequest} addedTrackId={addition?.track.id} lang={lang} />
         </div>
-    );
+
+        {addition && !exploring && <div className="cv-addition-toast">
+            <div role="status"><span aria-hidden="true">✦</span> {en ? 'A new star is connected' : '새로운 별이 연결됐어요'}</div>
+            <div><button type="button" onClick={undoAddition}>{en ? 'Undo' : '추가 취소'}</button><button type="button" onClick={() => exploreFrom(tracks.find((track) => track.id === addition.anchorId))}>{en ? 'Keep exploring' : '탐색 계속'}</button></div>
+        </div>}
+
+        <section className="cv-selection" hidden={exploring} aria-label={en ? 'Selected star' : '선택한 별'}>
+            <TrackCover track={selectedTrack} />
+            <div className="cv-selection-copy"><small>{en ? 'SELECTED STAR' : '선택한 별'}</small><strong>{selectedTrack?.name}</strong><span>{selectedTrack?.artists}</span></div>
+            <button type="button" className="cv-selected-play" aria-label={en ? 'Play selected star' : '선택한 별 재생'} onClick={() => { if (selectedTrack?.id === currentTrack?.id) onTogglePlay?.(); else if (selectedTrack) onPlayTrack(selectedTrack); }}><VoyageIcon name={selectedTrack?.id === currentTrack?.id && isPlaying ? 'pause' : 'play'} /></button>
+            <button ref={exploreButtonRef} type="button" className="cv-explore-toggle" onClick={() => exploreFrom(selectedTrack)} aria-expanded={exploring}>✦ {en ? 'Explore from this star' : '이 별에서 탐색'}</button>
+        </section>
+
+        {exploring && <>
+            <button type="button" className="cv-sheet-backdrop" onClick={closeExploration} aria-label={en ? 'Close exploration' : '탐색 닫기'} tabIndex={-1} />
+            <ConstellationExplorer cache={discoveryCache} seed={explorationSeed} tracks={tracks} context={discoveryContext} onAdd={addStar} onClose={closeExploration} lang={lang} />
+        </>}
+
+        <footer className="cv-dock" aria-label={en ? 'Now playing' : '음악 재생'}>
+            <TrackCover track={currentTrack} />
+            <div className="cv-track-texts"><span className="cv-track-title">{currentTrack?.name || (en ? 'Choose a song' : '곡을 선택하세요')}</span><span className="cv-track-artist">{isPlaying ? (en ? 'Playing' : '재생 중') : (en ? 'Paused' : '일시정지')} · {currentIndex + 1}/{sequence.length}</span></div>
+            <div className="cv-controls">
+                <button type="button" className="cv-ctrl-btn cv-prev" onClick={onPrevStar} disabled={!hasPrevious} aria-label={en ? 'Previous song' : '이전 곡'}><VoyageIcon name="previous" /></button>
+                <button type="button" className="cv-cruise-toggle-btn" onClick={onTogglePlay} aria-label={isPlaying ? (en ? 'Pause' : '일시정지') : (en ? 'Play' : '재생')}><VoyageIcon name={isPlaying ? 'pause' : 'play'} /></button>
+                <button type="button" className="cv-ctrl-btn cv-next" onClick={onNextStar} disabled={!hasNext} aria-label={en ? 'Next song' : '다음 곡'}><VoyageIcon name="next" /></button>
+            </div>
+            {playbackIssue === currentTrack?.id && <button type="button" className="cv-playback-issue" onClick={() => setShowVideoPip(true)} aria-label={en ? 'Playback needs attention. Open player' : '재생 상태 확인, 플레이어 열기'}>!</button>}
+        </footer>
+
+        {currentTrack && <div className={`cv-youtube-pip${showVideoPip ? ' is-visible' : ' is-hidden'}`} aria-hidden={!showVideoPip} inert={!showVideoPip}>
+            <MetroYouTubePlayer key={currentTrack.id} track={currentTrack} nextTrack={nextTrack} trainName={`${currentTrack.artists} - ${currentTrack.name}`} color={cluster?.color || '#7dd3fc'} lang={lang} embedded autoplayRequested={isPlaying} playbackIntent={isPlaying} queuePosition={currentIndex + 1} queueLength={sequence.length}
+                onPlaybackState={(state) => { if (state === 'error') setPlaybackIssue(currentTrack.id); else if (state === 'playing') setPlaybackIssue(null); onPlaybackChange?.(state); }}
+                onUnavailable={() => { setPlaybackIssue(currentTrack.id); onFinish?.(); }}
+                onEnded={() => (hasNext ? onNextStar?.() : onFinish?.())} onNext={hasNext ? onNextStar : undefined} onPrevious={hasPrevious ? onPrevStar : undefined} onClose={() => setShowVideoPip(false)} />
+        </div>}
+    </div>;
 }

@@ -2,6 +2,7 @@ import React, { useEffect, useLayoutEffect, useRef, useState, useCallback, useMe
 import { useNavigate } from 'react-router-dom';
 import AccountButton from '../auth/AccountButton';
 import { buildConstellationTopology, buildSeedConstellation, buildVoyageSequence, getVoyageNeighbor } from '../taste/constellationTopology';
+import { createVoyageGraph, extendVoyage, undoVoyageExpansion } from '../taste/voyageExpansion';
 import { getGenreIdentity } from '../taste/genreIdentity';
 import { useTasteData } from '../context/TasteDataContext';
 import TasteMapMetroStudio from './TasteMapMetroStudio';
@@ -1698,6 +1699,8 @@ export default function TasteMapPage() {
     const [showUtilityControls, setShowUtilityControls] = useState(false);
     const [dashboardOpen, setDashboardOpen] = useState(false);
     const [metroStudioOpen, setMetroStudioOpen] = useState(false);
+    const voyageReturnRef = useRef(null);
+    const initialVoyageTrackRef = useRef(typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('star') : null);
     const [voyageState, setVoyageState] = useState({
         active: false,
         clusterId: null,
@@ -3131,6 +3134,7 @@ export default function TasteMapPage() {
     }, [clearPanVisual]);
 
     const bubbleRenderItems = useMemo(() => {
+        if (voyageState.active) return [];
         if (viewMode !== 'bubble') return [];
         if (!bubbleFieldSize.w || !bubbleFieldSize.h) return [];
         if (!bubbleNodesResult.length) return [];
@@ -3293,7 +3297,7 @@ export default function TasteMapPage() {
     const isConstellationView = activeMapView === 'constellation';
     const constellationCoverZoomed = isConstellationView && bubbleZoom >= CONSTELLATION_COVER_ZOOM;
     const constellationTopology = useMemo(
-        () => (isConstellationView && (!voyageState.active || !voyageState.curatedEdges?.length)
+        () => (isConstellationView && !voyageState.active
             ? buildConstellationTopology(bubbleNodesResult)
             : []),
         [isConstellationView, voyageState.active, voyageState.curatedEdges, bubbleNodesResult],
@@ -3634,7 +3638,7 @@ export default function TasteMapPage() {
         return labels;
     }, [viewMode, visibleBubbleRenderItems, clusterStats]);
 
-    const fetchDiscoveryForAnchors = useCallback(async (anchors, currentSpectraExpandTrackId = null) => {
+    const fetchDiscoveryForAnchors = useCallback(async (anchors, currentSpectraExpandTrackId = null, signal) => {
         if (!anchors || anchors.length === 0) return [];
         const requests = anchors.map(async (anchor) => {
             const seedTrackId = anchor.seedTrackId || '';
@@ -3654,7 +3658,7 @@ export default function TasteMapPage() {
                     params.set('seedTracks', `${seedArtist}|${seedTrack.name}`);
                 }
             }
-            const res = await fetch(api(`/api/discover?${params.toString()}`));
+            const res = await fetch(api(`/api/discover?${params.toString()}`), { signal });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
             const tracksOut = Array.isArray(data?.tracks) ? data.tracks : [];
@@ -3732,12 +3736,13 @@ export default function TasteMapPage() {
 
     // Background pre-fetch effect: quietly pull sparse anchor recs when idle
     useEffect(() => {
-        if (!prefetchKey) return undefined;
+        if (voyageState.active || !prefetchKey) return undefined;
         if (prefetchedRecsRef.current.key === prefetchKey && prefetchedRecsRef.current.recs.length > 0) return undefined;
 
         let cancelled = false;
+        const controller = new AbortController();
         const timer = setTimeout(() => {
-            fetchDiscoveryForAnchors(exploreSparseAnchors, null)
+            fetchDiscoveryForAnchors(exploreSparseAnchors, null, controller.signal)
                 .then((recs) => {
                     if (cancelled) return;
                     prefetchedRecsRef.current = { key: prefetchKey, recs };
@@ -3755,12 +3760,14 @@ export default function TasteMapPage() {
 
         return () => {
             cancelled = true;
+            controller.abort();
             clearTimeout(timer);
         };
-    }, [prefetchKey, fetchDiscoveryForAnchors, exploreSparseAnchors, exploreEnabled, spectraExpandTrackId]);
+    }, [voyageState.active, prefetchKey, fetchDiscoveryForAnchors, exploreSparseAnchors, exploreEnabled, spectraExpandTrackId]);
 
     // Main Explore Activation Effect: zero-latency from cache or on-demand fetch
     useEffect(() => {
+        if (voyageState.active) return;
         if (!exploreEnabled) {
             setExploreLoading(false);
             setExploreError(null);
@@ -3779,9 +3786,10 @@ export default function TasteMapPage() {
                 return;
             }
             let cancelled = false;
+            const controller = new AbortController();
             setExploreLoading(true);
             setExploreError(null);
-            fetchDiscoveryForAnchors(exploreSparseAnchors, spectraExpandTrackId)
+            fetchDiscoveryForAnchors(exploreSparseAnchors, spectraExpandTrackId, controller.signal)
                 .then((merged) => {
                     if (!cancelled) setExploreRecs(merged);
                 })
@@ -3794,7 +3802,7 @@ export default function TasteMapPage() {
                 .finally(() => {
                     if (!cancelled) setExploreLoading(false);
                 });
-            return () => { cancelled = true; };
+            return () => { cancelled = true; controller.abort(); };
         }
 
         // 2. Normal explore: if prefetch cache is ready, activate immediately with ZERO delay
@@ -3811,9 +3819,10 @@ export default function TasteMapPage() {
             return;
         }
         let cancelled = false;
+        const controller = new AbortController();
         setExploreLoading(true);
         setExploreError(null);
-        fetchDiscoveryForAnchors(exploreSparseAnchors, null)
+        fetchDiscoveryForAnchors(exploreSparseAnchors, null, controller.signal)
             .then((merged) => {
                 if (!cancelled) {
                     prefetchedRecsRef.current = { key: prefetchKey, recs: merged };
@@ -3833,8 +3842,10 @@ export default function TasteMapPage() {
 
         return () => {
             cancelled = true;
+            controller.abort();
         };
     }, [
+        voyageState.active,
         exploreEnabled,
         viewMode,
         loading,
@@ -3846,7 +3857,7 @@ export default function TasteMapPage() {
     ]);
 
     const exploreRenderItems = useMemo(() => {
-        if (!exploreEnabled || viewMode !== 'bubble') return [];
+        if (voyageState.active || !exploreEnabled || viewMode !== 'bubble') return [];
         if (!bubbleFieldSize.w || !bubbleFieldSize.h) return [];
         if (!exploreRecs.length) return [];
 
@@ -4006,6 +4017,7 @@ export default function TasteMapPage() {
 
         return items;
     }, [
+        voyageState.active,
         exploreEnabled,
         viewMode,
         bubbleFieldSize.w,
@@ -4102,33 +4114,6 @@ export default function TasteMapPage() {
         const fitZoomX = bubbleFieldSize.w / (boxW + margin * 2);
         const fitZoomY = bubbleFieldSize.h / (boxH + margin * 2);
         const targetZoom = clampZoom(Math.min(fitZoomX, fitZoomY, 1.45));
-        const viewportW = bubbleFieldSize.w / targetZoom;
-        const viewportH = bubbleFieldSize.h / targetZoom;
-        const centerX = (minX + maxX) / 2;
-        const centerY = (minY + maxY) / 2;
-        const targetCamera = clampCamera(centerX - viewportW / 2, centerY - viewportH / 2, targetZoom);
-
-        animateCameraTo(targetCamera, targetZoom, options.duration || 680);
-    }, [bubbleRenderItems, bubbleFieldSize.w, bubbleFieldSize.h, clampCamera, clampZoom, animateCameraTo]);
-
-    const focusConstellation = useCallback((targetTrackIds, options = {}) => {
-        if (!bubbleRenderItems.length || !bubbleFieldSize.w || !bubbleFieldSize.h || !targetTrackIds?.length) return;
-        const targetIdSet = new Set(targetTrackIds);
-        const constellationItems = bubbleRenderItems.filter((item) => targetIdSet.has(item.node.track.id));
-        const targets = constellationItems.length ? constellationItems : bubbleRenderItems;
-        if (!targets.length) return;
-
-        const minX = Math.min(...targets.map((item) => item.worldX - item.sizePx / 2));
-        const maxX = Math.max(...targets.map((item) => item.worldX + item.sizePx / 2));
-        const minY = Math.min(...targets.map((item) => item.worldY - item.sizePx / 2));
-        const maxY = Math.max(...targets.map((item) => item.worldY + item.sizePx / 2));
-        const boxW = Math.max(1, maxX - minX);
-        const boxH = Math.max(1, maxY - minY);
-        const margin = 110;
-
-        const fitZoomX = bubbleFieldSize.w / (boxW + margin * 2);
-        const fitZoomY = bubbleFieldSize.h / (boxH + margin * 2);
-        const targetZoom = clampZoom(Math.min(fitZoomX, fitZoomY, 1.85));
         const viewportW = bubbleFieldSize.w / targetZoom;
         const viewportH = bubbleFieldSize.h / targetZoom;
         const centerX = (minX + maxX) / 2;
@@ -4458,6 +4443,8 @@ export default function TasteMapPage() {
 
         // Extract a focused seed constellation of 8 stars around the selected track
         const seedConstellation = buildSeedConstellation(track, bubbleNodesResult, { maxStars: 8 });
+        cancelCameraAnimation();
+        voyageReturnRef.current = { card: selectedTrackCard || { track, source: 'library' }, camera: { ...cameraRef.current }, zoom: bubbleZoomRef.current };
 
         setVoyageState({
             active: true,
@@ -4468,23 +4455,25 @@ export default function TasteMapPage() {
             curatedTracks: seedConstellation.tracks,
             curatedEdges: seedConstellation.edges,
             curatedTrackIds: seedConstellation.trackIds,
+            ...createVoyageGraph(seedConstellation, track.id),
         });
 
-        setActiveMapView('constellation');
         setBubblePlaybackTrack(null);
         setNowPlayingTrackId(track.id);
         setSelectedTrackCard(null);
         setMetroStudioOpen(false);
         setBubbleContextMenu(null);
 
-        if (seedConstellation.trackIds.length > 0) {
-            focusConstellation(seedConstellation.trackIds, { duration: 680 });
-        } else if (resolvedClusterId !== null) {
-            focusCluster(resolvedClusterId, { duration: 680 });
-        } else {
-            focusBubbleTrack(track.id, { ensureZoom: 1.3, duration: 680 });
-        }
-    }, [assignmentByTrackId, bubbleNodesResult, focusConstellation, focusCluster, focusBubbleTrack]);
+    }, [assignmentByTrackId, bubbleNodesResult, cancelCameraAnimation, selectedTrackCard]);
+
+    useEffect(() => {
+        const id = initialVoyageTrackRef.current;
+        if (!id || loading || !bubbleNodesResult.length) return;
+        const node = bubbleNodesResult.find((item) => item.track?.id === id);
+        if (!node) return;
+        initialVoyageTrackRef.current = null;
+        startConstellationVoyage(node.track);
+    }, [loading, bubbleNodesResult, startConstellationVoyage]);
 
     const exitConstellationVoyage = useCallback(() => {
         setVoyageState({
@@ -4496,8 +4485,28 @@ export default function TasteMapPage() {
         });
         setBubblePlaybackTrack(null);
         setNowPlayingTrackId(null);
-        handleMapViewChange('spotify');
-    }, [handleMapViewChange]);
+        const previous = voyageReturnRef.current;
+        if (previous) {
+            setSelectedTrackCard(previous.card);
+            scheduleZoomCameraUpdate(previous.zoom, previous.camera);
+            window.requestAnimationFrame(() => document.querySelector('.ccp-voyage-launch-btn')?.focus({ preventScroll: true }));
+        }
+        voyageReturnRef.current = null;
+    }, [scheduleZoomCameraUpdate]);
+
+    const handleVoyageAdd = useCallback((track, anchorId) => {
+        setVoyageState((previous) => extendVoyage(previous, track, anchorId));
+    }, []);
+
+    const handleVoyageUndo = useCallback((trackId) => {
+        setVoyageState((previous) => undoVoyageExpansion(previous, trackId));
+        setNowPlayingTrackId((previous) => previous === trackId ? null : previous);
+    }, []);
+
+    const handleVoyageSelect = useCallback((track) => {
+        setVoyageState((previous) => ({ ...previous, trackId: track.id, isPlaying: true }));
+        setNowPlayingTrackId(track.id);
+    }, []);
 
     const handleBubbleClick = useCallback((track) => {
         const justPanned = Date.now() - (panRef.current.lastMoveAt || 0) < 120;
@@ -4565,8 +4574,8 @@ export default function TasteMapPage() {
 
     const voyageSequence = useMemo(() => {
         if (!voyageState.active || voyageTracks.length === 0) return [];
-        return buildVoyageSequence(voyageTracks, voyageEdges, voyageState.startTrackId);
-    }, [voyageState.active, voyageTracks, voyageEdges, voyageState.startTrackId]);
+        return voyageState.sequence || buildVoyageSequence(voyageTracks, voyageEdges, voyageState.startTrackId);
+    }, [voyageState.active, voyageTracks, voyageEdges, voyageState.startTrackId, voyageState.sequence]);
 
     const currentVoyageTrack = useMemo(() => {
         if (!voyageState.active || !voyageState.trackId) return null;
@@ -5197,7 +5206,7 @@ export default function TasteMapPage() {
         if (!mapFullscreen) return undefined;
         const prevOverflow = document.body.style.overflow;
         const handleKeyDown = (event) => {
-            if (event.key === 'Escape') setMapFullscreen(false);
+            if (event.key === 'Escape' && !voyageState.active) setMapFullscreen(false);
         };
         document.body.style.overflow = 'hidden';
         window.addEventListener('keydown', handleKeyDown);
@@ -5205,7 +5214,7 @@ export default function TasteMapPage() {
             document.body.style.overflow = prevOverflow;
             window.removeEventListener('keydown', handleKeyDown);
         };
-    }, [mapFullscreen]);
+    }, [mapFullscreen, voyageState.active]);
 
     const ambientUiIsVisible = useMemo(() => {
         if (viewMode !== 'bubble') return true;
@@ -6685,6 +6694,12 @@ export default function TasteMapPage() {
             {voyageState.active && (
                 <ConstellationVoyagerHUD
                     cluster={voyageCluster}
+                    nodes={voyageState.nodes}
+                    edges={voyageEdges}
+                    onPlayTrack={handleVoyageSelect}
+                    onUndoAdd={handleVoyageUndo}
+                    onAddTrack={handleVoyageAdd}
+                    discoveryContext={{ xAxis, yAxis, source, seedGenres: exploreSeedGenres.join(',') }}
                     tracks={voyageTracks}
                     currentTrack={currentVoyageTrack}
                     sequence={voyageSequence}

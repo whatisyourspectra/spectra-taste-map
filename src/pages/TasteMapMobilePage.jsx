@@ -261,6 +261,9 @@ function MobileConstellation({ tracks, status, progress, storageKey }) {
                     </div>
                 </section>
                 <p className="tmm-library-count">{en ? `${library.length.toLocaleString()} tracks, one Spectra` : `${library.length.toLocaleString()}곡이 만든 하나의 스펙트라`}</p>
+                <button type="button" className="tmm-map-entry" onClick={() => navigate('/taste-map?view=constellation')}>
+                    <span><strong>{en ? 'Explore my music' : '내 음악 탐색하기'}</strong><small>{en ? 'Choose a song and connect new stars' : '내 곡에서 시작해 새로운 별을 연결해요'}</small></span><span aria-hidden="true">↗</span>
+                </button>
                 <button type="button" className="tmm-oracle-jump" onClick={() => document.getElementById('today-constellation')?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'start' })}>
                     <span className="tmm-oracle-jump-mark" aria-hidden="true" />
                     <span><strong>{en ? 'Find today’s constellation' : '오늘의 별자리 찾기'}</strong><small>{en ? 'Your moment, drawn from your music' : '지금의 순간을 내 음악으로 그려요'}</small></span>
@@ -272,6 +275,7 @@ function MobileConstellation({ tracks, status, progress, storageKey }) {
                         <div className="tmm-selected-copy"><span className="tmm-eyebrow">IN YOUR SPECTRA</span><h2>{selectedTrack.name}</h2><p>{selectedTrack.artists}</p></div>
                         <button className="tmm-selected-close" type="button" aria-label={en ? 'Close track' : '곡 정보 닫기'} onClick={() => setSelectedId(null)}>×</button>
                     </div>
+                    <button className="tmm-selected-explore" type="button" onClick={() => navigate(`/taste-map?view=constellation&star=${encodeURIComponent(selectedTrack.id)}`)}>{en ? 'Explore from this song' : '이 곡에서 별자리 탐색'}</button>
                     <button className="tmm-selected-listen" type="button" onClick={() => openExternal(selectedTrack)}>{en ? 'Listen on Spotify ↗' : 'Spotify에서 듣기 ↗'}</button>
                 </aside>}
                 {/* 360° Spectra Orbit Tour Showcase */}

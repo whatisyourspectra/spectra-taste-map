@@ -206,3 +206,49 @@ test('buildPlanarSeedTopology produces non-crossing edges', async () => {
         }
     }
 });
+
+test('expansion preserves stars, playback and queue, and supports exploring a newly added star', async () => {
+    const { createVoyageGraph, extendVoyage } = await import('../src/taste/voyageExpansion.js');
+    const constellation = { tracks: [{ id: 'a', name: 'A', artists: 'Artist' }, { id: 'b', name: 'B', artists: 'Artist' }], edges: [{ from: 'a', to: 'b' }] };
+    const initial = { active: true, trackId: 'a', isPlaying: true, curatedTracks: constellation.tracks, curatedEdges: constellation.edges, curatedTrackIds: ['a', 'b'], ...createVoyageGraph(constellation, 'a') };
+    const extended = extendVoyage(initial, { id: 'c', name: 'C', artists: 'Artist' }, 'b');
+    assert.equal(extended.trackId, initial.trackId);
+    assert.equal(extended.isPlaying, true);
+    assert.deepEqual(extended.nodes.slice(0, 2), initial.nodes);
+    assert.deepEqual(extended.sequence, ['a', 'b', 'c']);
+    assert.deepEqual(extended.curatedEdges.at(-1), { from: 'b', to: 'c', color: '#7dd3fc' });
+    assert.equal(initial.curatedTracks.length, 2);
+    assert.equal(extendVoyage(extended, { id: 'c', name: 'C', artists: 'Artist' }, 'b'), extended);
+    assert.equal(extendVoyage(extended, { id: 'different-id', name: ' c ', artists: 'ARTIST' }, 'b'), extended);
+    assert.equal(extendVoyage(extended, { id: 'd', name: 'D' }, 'missing'), extended);
+    const next = extendVoyage(extended, { id: 'd', name: 'D', artists: 'Artist' }, 'c');
+    assert.equal(next.curatedEdges.at(-1).from, 'c');
+    assert.equal(getVoyageNeighbor(next.sequence, 'c', 1), 'd');
+    assert.equal(getVoyageNeighbor(next.sequence, 'd', 1), null);
+    for (const a of next.nodes) for (const b of next.nodes) {
+        if (a.id !== b.id) assert.ok(Math.hypot(a.x - b.x, a.y - b.y) >= 155);
+    }
+    assert.equal(extendVoyage({ ...next, active: false }, { id: 'e' }, 'd').curatedTracks.length, 4);
+});
+
+test('undo removes only the last added branch and safely handles its playback', async () => {
+    const { createVoyageGraph, extendVoyage, undoVoyageExpansion } = await import('../src/taste/voyageExpansion.js');
+    const seed = { id: 'seed', name: 'Seed', artists: 'Artist' };
+    const constellation = { tracks: [seed], edges: [] };
+    const state = { active: true, trackId: seed.id, isPlaying: true, curatedTracks: [seed], curatedTrackIds: [seed.id], curatedEdges: [], ...createVoyageGraph(constellation, seed.id) };
+    const added = extendVoyage(state, { id: 'a', name: 'A', artists: 'Artist' }, seed.id);
+    const branched = extendVoyage(added, { id: 'b', name: 'B', artists: 'Artist' }, 'a');
+    assert.equal(undoVoyageExpansion(branched, 'a'), branched);
+    assert.equal(undoVoyageExpansion(branched, 'seed'), branched);
+    const undone = undoVoyageExpansion({ ...branched, trackId: 'b', isPlaying: true }, 'b');
+    assert.equal(undone.trackId, 'a');
+    assert.equal(undone.isPlaying, false);
+    assert.deepEqual(undone.nodes, added.nodes);
+    assert.deepEqual(undone.sequence, added.sequence);
+    assert.deepEqual(undone.curatedEdges, added.curatedEdges);
+    assert.equal(undone.curatedTracks.some((track) => track.id === 'b'), false);
+    const original = undoVoyageExpansion(undone, 'a');
+    assert.deepEqual(original.nodes, state.nodes);
+    assert.deepEqual(original.curatedTrackIds, ['seed']);
+    assert.equal(original.trackId, 'seed');
+});

@@ -100,8 +100,12 @@
     --tm-font-ui: var(--tm-font-ko);
 }
 
-.tm-root.tm-root-fullscreen > :not(.tm-body) {
+.tm-root.tm-root-fullscreen > :not(.tm-body):not(.ccp-card):not(.cv-hud-root) {
     display: none !important;
+}
+
+.tm-root-fullscreen > .ccp-card {
+    z-index: 1300;
 }
 
 /* ── Header ─────────────────────────────────────────────────── */
