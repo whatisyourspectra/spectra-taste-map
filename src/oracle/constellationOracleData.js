@@ -1,5 +1,4 @@
 import { hash01 } from '../taste/constellationTopology.js';
-import { getTasteGenres, uniqueTracks } from '../taste/buildTasteState.js';
 
 export function localDay(date = new Date()) {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
@@ -423,23 +422,59 @@ export const ORACLE_CONSTELLATIONS = {
     },
 };
 
-// Select the single most resonant track for this prescribed shift
+// Explicit listening directions provide defaults; listeners can tune either axis.
+const SHIFT_TONES = {
+    shift_custom_calm: 0.4, shift_custom_move: 0.7, shift_calm: 0.35, shift_vital: 0.8,
+    shift_explore: 0.6, shift_ground: 0.5, shift_release: 0.25, shift_warmth: 0.65,
+    shift_dive: 0.3, shift_glow: 0.6, shift_deepflow: 0.45, shift_spark: 0.7,
+    shift_gentle: 0.55, shift_stride: 0.8,
+};
+
+export function getMoodMirror(context) {
+    const aliases = { focus: 'flow', solace: 'clarity', stillness: 'solitude' };
+    const key = context?.archetypeKey;
+    return ARCHETYPE_MIRRORS[aliases[key] || key] || ARCHETYPE_MIRRORS.custom;
+}
+
+export function moodDirection(shift) {
+    return { ...shift, targetValence: shift.targetValence ?? SHIFT_TONES[shift.id] ?? 0.5 };
+}
+
+// Rank available tracks by the listener's two chosen dimensions. Unknown values
+// contribute uncertainty, never fabricated audio features or match percentages.
+export function rankMoodTracks(library = [], shift, day = localDay()) {
+    const energy = shift?.targetEnergy ?? 0.5;
+    const valence = shift?.targetValence ?? 0.5;
+    const distance = (track) => {
+        const dimensions = [['energy', energy, 0.6], ['valence', valence, 0.4]];
+        let score = 0;
+        let weight = 0;
+        for (const [key, target, importance] of dimensions) {
+            if (!Number.isFinite(track[key])) continue;
+            score += Math.abs(track[key] - target) * importance;
+            weight += importance;
+        }
+        // Unknown features are not treated as measured mood matches.
+        return (weight ? score / weight : 0.5) + (1 - weight) * 0.08;
+    };
+    return [...new Map((library || []).filter(track => track?.id).map(track => [track.id, track])).values()]
+        .sort((a, b) => distance(a) - distance(b)
+            || hash01(`${day}:${shift?.id}:${a.id}`) - hash01(`${day}:${shift?.id}:${b.id}`));
+}
+
+export function moodTrackDescription(track, en = false) {
+    const labels = [];
+    if (Number.isFinite(track?.energy)) labels.push(track.energy < 0.4
+        ? (en ? 'Quiet energy' : '차분한 에너지') : track.energy > 0.65
+            ? (en ? 'Lively energy' : '활기찬 에너지') : (en ? 'Steady energy' : '편안한 에너지'));
+    if (Number.isFinite(track?.valence)) labels.push(track.valence < 0.4
+        ? (en ? 'Reflective tone' : '사색적인 톤') : track.valence > 0.65
+            ? (en ? 'Bright tone' : '밝은 톤') : (en ? 'Balanced tone' : '담담한 톤'));
+    return labels.join(' · ') || (en ? 'Listen and decide how it feels' : '직접 듣고 느낌을 골라보세요');
+}
+
 export function prescribeTrack(library = [], shift, day = localDay()) {
-    if (!library || !library.length) return null;
-
-    const targetEnergy = shift?.targetEnergy ?? 0.5;
-    const candidates = [...library].sort((a, b) => {
-        const ea = Number.isFinite(a.energy) ? a.energy : 0.5;
-        const eb = Number.isFinite(b.energy) ? b.energy : 0.5;
-        const diffA = Math.abs(ea - targetEnergy);
-        const diffB = Math.abs(eb - targetEnergy);
-        // Energy proximity is primary factor, subtle seed prevents repeat ties
-        const scoreA = diffA * 0.92 + hash01(`${day}:${shift?.id}:${a.id}`) * 0.08;
-        const scoreB = diffB * 0.92 + hash01(`${day}:${shift?.id}:${b.id}`) * 0.08;
-        return scoreA - scoreB || String(a.id).localeCompare(String(b.id));
-    });
-
-    return candidates[0] || library[0];
+    return rankMoodTracks(library, shift, day)[0] || null;
 }
 
 // Local storage keys and persistence helpers for Oracle Logs
@@ -449,14 +484,15 @@ export function loadOracleRecords(identity) {
     if (!identity || typeof window === 'undefined') return [];
     try {
         const raw = localStorage.getItem(`${ORACLE_STORAGE_PREFIX}${identity}`);
-        return raw ? JSON.parse(raw) : [];
+        const records = raw ? JSON.parse(raw) : [];
+        return Array.isArray(records) ? records.filter(record => record && typeof record.day === 'string') : [];
     } catch {
         return [];
     }
 }
 
 export function saveOracleRecord(identity, record) {
-    if (!identity || !record || typeof window === 'undefined') return;
+    if (!identity || !record || typeof window === 'undefined') return null;
     try {
         const existing = loadOracleRecords(identity);
         // Replace today's record if already exists, or prepend
@@ -465,6 +501,6 @@ export function saveOracleRecord(identity, record) {
         localStorage.setItem(`${ORACLE_STORAGE_PREFIX}${identity}`, JSON.stringify(updated));
         return updated;
     } catch {
-        return [];
+        return null;
     }
 }

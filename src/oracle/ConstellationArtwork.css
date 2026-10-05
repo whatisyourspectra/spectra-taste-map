@@ -1,0 +1,9 @@
+.oracle-art { display: block; width: 100%; max-width: 420px; margin: auto; overflow: visible; }
+.oracle-art__annotation { fill: #8190a7; font: 6px var(--font-display, sans-serif); letter-spacing: 1.5px; }
+.oracle-art__number { fill: #96a6bf; font: 7px var(--font-display, sans-serif); letter-spacing: 0.5px; }
+.oracle-art__star[role="button"] { cursor: pointer; outline: none; }
+.oracle-art__focus { opacity: 0; transition: opacity 160ms ease; }
+.oracle-art__star.is-active .oracle-art__focus,
+.oracle-art__star:focus-visible .oracle-art__focus { opacity: 1; }
+.oracle-art--compact { width: 32px; height: 28px; }
+@media (prefers-reduced-motion: reduce) { .oracle-art__focus { transition: none; } }

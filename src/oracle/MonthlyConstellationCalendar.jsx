@@ -1,6 +1,12 @@
-import { useMemo, useState } from 'react';
-import { loadOracleRecords } from './constellationOracleData.js';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { loadOracleRecords, localDay, ORACLE_CONSTELLATIONS } from './constellationOracleData.js';
+import ConstellationArtwork from './ConstellationArtwork';
 import './MonthlyConstellationCalendar.css';
+
+function CalendarMark({ record }) {
+    const shape = record.result || ORACLE_CONSTELLATIONS[record.constellation?.id] || ORACLE_CONSTELLATIONS.compass;
+    return <ConstellationArtwork result={shape} compact />;
+}
 
 export default function MonthlyConstellationCalendar({
     identity = 'guest',
@@ -11,10 +17,13 @@ export default function MonthlyConstellationCalendar({
     const en = lang === 'en';
     const [viewDate, setViewDate] = useState(() => new Date());
     const [inspectingRecord, setInspectingRecord] = useState(null);
+    const dialogRef = useRef(null);
+    useEffect(() => {
+        if (inspectingRecord) dialogRef.current?.showModal();
+    }, [inspectingRecord]);
 
     // Load stamped records from local storage
     const records = useMemo(() => {
-        // eslint-disable-next-line no-unused-expressions
         refreshTrigger; // reactive dependency
         return loadOracleRecords(identity);
     }, [identity, refreshTrigger]);
@@ -57,7 +66,6 @@ export default function MonthlyConstellationCalendar({
         return records.filter((r) => r.day.startsWith(prefix)).length;
     }, [records, year, month]);
 
-    const daysInThisMonth = new Date(year, month + 1, 0).getDate();
 
     const handlePrevMonth = () => {
         setViewDate(new Date(year, month - 1, 1));
@@ -88,9 +96,9 @@ export default function MonthlyConstellationCalendar({
             {/* Streak / Count Summary Badge */}
             <div className="mcc-stats-bar">
                 <span className="mcc-stats-text">
-                    ✨ {en
-                        ? `Collected ${currentMonthCollectedCount} of ${daysInThisMonth} constellations this month`
-                        : `이번 달 ${daysInThisMonth}일 중 ${currentMonthCollectedCount}개의 별자리를 모았어요`}
+                    {en
+                        ? `${currentMonthCollectedCount} listening moments, kept for you`
+                        : `이번 달, 음악으로 남긴 ${currentMonthCollectedCount}개의 순간`}
                 </span>
             </div>
 
@@ -102,14 +110,14 @@ export default function MonthlyConstellationCalendar({
                     ))}
                 </div>
 
-                <div className="mcc-days-grid" role="grid">
+                <div className="mcc-days-grid" role="group" aria-label={en ? 'Daily listening records' : '날짜별 음악 기록'}>
                     {calendarDays.map((cell, idx) => {
                         if (!cell.dayNumber) {
                             return <div key={idx} className="mcc-day-cell is-empty" aria-hidden="true" />;
                         }
 
                         const hasRecord = Boolean(cell.record);
-                        const isToday = cell.dayStr === new Date().toISOString().slice(0, 10);
+                        const isToday = cell.dayStr === localDay();
 
                         return (
                             <button
@@ -118,12 +126,13 @@ export default function MonthlyConstellationCalendar({
                                 className={`mcc-day-cell${hasRecord ? ' has-record' : ''}${isToday ? ' is-today' : ''}`}
                                 onClick={() => cell.record && setInspectingRecord(cell.record)}
                                 disabled={!hasRecord}
+                                aria-current={isToday ? 'date' : undefined}
                                 aria-label={hasRecord ? `${cell.dayStr} ${cell.record.constellation?.name || ''}` : `${cell.dayNumber}`}
                             >
                                 <span className="mcc-day-num">{cell.dayNumber}</span>
                                 {hasRecord && (
                                     <span className="mcc-star-stamp" title={cell.record.constellation?.name}>
-                                        {cell.record.constellation?.symbol || '★'}
+                                        <CalendarMark record={cell.record} />
                                     </span>
                                 )}
                             </button>
@@ -134,16 +143,17 @@ export default function MonthlyConstellationCalendar({
 
             {/* Modal Inspector for Past Oracle Tear-sheet */}
             {inspectingRecord && (
-                <div className="mcc-modal-backdrop" onClick={() => setInspectingRecord(null)} role="dialog" aria-modal="true">
+                <dialog ref={dialogRef} className="mcc-dialog" aria-labelledby="mcc-record-date" onClose={() => setInspectingRecord(null)}
+                    onClick={event => { if (event.target === event.currentTarget) dialogRef.current.close(); }}>
                     <div className="mcc-modal-sheet" onClick={(e) => e.stopPropagation()}>
                         <header className="mcc-modal-header">
                             <div>
                                 <span className="mcc-modal-badge">{inspectingRecord.moonName
-                                    ? `${inspectingRecord.moonSymbol || ''} ${inspectingRecord.moonName}`
+                                    ? inspectingRecord.moonName
                                     : (en ? 'YOUR SKY' : '나의 별자리')}</span>
-                                <h4 className="mcc-modal-date">{inspectingRecord.dateDisplay}</h4>
+                                <h4 id="mcc-record-date" className="mcc-modal-date">{inspectingRecord.dateDisplay}</h4>
                             </div>
-                            <button type="button" className="mcc-modal-close" onClick={() => setInspectingRecord(null)}>✕</button>
+                            <button type="button" className="mcc-modal-close" aria-label={en ? 'Close record' : '기록 닫기'} autoFocus onClick={() => dialogRef.current.close()}>✕</button>
                         </header>
 
                         <div className="mcc-modal-body">
@@ -152,26 +162,17 @@ export default function MonthlyConstellationCalendar({
                                 <p className="mcc-modal-moment-text">
                                     {inspectingRecord.result
                                         ? (en ? inspectingRecord.result.contextEn || inspectingRecord.result.context : inspectingRecord.result.context)
-                                        : `${inspectingRecord.context?.emoji || ''} ${inspectingRecord.context?.label || ''}`}
+                                        : inspectingRecord.context?.label || ''}
                                 </p>
                             </div>
 
                             <div className="mcc-modal-constellation">
                                 <span className="mcc-modal-label">{en ? 'Recorded Constellation' : '기록된 별자리'}</span>
                                 {inspectingRecord.result?.nodes?.length > 0 && (
-                                    <svg className="mcc-modal-constellation-svg" viewBox="0 0 360 320" role="img" aria-label={en ? 'Your saved constellation' : '기록된 나의 별자리'}>
-                                        {inspectingRecord.result.edges?.map(([fromIndex, toIndex], index) => {
-                                            const from = inspectingRecord.result.nodes[fromIndex];
-                                            const to = inspectingRecord.result.nodes[toIndex];
-                                            return from && to ? <line key={index} x1={from.x} y1={from.y} x2={to.x} y2={to.y} stroke={inspectingRecord.result.color} /> : null;
-                                        })}
-                                        {inspectingRecord.result.nodes.map((node) => (
-                                            <circle key={node.id} cx={node.x} cy={node.y} r={node.isSelected ? 5 : 3} fill="#f8faff" />
-                                        ))}
-                                    </svg>
+                                    <div className="mcc-saved-art"><ConstellationArtwork result={inspectingRecord.result} label={en ? 'Your saved constellation' : '기록된 나의 별자리'} /></div>
                                 )}
                                 <div className="mcc-modal-symbol-row">
-                                    <span className="mcc-modal-symbol">{inspectingRecord.constellation?.symbol}</span>
+                                    <span className="mcc-modal-symbol"><CalendarMark record={inspectingRecord} /></span>
                                     <div>
                                         <h5 className="mcc-modal-symbol-name">{en ? (inspectingRecord.result?.nameEn || inspectingRecord.constellation?.name) : inspectingRecord.constellation?.name}</h5>
                                         <p className="mcc-modal-symbol-essence">{en ? (inspectingRecord.result?.lineEn || inspectingRecord.constellation?.essence) : inspectingRecord.constellation?.essence}</p>
@@ -179,9 +180,13 @@ export default function MonthlyConstellationCalendar({
                                 </div>
                             </div>
 
+                            {inspectingRecord.shift && <div className="mcc-saved-direction">
+                                <span className="mcc-modal-label">{en ? 'My listening direction' : '내가 고른 방향'}</span>
+                                <p>{en ? inspectingRecord.shift.nameEn || inspectingRecord.shift.name : inspectingRecord.shift.name}</p>
+                            </div>}
                             {inspectingRecord.track && (
                                 <div className="mcc-modal-track-box">
-                                    <span className="mcc-modal-label">{en ? 'Prescribed Track' : '처방받았던 음악'}</span>
+                                    <span className="mcc-modal-label">{en ? 'Your chosen track' : '그날 선택한 음악'}</span>
                                     <div className="mcc-modal-track-row">
                                         <div className="mcc-modal-track-info">
                                             <h6>{inspectingRecord.track.name}</h6>
@@ -199,7 +204,7 @@ export default function MonthlyConstellationCalendar({
                             )}
                         </div>
                     </div>
-                </div>
+                </dialog>
             )}
         </section>
     );

@@ -1,20 +1,31 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-    ARCHETYPE_MIRRORS,
+    getMoodMirror,
+    moodDirection,
+    moodTrackDescription,
     formatEnglishDate,
     formatKoreanDate,
     getContextMoments,
     localDay,
-    prescribeTrack,
+    rankMoodTracks,
     loadOracleRecords,
     saveOracleRecord,
 } from './constellationOracleData.js';
 import { buildOracleResult } from './oracleResult.js';
 import { createOracleStoryImage } from './oracleShareImage.js';
+import ConstellationArtwork from './ConstellationArtwork';
 import './ConstellationOracle.css';
 
 function trackCoverUrl(track) {
     return track?.coverUrl || track?.albumArt || track?.imageUrl || track?.album?.images?.[0]?.url || null;
+}
+
+function TrackCover({ track }) {
+    const cover = trackCoverUrl(track);
+    return <span className="sco-album-cover" aria-hidden="true">
+        <svg viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="15" /><circle cx="24" cy="24" r="5" /><path d="M14 19a11 11 0 0 1 5-5m10 20a11 11 0 0 0 5-5" /></svg>
+        {cover && <img key={cover} src={cover} alt="" loading="lazy" decoding="async" onError={event => { event.currentTarget.style.display = 'none'; }} />}
+    </span>;
 }
 
 export default function ConstellationOracle({
@@ -39,6 +50,8 @@ export default function ConstellationOracle({
     const [selectedContext, setSelectedContext] = useState(todaySaved?.context || null);
     const [customText, setCustomText] = useState('');
     const [showCustomInput, setShowCustomInput] = useState(false);
+    const [moodEnergy, setMoodEnergy] = useState(todaySaved?.shift?.targetEnergy ?? 0.5);
+    const [moodValence, setMoodValence] = useState(todaySaved?.shift?.targetValence ?? 0.5);
     const [selectedShift, setSelectedShift] = useState(todaySaved?.shift || null);
     const [prescribed, setPrescribed] = useState(todaySaved?.track || null);
     const [isTorn, setIsTorn] = useState(Boolean(todaySaved));
@@ -48,20 +61,39 @@ export default function ConstellationOracle({
     const [shareFailed, setShareFailed] = useState(false);
     const [shareRetry, setShareRetry] = useState(0);
     const [activeStarId, setActiveStarId] = useState(null);
+    const [query, setQuery] = useState('');
+    const [candidateCount, setCandidateCount] = useState(5);
+    const [saveError, setSaveError] = useState(false);
+    const tearTimer = useRef(null);
+    const stepRef = useRef(null);
+    const previousStep = useRef(step);
+    useEffect(() => () => window.clearTimeout(tearTimer.current), []);
+    useEffect(() => {
+        if (previousStep.current === step) return;
+        previousStep.current = step;
+        stepRef.current?.focus({ preventScroll: true });
+        stepRef.current?.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+    }, [step]);
 
-    // Resolved Archetype data based on selected context
-    const currentMirror = useMemo(() => {
-        const key = selectedContext?.archetypeKey || 'burnout';
-        return ARCHETYPE_MIRRORS[key] || ARCHETYPE_MIRRORS.burnout;
-    }, [selectedContext]);
+    const currentMirror = getMoodMirror(selectedContext);
+    const direction = useMemo(() => selectedShift ? {
+        ...selectedShift, targetEnergy: moodEnergy, targetValence: moodValence,
+    } : null, [selectedShift, moodEnergy, moodValence]);
+    const rankedTracks = useMemo(() => rankMoodTracks(library, direction, today), [library, direction, today]);
+    const candidates = useMemo(() => rankedTracks
+        .filter(track => `${track.name || ''} ${track.artists || ''}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase())),
+    [rankedTracks, query]);
+    const choiceConstellation = useMemo(() => buildOracleResult(
+        library, selectedContext, direction, prescribed || rankedTracks[0], today,
+    ), [library, selectedContext, direction, prescribed, rankedTracks, today]);
 
     const result = useMemo(() => {
-        if (todaySaved?.result
+        if (isTorn && todaySaved?.result
             && selectedContext?.id === todaySaved.context?.id
             && selectedShift?.id === todaySaved.shift?.id
             && prescribed?.id === todaySaved.track?.id) return todaySaved.result;
-        return buildOracleResult(library, selectedContext, selectedShift, prescribed, today);
-    }, [todaySaved, selectedContext, selectedShift, prescribed, library, today]);
+        return buildOracleResult(library, selectedContext, direction, prescribed, today);
+    }, [isTorn, todaySaved, selectedContext, selectedShift, direction, prescribed, library, today]);
     const activeStarIndex = result?.nodes.findIndex((node) => node.id === activeStarId) ?? -1;
     const activeStar = activeStarIndex >= 0 ? result.nodes[activeStarIndex] : null;
     const libraryById = useMemo(() => new Map(library.map((track) => [track.id, track])), [library]);
@@ -147,12 +179,14 @@ export default function ConstellationOracle({
     // Step 1 -> Step 2: User picks a context chip
     const handleSelectContext = (moment) => {
         setSelectedContext(moment);
+        setSelectedShift(null);
         setStep(3);
     };
 
     const handleCustomSubmit = (e) => {
         e.preventDefault();
         if (!customText.trim()) return;
+        setSelectedShift(null);
         setSelectedContext({
             id: 'ctx_custom',
             label: customText.trim(),
@@ -162,38 +196,38 @@ export default function ConstellationOracle({
         setStep(3);
     };
 
-    // Step 3 -> Step 4: User exercises agency by selecting energy shift
     const handleSelectShift = (shift) => {
-        setSelectedShift(shift);
-        const track = prescribeTrack(library, shift, today);
+        const next = moodDirection(shift);
+        setSelectedShift(next);
+        setMoodEnergy(next.targetEnergy);
+        setMoodValence(next.targetValence);
+    };
+
+    const chooseTrack = (track) => {
         setPrescribed(track);
         setShareBlob(null);
         setShareStatus('');
         setShareFailed(false);
         setActiveStarId(null);
-
-        // Notify 3D Constellation camera to swoop and focus
-        if (shift.camera && onCameraChange) {
-            onCameraChange(shift.camera);
-        }
-
+        setSaveError(false);
+        if (selectedShift?.camera) onCameraChange?.(selectedShift.camera);
         setStep(4);
     };
 
     // Step 4: Tear off today's page and stamp it into the monthly calendar!
     const handleTearOff = () => {
-        if (!prescribed || !result || isTorn) return;
+        if (!prescribed || !result || isTorn || tearingAnim) return;
+        setSaveError(false);
         setTearingAnim(true);
 
         const newRecord = {
             day: today,
             dateDisplay: en ? formatEnglishDate(dateNow) : formatKoreanDate(dateNow),
             context: selectedContext,
-            shift: selectedShift,
+            shift: direction,
             constellation: {
                 id: selectedShift?.constellation || 'personal',
                 name: en ? result.nameEn : result.name,
-                symbol: '✦',
                 essence: en ? result.lineEn : result.line,
             },
             track: prescribed,
@@ -201,9 +235,14 @@ export default function ConstellationOracle({
             createdAt: Date.now(),
         };
 
-        window.setTimeout(() => {
+        tearTimer.current = window.setTimeout(() => {
             const updated = saveOracleRecord(identity, newRecord);
-            setRecords(updated || []);
+            if (!updated) {
+                setTearingAnim(false);
+                setSaveError(true);
+                return;
+            }
+            setRecords(updated);
             setIsTorn(true);
             setTearingAnim(false);
             if (onSavedToCalendar) onSavedToCalendar(newRecord);
@@ -218,6 +257,10 @@ export default function ConstellationOracle({
         setPrescribed(null);
         setIsTorn(false);
         setShowCustomInput(false);
+        setCustomText('');
+        setQuery('');
+        setCandidateCount(5);
+        setSaveError(false);
         setShareBlob(null);
         setShareStatus('');
         setShareFailed(false);
@@ -228,17 +271,17 @@ export default function ConstellationOracle({
         <section id="today-constellation" className="sco-root" aria-label={en ? 'Today’s constellation' : '오늘의 별자리'}>
             <header className="sco-header">
                 <div className="sco-header__titles">
-                    <span className="sco-brand-badge">TODAY / YOUR SKY</span>
-                    <h2 className="sco-title">{en ? 'A constellation for today' : '오늘의 나를 그린 별자리'}</h2>
+                    <span className="sco-brand-badge">DAILY / LISTENING</span>
+                    <h2 className="sco-title">{en ? 'Music for this moment' : '지금의 나에게 맞는 음악'}</h2>
                 </div>
                 <div className="sco-header__meta">
                     <span className="sco-moon-disc" aria-hidden="true" />
-                    <span className="sco-date">{en ? formatEnglishDate(dateNow) : formatKoreanDate(dateNow)}</span>
+                    <time className="sco-date" dateTime={today} title={en ? formatEnglishDate(dateNow) : formatKoreanDate(dateNow)}>{today.slice(5).replace('-', '.')}</time>
                 </div>
             </header>
 
             {/* Main Daily Tear-off Page Sheet */}
-            <div className={`sco-sheet${tearingAnim ? ' is-tearing' : ''}${isTorn ? ' is-torn' : ''}`}>
+            <div ref={stepRef} tabIndex={-1} className={`sco-sheet${tearingAnim ? ' is-tearing' : ''}${isTorn ? ' is-torn' : ''}`}>
                 {/* Perforated holes top decoration */}
                 <div className="sco-perforations" aria-hidden="true">
                     <span className="sco-punch" />
@@ -285,6 +328,7 @@ export default function ConstellationOracle({
                             <form className="sco-custom-form" onSubmit={handleCustomSubmit}>
                                 <input
                                     type="text"
+                                    aria-label={en ? 'My moment' : '나의 순간'}
                                     maxLength={40}
                                     placeholder={en ? 'E.g. Walking home in the rain...' : '예: 비 오는 밤, 퇴근길 버스 창가에서...'}
                                     value={customText}
@@ -318,6 +362,7 @@ export default function ConstellationOracle({
                                     key={shift.id}
                                     type="button"
                                     className="sco-shift-card"
+                                    aria-pressed={selectedShift?.id === shift.id}
                                     style={{ '--sco-accent': shift.color }}
                                     onClick={() => handleSelectShift(shift)}
                                 >
@@ -327,12 +372,73 @@ export default function ConstellationOracle({
                                     </div>
                                     <h4 className="sco-shift-name">{en ? shift.nameEn : shift.name}</h4>
                                     {(!en || shift.descEn) && <p className="sco-shift-desc">{en ? shift.descEn : shift.desc}</p>}
-                                    <span className="sco-shift-action">{en ? 'See my constellation ↗' : '내 별자리 보기 ↗'}</span>
+                                    <span className="sco-shift-action">{selectedShift?.id === shift.id ? (en ? 'Selected' : '선택한 방향') : (en ? 'Choose this direction' : '이 방향 선택하기')}</span>
                                 </button>
                             ))}
                         </div>
+                        {selectedShift && <>
+                        <details className="sco-mood-controls" key={selectedShift?.id}>
+                            <summary>{en ? 'Fine-tune the sound' : '음악의 결 더 섬세하게 조절하기'}</summary>
+                            {[
+                                { key: 'energy', label: en ? 'Energy' : '에너지', low: en ? 'Quiet' : '차분하게', high: en ? 'Lively' : '활기차게', value: moodEnergy, change: setMoodEnergy },
+                                { key: 'valence', label: en ? 'Tone' : '감정의 톤', low: en ? 'Reflective' : '사색적으로', high: en ? 'Bright' : '밝게', value: moodValence, change: setMoodValence },
+                            ].map(control => <label key={control.key}>
+                                <span>{control.label}<small>{control.value < 0.4 ? control.low : control.value > 0.65 ? control.high : (en ? 'In between' : '그 사이')}</small></span>
+                                <input type="range" min="0" max="1" step="0.05" value={control.value} aria-valuetext={control.value < 0.4 ? control.low : control.value > 0.65 ? control.high : (en ? 'In between' : '그 사이')} onChange={event => control.change(Number(event.target.value))} />
+                                <span className="sco-mood-scale"><small>{control.low}</small><small>{control.high}</small></span>
+                            </label>)}
+                        </details>
+                            <button type="button" className="sco-continue" onClick={() => { setQuery(''); setCandidateCount(5); setStep(2); }}>
+                                {en ? 'Find my song' : '이 무드에서 곡 고르기'}<span aria-hidden="true">↗</span>
+                            </button>
+                        </>}
+                        <button type="button" className="sco-link-btn" onClick={() => setStep(1)}>{en ? 'Change my moment' : '지금의 상황 다시 고르기'}</button>
                     </div>
                 )}
+
+                {step === 2 && <div className="sco-step sco-step-choose animate-fade-in">
+                    <div className="sco-step__lead">
+                        <span className="sco-eyebrow">03 / YOUR CHOICE</span>
+                        <h3 className="sco-question">{en ? 'Which song feels like now?' : '지금은 어떤 곡이 끌리나요?'}</h3>
+                        <p className="sco-subtext">{en ? 'Listen to the options, or find a song of your own.' : '후보곡을 들어보거나, 떠오르는 곡을 직접 찾아요.'}</p>
+                    </div>
+                    <div className="sco-choice-direction"><span className="sco-shift-mark" style={{ '--sco-accent': selectedShift?.color }} aria-hidden="true" />
+                        {en ? selectedShift?.nameEn : selectedShift?.name}
+                        <button type="button" onClick={() => setStep(3)}>{en ? 'Adjust' : '조절'}</button>
+                    </div>
+                    {choiceConstellation && <figure className="sco-choice-constellation">
+                        <ConstellationArtwork result={choiceConstellation}
+                            label={en ? 'Constellation preview for your chosen mood' : '선택한 무드로 그린 별자리 미리보기'} />
+                        <figcaption>{en ? 'A sky for this mood. Choose the song to keep.' : '이 무드로 그린 별자리, 여기에 남길 곡을 골라요.'}</figcaption>
+                    </figure>}
+                    <label className="sco-track-search">
+                        <span>{en ? 'Search my music' : '내 음악에서 직접 찾기'}</span>
+                        <input type="search" value={query} placeholder={en ? 'Song or artist' : '곡 또는 아티스트'} onChange={event => { setQuery(event.target.value); setCandidateCount(5); }} />
+                    </label>
+                    <div className="sco-mood-candidates">
+                        <p role="status">{query.trim()
+                            ? (en ? `${candidates.length} songs found in your library` : `내 음악에서 ${candidates.length}곡을 찾았어요`)
+                            : (en ? 'Starting points for your chosen energy and tone' : '내가 고른 에너지와 톤에서 시작하는 후보곡')}
+                        </p>
+                        {candidates.slice(0, candidateCount).map((candidate, index) => <div key={candidate.id} className="sco-candidate-row">
+                            <span className="sco-candidate-number" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
+                            <button className="sco-candidate-select" type="button" aria-label={en ? `Choose ${candidate.name}` : `${candidate.name} 선택하기`} onClick={() => chooseTrack(candidate)}>
+                                <TrackCover track={candidate} />
+                                <span className="sco-candidate-copy">
+                                    <strong>{candidate.name}</strong><small>{candidate.artists}</small>
+                                    <span className="sco-candidate-reason">{moodTrackDescription(candidate, en)}</span>
+                                </span>
+                            </button>
+                            <button className="sco-candidate-listen" type="button" aria-label={en ? `Listen to ${candidate.name}` : `${candidate.name} 듣기`} onClick={() => onListen?.(candidate)}>
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 9 6-9 6Z" fill="none" stroke="currentColor" strokeWidth="1.2" /></svg>
+                            </button>
+                        </div>)}
+                        {!candidates.length && <p>{library.length
+                            ? (en ? 'Try another song title or artist.' : '다른 곡 제목이나 아티스트로 찾아보세요.')
+                            : (en ? 'Add music to your library to start choosing.' : '내 음악을 추가하면 여기서 곡을 고를 수 있어요.')}</p>}
+                        {candidates.length > candidateCount && <button type="button" className="sco-link-btn" onClick={() => setCandidateCount(count => count + 5)}>{en ? 'See more songs' : '다른 곡도 살펴보기'}</button>}
+                    </div>
+                </div>}
 
                 {/* Personal result made from actual tracks in the library. */}
                 {step === 4 && prescribed && result && (
@@ -344,43 +450,8 @@ export default function ConstellationOracle({
                         </div>
 
                         <div className="sco-constellation-art">
-                            <svg viewBox="0 0 360 320" className="sco-constellation-svg" role="group" aria-label={en ? `Constellation made from ${result.nodes.length} tracks in your library. Select a star to see its track.` : `내 음악 ${result.nodes.length}곡으로 만든 별자리. 별을 선택하면 곡을 볼 수 있습니다.`}>
-                                <defs>
-                                    <radialGradient id="sco-node-glow">
-                                        <stop offset="0%" stopColor={result.color} stopOpacity="0.8" />
-                                        <stop offset="100%" stopColor={result.color} stopOpacity="0" />
-                                    </radialGradient>
-                                </defs>
-                                {result.edges.map(([fromIndex, toIndex], index) => {
-                                    const from = result.nodes[fromIndex];
-                                    const to = result.nodes[toIndex];
-                                    if (!from || !to) return null;
-                                    return <line key={index} className="sco-result-edge" x1={from.x} y1={from.y} x2={to.x} y2={to.y} stroke={result.color} />;
-                                })}
-                                {result.nodes.map((node, index) => (
-                                    <g
-                                        key={node.id}
-                                        className={`sco-result-node${node.isSelected ? ' is-selected' : ''}${activeStarId === node.id ? ' is-active' : ''}`}
-                                        role="button"
-                                        tabIndex={0}
-                                        aria-label={en ? `Star ${index + 1}: ${node.name}${node.artists ? ` by ${node.artists}` : ''}` : `${index + 1}번 별: ${node.name}${node.artists ? ` · ${node.artists}` : ''}`}
-                                        aria-pressed={activeStarId === node.id}
-                                        onClick={() => setActiveStarId(node.id)}
-                                        onKeyDown={(event) => {
-                                            if (event.key === 'Enter' || event.key === ' ') {
-                                                event.preventDefault();
-                                                setActiveStarId(node.id);
-                                            }
-                                        }}
-                                    >
-                                        <title>{node.name}{node.artists ? ` · ${node.artists}` : ''}</title>
-                                        <circle cx={node.x} cy={node.y} r={node.isSelected ? 23 : 17} fill="url(#sco-node-glow)" />
-                                        <circle className="sco-star-hit-area" cx={node.x} cy={node.y} r="20" />
-                                        <circle className="sco-star-focus-ring" cx={node.x} cy={node.y} r="10" />
-                                        <circle cx={node.x} cy={node.y} r={node.isSelected ? 4.8 : 3} fill="#f8faff" />
-                                    </g>
-                                ))}
-                            </svg>
+                            <ConstellationArtwork result={result} activeId={activeStarId} onSelect={setActiveStarId}
+                                label={en ? `Constellation of ${result.nodes.length} songs. Select a star to see its song.` : `${result.nodes.length}곡으로 그린 별자리. 별을 선택하면 곡을 볼 수 있어요.`} />
                             <p className="sco-result-count" aria-live="polite">
                                 {activeStar
                                     ? (en ? `Star ${activeStarIndex + 1} · ${activeStar.name}` : `${activeStarIndex + 1}번 별 · ${activeStar.name}`)
@@ -395,8 +466,8 @@ export default function ConstellationOracle({
                             </div>
                             <p className="sco-star-tracklist__description">
                                 {en
-                                    ? `Today’s track and ${Math.max(0, result.nodes.length - 1)} songs from your library with a similar energy`
-                                    : `오늘의 곡과 에너지가 가까운 내 음악 ${Math.max(0, result.nodes.length - 1)}곡`}
+                                    ? `Your chosen song and ${Math.max(0, result.nodes.length - 1)} songs around your listening mood`
+                                    : `내가 고른 곡과 오늘의 무드에서 함께 찾아본 ${Math.max(0, result.nodes.length - 1)}곡`}
                             </p>
                             <ol>
                                 {result.nodes.map((node, index) => {
@@ -441,11 +512,12 @@ export default function ConstellationOracle({
 
                         {/* Prescribed Track Card */}
                         <div className="sco-track-box">
+                            <TrackCover track={prescribed} />
                             <div className="sco-track-box__left">
                                 <span className="sco-track-tag">{en ? 'TODAY’S TRACK' : '오늘의 곡'}</span>
                                 <h4 className="sco-track-name">{prescribed.name}</h4>
                                 <p className="sco-track-artist">{prescribed.artists || 'Unknown artist'}</p>
-                                <small className="sco-track-reason">{en ? 'From your library, close to the direction you chose' : '내 음악에서, 선택한 방향과 에너지가 가까운 곡'}</small>
+                                <small className="sco-track-reason">{en ? 'A song you chose for this moment' : '지금의 순간을 위해 내가 고른 곡'}</small>
                             </div>
                             <button
                                 type="button"
@@ -453,11 +525,12 @@ export default function ConstellationOracle({
                                 onClick={() => onListen && onListen(prescribed)}
                                 aria-label={en ? `Listen to ${prescribed.name}` : `${prescribed.name} 바로 듣기`}
                             >
-                                <span aria-hidden="true">▶</span>
+                                <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="m8 5 11 7-11 7Z" fill="currentColor" /></svg>
                                 <span>{en ? 'Listen' : '듣기'}</span>
                             </button>
                         </div>
 
+                        {!isTorn && <button type="button" className="sco-link-btn" disabled={tearingAnim} onClick={() => setStep(2)}>{en ? 'Choose a different song' : '다른 곡으로 바꾸기'}</button>}
                         <button type="button" className="sco-share-btn" onClick={shareFailed ? () => { setShareFailed(false); setShareRetry((value) => value + 1); } : handleShare} disabled={!shareBlob && !shareFailed}>
                             {shareFailed
                                 ? (en ? 'Retry story card' : '공유 카드 다시 만들기')
@@ -471,14 +544,16 @@ export default function ConstellationOracle({
                         {shareStatus && <p className="sco-share-status" role="status">{shareStatus}</p>}
 
                         {/* Tear-off and Stamp Action */}
+                        {saveError && <p className="sco-save-error" role="alert">{en ? 'Could not save. Try again using the button below.' : '기록을 저장하지 못했어요. 아래 버튼으로 다시 시도해 주세요.'}</p>}
                         <div className="sco-tear-actions">
                             {!isTorn ? (
                                 <button
                                     type="button"
                                     className="sco-tear-btn"
+                                    disabled={tearingAnim}
                                     onClick={handleTearOff}
                                 >
-                                    <span>{en ? 'Save today to my calendar' : '오늘의 별자리 달력에 기록하기'}</span>
+                                    <span>{tearingAnim ? (en ? 'Saving…' : '기록하는 중…') : (en ? 'Save this moment to my calendar' : '이 순간과 음악을 달력에 기록하기')}</span>
                                 </button>
                             ) : (
                                 <div className="sco-stamped-bar">
@@ -486,7 +561,7 @@ export default function ConstellationOracle({
                                         {en ? 'Saved to your constellation calendar.' : '오늘의 별자리를 달력에 기록했습니다.'}
                                     </span>
                                     <button type="button" className="sco-redraw-btn" onClick={handleRedraw}>
-                                        {en ? 'Draw Again' : '다시 뽑기'}
+                                        {en ? 'Choose again' : '다시 선택하기'}
                                     </button>
                                 </div>
                             )}

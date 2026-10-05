@@ -361,3 +361,26 @@
         transform: translateY(0) scale(1);
     }
 }
+
+/* The month's records form a quiet atlas of the listener's own drawings. */
+.mcc-stats-bar { background: transparent; border-color: #aebdd018; border-radius: 6px; }
+.mcc-stats-text { color: #a3b1c7; font-weight: 400; }
+.mcc-calendar-card { background: #0b101b; box-shadow: none; border-color: #aebdd018; border-radius: 12px; padding: 14px 10px; }
+.mcc-days-grid { gap: 3px; }
+.mcc-day-cell { border-radius: 5px; background: #ffffff02; min-height: 58px; aspect-ratio: auto; justify-content: flex-start; padding-top: 8px; }
+.mcc-day-cell.has-record { background: #ffffff05; border-color: #aebdd024; box-shadow: none; }
+.mcc-day-cell.has-record:hover, .mcc-day-cell.has-record:focus-visible { transform: none; box-shadow: none; background: #ffffff0b; }
+.mcc-star-stamp { filter: none; margin-top: 4px; }
+.mcc-day-cell.is-today { border-color: #b0c3e35c; }
+.mcc-day-cell.is-today .mcc-day-num { color: #cfddf0; }
+.mcc-nav-btns button, .mcc-modal-close { min-width: 44px; min-height: 44px; }
+.mcc-dialog { margin: auto; padding: 0; max-width: min(400px, calc(100vw - 28px)); width: 100%; max-height: calc(100dvh - 40px); border: 1px solid #afc3e333; border-radius: 16px; background: #0c1320; color: #f1f5fc; overflow-y: auto; }
+.mcc-dialog::backdrop { background: #030711c9; backdrop-filter: blur(8px); }
+.mcc-dialog .mcc-modal-sheet { max-width: none; box-sizing: border-box; width: 100%; border: 0; border-radius: 0; box-shadow: none; background: #0c1320; }
+.mcc-saved-art { background: #090e19; border: 1px solid #b7c5e313; border-radius: 10px; margin: 12px 0; }
+.mcc-modal-symbol .oracle-art { width: 40px; height: 36px; }
+.mcc-modal-track-info { min-width: 0; }
+.mcc-modal-listen-btn { min-height: 44px; background: #c9d7ec; color: #121d30; }
+.mcc-saved-direction p { font-size: 13px; color: #becce1; margin: 6px 0 0; }
+.mcc-root button:focus-visible { outline: 2px solid #bfcee5; outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .mcc-modal-sheet { animation: none; } .mcc-day-cell { transition: none; } }

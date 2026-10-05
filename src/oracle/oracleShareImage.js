@@ -55,7 +55,7 @@ export async function createOracleStoryImage({ result, track, day, lang = 'ko' }
     ctx.fillRect(0, 0, 1080, 1920);
 
     const glow = ctx.createRadialGradient(540, 760, 40, 540, 760, 610);
-    glow.addColorStop(0, withAlpha(color, 0.2));
+    glow.addColorStop(0, withAlpha(color, 0.08));
     glow.addColorStop(1, withAlpha(color, 0));
     ctx.fillStyle = glow;
     ctx.fillRect(0, 0, 1080, 1500);
@@ -82,6 +82,11 @@ export async function createOracleStoryImage({ result, track, day, lang = 'ko' }
     ctx.fillText(en ? result.nameEn : result.name, 540, 306);
 
     const point = (node) => ({ x: 108 + node.x * 2.4, y: 375 + node.y * 2.4 });
+    ctx.beginPath();
+    ctx.arc(540, 759, 319, 0, Math.PI * 2);
+    ctx.strokeStyle = withAlpha('#b0bfd4', 0.12);
+    ctx.lineWidth = 1;
+    ctx.stroke();
     ctx.lineCap = 'round';
     result.edges.forEach(([from, to]) => {
         const a = result.nodes[from];
@@ -92,26 +97,37 @@ export async function createOracleStoryImage({ result, track, day, lang = 'ko' }
         ctx.beginPath();
         ctx.moveTo(p1.x, p1.y);
         ctx.lineTo(p2.x, p2.y);
-        ctx.strokeStyle = withAlpha(color, 0.56);
-        ctx.lineWidth = 2.8;
-        ctx.shadowColor = color;
-        ctx.shadowBlur = 16;
+        ctx.strokeStyle = withAlpha(color, 0.42);
+        ctx.lineWidth = 1.5;
         ctx.stroke();
         ctx.shadowBlur = 0;
     });
-    result.nodes.forEach((node) => {
+    result.nodes.forEach((node, index) => {
         const p = point(node);
         const halo = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, node.isSelected ? 44 : 27);
-        halo.addColorStop(0, withAlpha(color, node.isSelected ? 0.6 : 0.4));
+        halo.addColorStop(0, withAlpha(color, node.isSelected ? 0.38 : 0.24));
         halo.addColorStop(1, withAlpha(color, 0));
         ctx.fillStyle = halo;
         ctx.fillRect(p.x - 45, p.y - 45, 90, 90);
         ctx.beginPath();
-        ctx.arc(p.x, p.y, node.isSelected ? 8 : 5, 0, Math.PI * 2);
+        ctx.arc(p.x, p.y, node.isSelected ? 6.5 : 4, 0, Math.PI * 2);
         ctx.fillStyle = '#f8faff';
         ctx.fill();
+        if (node.isSelected) {
+            ctx.beginPath();
+            ctx.moveTo(p.x - 22, p.y); ctx.lineTo(p.x + 22, p.y);
+            ctx.moveTo(p.x, p.y - 22); ctx.lineTo(p.x, p.y + 22);
+            ctx.strokeStyle = withAlpha('#d5e2f4', 0.6);
+            ctx.lineWidth = 1.2;
+            ctx.stroke();
+        }
+        ctx.textAlign = 'left';
+        ctx.font = '400 16px "Space Grotesk", sans-serif';
+        ctx.fillStyle = '#96a6bf';
+        ctx.fillText(String(index + 1).padStart(2, '0'), p.x + 23, p.y - 22);
     });
 
+    ctx.textAlign = 'center';
     ctx.fillStyle = '#8ea3c9';
     ctx.font = '600 23px "Pretendard Variable", sans-serif';
     ctx.fillText(en ? 'MY MOMENT' : '오늘의 순간', 540, 1240);

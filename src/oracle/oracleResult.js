@@ -1,4 +1,5 @@
 import { hash01 } from '../taste/constellationTopology.js';
+import { rankMoodTracks } from './constellationOracleData.js';
 
 const NAMES = {
     clarity: ['아침의 윤곽자리', 'The Morning Outline'],
@@ -42,14 +43,7 @@ export function buildOracleResult(library = [], context, shift, prescribed, day)
     if (!prescribed?.id || !shift) return null;
 
     const targetEnergy = Number.isFinite(shift.targetEnergy) ? shift.targetEnergy : 0.5;
-    const tracks = [prescribed, ...library
-        .filter((track) => track?.id && track.id !== prescribed.id)
-        .sort((a, b) => {
-            const score = (track) => Math.abs(feature(track, 'energy') - targetEnergy) * 0.8
-                + Math.abs(feature(track, 'valence') - feature(prescribed, 'valence')) * 0.2
-                + hash01(`${day}:${shift.id}:${track.id}`) * 0.06;
-            return score(a) - score(b) || String(a.id).localeCompare(String(b.id));
-        })]
+    const tracks = [prescribed, ...rankMoodTracks(library, shift, day)]
         .filter((track, index, all) => all.findIndex((item) => item.id === track.id) === index)
         .slice(0, 8);
 
@@ -82,6 +76,28 @@ export function buildOracleResult(library = [], context, shift, prescribed, day)
         y: Math.round((160 + (node.sourceY - centerY) * fittedScale) * 100) / 100,
         isSelected: index === 0,
     }));
+    // Separate near-identical feature coordinates for legible stars and touch
+    // targets. Geometry stays deterministic and is stored with the daily record.
+    for (let pass = 0; pass < 50; pass++) {
+        for (let a = 0; a < nodes.length; a++) {
+            for (let b = a + 1; b < nodes.length; b++) {
+                const dx = nodes[b].x - nodes[a].x;
+                const dy = nodes[b].y - nodes[a].y;
+                const distance = Math.hypot(dx, dy);
+                if (distance >= 42) continue;
+                const angle = distance > 0.01 ? Math.atan2(dy, dx) : hash01(`${nodes[a].id}:${nodes[b].id}`) * Math.PI * 2;
+                const push = (42 - distance) / 2;
+                nodes[a].x -= Math.cos(angle) * push;
+                nodes[a].y -= Math.sin(angle) * push;
+                nodes[b].x += Math.cos(angle) * push;
+                nodes[b].y += Math.sin(angle) * push;
+            }
+        }
+        nodes.forEach(node => {
+            node.x = Math.max(46, Math.min(314, node.x));
+            node.y = Math.max(60, Math.min(260, node.y));
+        });
+    }
     const edges = closestTree(nodes);
     const name = NAMES[context?.archetypeKey] || NAMES.wanderlust;
     const line = targetEnergy < 0.38

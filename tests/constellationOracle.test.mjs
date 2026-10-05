@@ -7,6 +7,12 @@ import {
     prescribeTrack,
     getMoonPhase,
     localDay,
+    rankMoodTracks,
+    getMoodMirror,
+    moodDirection,
+    moodTrackDescription,
+    loadOracleRecords,
+    saveOracleRecord,
 } from '../src/oracle/constellationOracleData.js';
 import { buildOracleResult } from '../src/oracle/oracleResult.js';
 
@@ -22,6 +28,65 @@ test('getContextMoments returns 3 moments with valid metadata', () => {
 
     const night = getContextMoments(new Date('2026-09-22T23:15:00'));
     assert.equal(night.length, 3);
+});
+
+test('mood ranking responds to tone independently of energy and leaves the library unchanged', () => {
+    const library = [
+        { id: 'reflective', energy: .4, valence: .2 },
+        { id: 'bright', energy: .4, valence: .8 },
+        { id: 'unknown' },
+    ];
+    const before = structuredClone(library);
+    assert.equal(rankMoodTracks(library, { targetEnergy: .4, targetValence: .2 })[0].id, 'reflective');
+    assert.equal(rankMoodTracks(library, { targetEnergy: .4, targetValence: .8 })[0].id, 'bright');
+    assert.deepEqual(library, before);
+    assert.deepEqual(rankMoodTracks(null), []);
+    assert.equal(rankMoodTracks([null, ...library, library[0]], {}).length, 3);
+    assert.equal(moodTrackDescription(library[2]), '직접 듣고 느낌을 골라보세요');
+});
+
+test('each time-of-day context has meaningful contrasting directions', () => {
+    for (const hour of [8, 14, 23]) {
+        for (const moment of getContextMoments(new Date(2026, 9, 5, hour))) {
+            const directions = getMoodMirror(moment).shifts.map(moodDirection);
+            assert.notEqual(directions[0].targetEnergy, directions[1].targetEnergy);
+            assert.notEqual(directions[0].targetValence, directions[1].targetValence);
+        }
+    }
+    assert.equal(getMoodMirror({ archetypeKey: 'custom' }), ARCHETYPE_MIRRORS.custom);
+});
+
+test('calendar reports failed writes and preserves previous records', () => {
+    const oldWindow = globalThis.window;
+    const oldStorage = globalThis.localStorage;
+    const values = new Map();
+    try {
+        globalThis.window = {};
+        globalThis.localStorage = {
+            getItem: key => values.get(key) || null,
+            setItem: (key, value) => values.set(key, value),
+        };
+        const record = { day: '2026-10-05', track: { id: 'chosen' } };
+        assert.equal(saveOracleRecord('review', record).length, 1);
+        assert.equal(saveOracleRecord('review', { ...record, track: { id: 'changed' } }).length, 1);
+        globalThis.localStorage.setItem = () => { throw new Error('quota'); };
+        assert.equal(saveOracleRecord('review', { day: '2026-10-06' }), null);
+        assert.equal(loadOracleRecords('review')[0].track.id, 'changed');
+        values.set('spectra_oracle_log_review', '{}');
+        assert.deepEqual(loadOracleRecords('review'), []);
+    } finally {
+        if (oldWindow === undefined) delete globalThis.window; else globalThis.window = oldWindow;
+        if (oldStorage === undefined) delete globalThis.localStorage; else globalThis.localStorage = oldStorage;
+    }
+});
+
+test('similar songs still create separated, bounded constellation stars', () => {
+    const library = Array.from({ length: 8 }, (_, i) => ({ id: `same-${i}`, energy: .5, valence: .5 }));
+    const result = buildOracleResult(library, { archetypeKey: 'custom' }, { targetEnergy: .5 }, library[0], '2026-10-05');
+    result.nodes.forEach((node, i) => {
+        assert.ok(node.x >= 46 && node.x <= 314 && node.y >= 60 && node.y <= 260);
+        result.nodes.slice(i + 1).forEach(other => assert.ok(Math.hypot(node.x - other.x, node.y - other.y) > 40));
+    });
 });
 
 test('ARCHETYPE_MIRRORS contains complete mirror text and 2 contrasting shifts', () => {

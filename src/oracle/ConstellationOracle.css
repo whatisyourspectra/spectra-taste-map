@@ -1008,3 +1008,64 @@
         opacity: 1;
     }
 }
+
+/* Listening controls inherit the daily sheet's visual hierarchy. */
+.sco-sheet:focus { outline: none; }
+.sco-header__meta { flex-shrink: 0; padding: 7px 10px; }
+.sco-title { font-size: clamp(16px, 4.7vw, 20px); word-break: keep-all; }
+.sco-shift-card { box-shadow: none; border-radius: 10px; }
+.sco-shift-card::before { width: 1px; opacity: 0.55; }
+.sco-shift-card:hover, .sco-shift-card:focus-visible { transform: none; box-shadow: none; }
+.sco-shift-mark { box-shadow: none; flex-shrink: 0; }
+.sco-shift-element { background: transparent; font-weight: 400; padding-right: 0; }
+.sco-shift-name { font-weight: 600; }
+.sco-shift-card[aria-pressed="true"] { border-color: var(--sco-accent); background: color-mix(in srgb, var(--sco-accent) 8%, #101622); }
+.sco-mood-controls { margin: 18px 0; padding: 16px; border: 1px solid #ffffff14; border-radius: 10px; background: #ffffff02; }
+.sco-mood-controls summary { color: #c0ccdf; font-size: 12px; cursor: pointer; line-height: 1.6; }
+.sco-mood-controls label { display: block; margin-top: 22px; color: #dce3f1; font-size: 13px; }
+.sco-mood-controls label > span { display: flex; justify-content: space-between; gap: 12px; }
+.sco-mood-controls label > span small { color: #9aaac2; }
+.sco-mood-controls input { width: 100%; margin: 8px 0; accent-color: #b0bedb; min-height: 30px; cursor: pointer; }
+.sco-mood-scale { color: #9aaac2; }
+.sco-continue { width: 100%; min-height: 48px; padding: 12px 16px; display: flex; justify-content: space-between; gap: 12px; background: #d7e2f2; color: #141e2f; border: 0; border-radius: 8px; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 600; }
+.sco-choice-direction { display: flex; align-items: center; gap: 9px; padding: 10px 0 16px; color: #c7d3e7; font-size: 12px; border-bottom: 1px solid #ffffff12; }
+.sco-choice-direction button { margin-left: auto; min-height: 44px; padding: 8px; background: transparent; border: 0; color: #b1c6e9; font: inherit; cursor: pointer; flex-shrink: 0; }
+.sco-choice-constellation { margin: 16px 0 20px; padding: 8px 10px 16px; border: 1px solid #b7c5e313; border-radius: 12px; background: radial-gradient(ellipse at 50% 45%, #8b9bbc0d, transparent 65%), #090e19; }
+.sco-choice-constellation .oracle-art { max-width: 320px; }
+.sco-choice-constellation figcaption { color: #9daec8; font-size: 11px; line-height: 1.6; text-align: center; word-break: keep-all; }
+.sco-track-search { display: block; margin: 18px 0; }
+.sco-track-search > span { display: block; color: #a8b5cd; font-size: 11px; margin-bottom: 10px; }
+.sco-track-search input { width: 100%; min-width: 0; box-sizing: border-box; min-height: 46px; background: #080e19; border: 1px solid #b1c6e928; border-radius: 8px; padding: 12px 14px; color: #e1e9f6; font: inherit; font-size: 13px; }
+.sco-track-search input::placeholder { color: #8796af; }
+.sco-mood-candidates > p { color: #9daac0; font-size: 12px; line-height: 1.7; }
+.sco-candidate-row { display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #ffffff0d; padding: 8px 0; }
+.sco-candidate-number { color: #8c9ab3; font-size: 10px; font-variant-numeric: tabular-nums; }
+.sco-candidate-row button { background: transparent; border: 0; color: #dce5f6; text-align: left; cursor: pointer; min-height: 44px; font: inherit; }
+.sco-candidate-row .sco-candidate-select { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; padding: 10px 0; }
+.sco-candidate-copy { flex: 1; min-width: 0; }
+.sco-album-cover { position: relative; display: grid; place-items: center; width: 54px; height: 54px; flex: 0 0 54px; overflow: hidden; border-radius: 6px; background: #172334; border: 1px solid #b7c5e31c; }
+.sco-album-cover svg { width: 36px; height: 36px; stroke: #8fa7c2; stroke-width: 0.8; }
+.sco-album-cover img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.sco-candidate-select strong { display: block; font-size: 14px; font-weight: 500; line-height: 1.5; overflow-wrap: anywhere; }
+.sco-candidate-select small { display: block; margin-top: 3px; font-size: 11px; color: #a2b0c8; overflow-wrap: anywhere; }
+.sco-candidate-reason { display: block; color: #8fa7c2; font-size: 10px; line-height: 1.5; margin-top: 9px; }
+.sco-candidate-listen { flex: 0 0 44px; width: 44px; display: grid; place-items: center; border-radius: 50%; }
+.sco-candidate-listen svg { width: 22px; height: 22px; }
+.sco-candidate-row button:hover { color: #ffffff; background: #ffffff04; }
+.sco-root button:focus-visible, .sco-root input:focus-visible, .sco-root summary:focus-visible { outline: 2px solid #bfcee5; outline-offset: 3px; }
+.sco-save-error { color: #efb5aa; font-size: 12px; line-height: 1.7; }
+.sco-step-prescribed .sco-constellation-art { background: radial-gradient(ellipse at 50% 45%, #8b9bbc0d, transparent 65%), #090e19; border-color: #b7c5e313; padding: 8px 8px 18px; box-shadow: none; }
+.sco-step-prescribed .oracle-art { height: auto; }
+.sco-tear-btn:disabled { cursor: wait; opacity: 0.6; }
+.sco-step-prescribed .sco-track-box { display: grid; grid-template-columns: 54px minmax(0, 1fr); gap: 12px; }
+.sco-step-prescribed .sco-track-box > .sco-album-cover { grid-row: 1 / 3; align-self: start; }
+.sco-step-prescribed .sco-track-play-btn { grid-column: 2; justify-self: start; }
+@media (max-width: 360px) {
+    .sco-candidate-row { gap: 7px; }
+    .sco-candidate-row .sco-candidate-select { gap: 8px; }
+    .sco-candidate-select .sco-album-cover { width: 44px; height: 44px; flex-basis: 44px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .sco-root .animate-fade-in { animation: none; }
+    .sco-shift-card { transition: none; }
+}
