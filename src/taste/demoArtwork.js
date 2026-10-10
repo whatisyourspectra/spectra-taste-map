@@ -1,3 +1,5 @@
+import { getDemoCover } from './demoCoverAssets.js';
+
 /**
  * Dynamic and procedural album artwork for demo universes.
  * 1. Provides instant aesthetic procedural vinyl/cosmic album cover SVG (0ms, 100% offline).
@@ -84,6 +86,8 @@ export function generateAestheticCoverSvg({ name, artists, color = '#70d6ff', in
 }
 
 export function getCachedArtwork(artists, title) {
+  const bundled = getDemoCover(artists, title);
+  if (bundled) return bundled;
   if (typeof window === 'undefined') return null;
   const key = `${ARTWORK_CACHE_PREFIX}${artists?.toLowerCase()}|${title?.toLowerCase()}`;
   try {

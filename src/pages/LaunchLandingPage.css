@@ -1109,7 +1109,7 @@
 
 
 /* Editorial sound atlas */
-.llp-root { background: #050812; color: #e4eaff; }
+.llp-root { background: #050812; color: #e4eaff; isolation: isolate; }
 .llp-fog { display: none; }
 .llp-nav-wrap { top: 0; padding: 0 4.5vw; }
 .llp-nav { max-width: none; min-height: 96px; padding: 0; border: 0; border-bottom: 1px solid #e4eaff22; border-radius: 0; background: #050812e6; box-shadow: none; backdrop-filter: blur(14px); }
@@ -1118,7 +1118,9 @@
 .llp-nav-link { color: #9baac2; font-size: 12px; }
 .llp-nav-demo-btn { background: transparent; border: 0; border-radius: 0; color: #e4eaff; gap: 25px; padding: 10px 0; }
 .llp-nav-demo-btn:hover { background: transparent; box-shadow: none; color: #c084fc; border: 0; }
-.llp-content { max-width: none; padding: 0 4.5vw 80px; }
+.llp-content { max-width: none; padding: 0 4.5vw 80px; pointer-events: none; }
+.llp-content > :not(.llp-hero-section) { pointer-events: auto; }
+.llp-footer { position: relative; z-index: 10; }
 .llp-hero-section { display: flex; justify-content: center; align-items: flex-start; position: relative; min-height: 850px; height: 100svh; max-height: 1200px; padding: 130px 0 145px; text-align: left; isolation: isolate; }
 .llp-hero-copy { position: relative; z-index: 2; width: 50%; pointer-events: none; }
 .llp-art-eyebrow { color: #9aacce; font-size: 10px; letter-spacing: .22em; margin-bottom: 43px; }
@@ -1131,18 +1133,20 @@
 .llp-hero-cta-group .llp-btn-primary:hover { color: #70d6ff; transform: translateY(-2px); box-shadow: none; }
 .llp-hero-cta-group .llp-btn-primary:disabled { opacity: .45; cursor: wait; }
 .llp-hero-cta-group .llp-btn-secondary { background: none; padding: 14px 0; border: 0; border-radius: 0; color: #a0afc7; font-size: 12px; backdrop-filter: none; }
-.llp-sculpture { position: absolute; inset: 0 -4.5vw; z-index: 1; overflow: hidden; background: radial-gradient(ellipse at 70% 45%, #7060cb22, transparent 52%); }
+.llp-sculpture { position: absolute; inset: 0 0 auto; height: var(--hero-height, 100svh); z-index: 1; pointer-events: none; }
+.llp-sculpture-backdrop { position: fixed; inset: 0; overflow: hidden; pointer-events: auto; background: radial-gradient(ellipse at 70% 45%, #7060cb22, transparent 52%); transition: opacity .6s ease; }
+.llp-root:not([data-chapter='hero']) .llp-sculpture-backdrop { opacity: .5; pointer-events: none; }
 .llp-sculpture canvas { width: 100%; height: 100%; display: block; touch-action: pan-y; cursor: grab; }
 .llp-sculpture-caption { position: absolute; left: 60%; bottom: 185px; display: flex; flex-direction: column; gap: 10px; color: #a9b6d1; pointer-events: none; }
 .llp-sculpture-caption span:first-child { font: 9px monospace; letter-spacing: .12em; }
 .llp-sculpture-caption span:last-child { font-size: 11px; color: #93a3be; }
-.llp-sculpture-controls { position: absolute; right: 4.5vw; bottom: 108px; display: flex; border-bottom: 1px solid #ffffff22; gap: 28px; }
+.llp-sculpture-controls { position: absolute; right: 4.5vw; bottom: 108px; display: flex; border-bottom: 1px solid #ffffff22; gap: 28px; pointer-events: auto; }
 .llp-sculpture-controls button { padding: 14px 0; background: none; border: 0; border-bottom: 1px solid transparent; margin-bottom: -1px; color: #8f9dba; font-size: 10px; letter-spacing: .12em; cursor: pointer; transition: color .3s; }
 .llp-sculpture-controls button span { padding-right: 10px; opacity: .5; font-size: 9px; }
 .llp-sculpture-controls button[aria-pressed='true'] { color: #d5eaff; border-bottom-color: #70d6ff; }
 .llp-sculpture-controls button:hover { color: #f1f5ff; }
 .llp-root button:focus-visible { outline: 1px solid #70d6ff; outline-offset: 6px; }
-.llp-hero-footnote { position: absolute; left: 0; right: 0; bottom: 34px; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid #e4eaff22; padding-top: 23px; z-index: 2; color: #8091ae; font: 9px monospace; letter-spacing: .12em; }
+.llp-hero-footnote { position: absolute; left: 0; right: 0; bottom: 34px; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid #e4eaff22; padding-top: 23px; z-index: 2; color: #8091ae; font: 9px monospace; letter-spacing: .12em; pointer-events: auto; }
 .llp-hero-footnote button { background: none; border: 0; color: #a9b8d1; font: inherit; letter-spacing: inherit; cursor: pointer; }
 .llp-hero-footnote button span { margin-left: 18px; }
 .llp-section { max-width: 1120px; margin-left: auto; margin-right: auto; padding-top: 100px; }
@@ -1180,7 +1184,6 @@
   .llp-hero-cta-group { gap: 24px; }
   .llp-hero-cta-group .llp-btn-primary { font-size: 12px; gap: 22px; }
   .llp-hero-cta-group .llp-btn-secondary { font-size: 11px; }
-  .llp-sculpture { left: -22px; right: -22px; }
   .llp-sculpture-caption { left: 22px; bottom: 162px; }
   .llp-sculpture-controls { right: 22px; bottom: 102px; }
   .llp-hero-footnote { font-size: 7px; bottom: 30px; }
@@ -1191,4 +1194,23 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .llp-root *, .llp-root *::before, .llp-root *::after { animation: none !important; scroll-behavior: auto !important; transition: none !important; }
+}
+
+/* A clear path from the desktop atlas to the mobile experience. */
+.llp-mobile-entry { display: flex; align-items: center; justify-content: space-between; gap: 40px; margin-top: 70px; padding: 40px; border: 1px solid #91a9da30; background: linear-gradient(120deg, #10172b, #080d18); border-radius: 18px; }
+.llp-mobile-entry h2 { font-size: clamp(25px, 3vw, 36px); font-weight: 500; letter-spacing: -.04em; margin: 14px 0; }
+.llp-mobile-entry p { color: #a0afc7; line-height: 1.85; font-size: 14px; word-break: keep-all; }
+.llp-mobile-actions { display: flex; gap: 24px; align-items: center; margin-top: 22px; }
+.llp-mobile-actions a, .llp-mobile-actions button { color: #a6ddff; font: inherit; font-size: 13px; text-decoration: none; background: none; border: 0; padding: 8px 0; cursor: pointer; }
+.llp-mobile-qr { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 14px; background: white; border-radius: 14px; color: #17213c; text-decoration: none; flex-shrink: 0; }
+.llp-mobile-qr img { display: block; }
+.llp-mobile-qr span { font: 9px monospace; letter-spacing: .13em; }
+.llp-mobile-status { min-height: 20px; margin-bottom: 0; overflow-wrap: anywhere; }
+.llp-root .llp-demo-card { border-radius: 16px; background: linear-gradient(145deg, #10182be6, #0a101be6); }
+.llp-root .llp-import-box { border-radius: 20px; }
+@media (max-width: 699px) {
+  .llp-mobile-entry { flex-direction: column; align-items: flex-start; padding: 26px; gap: 22px; margin-top: 35px; }
+  .llp-mobile-qr { align-self: center; }
+  .llp-sculpture-controls { gap: 16px; left: 22px; justify-content: space-between; }
+  .llp-sculpture-controls button { font-size: 9px; letter-spacing: 0; }
 }

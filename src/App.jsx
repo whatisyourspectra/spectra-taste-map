@@ -10,6 +10,8 @@ import AuthPage, { AuthCallback, AuthLoading } from './auth/AuthPage';
 import AccountButton from './auth/AccountButton';
 
 import LaunchLandingPage from './pages/LaunchLandingPage';
+import { DEMO_UNIVERSES, getCombinedDemoTracks } from './taste/demoUniverses';
+import MapOnboarding from './onboarding/MapOnboarding';
 
 function AppInner() {
   const { hasTaste, cloudSyncing, importTracks, status, progress, error, reset } = useTasteData();
@@ -39,11 +41,27 @@ function AppInner() {
       />
       <Route
         path="/taste-map/mobile"
-        element={hasTaste ? <TasteMapMobilePage /> : <Navigate to="/" replace />}
+        element={hasTaste ? <><TasteMapMobilePage /><MapOnboarding mobile /></> : <Navigate to="/" replace />}
       />
+      <Route path="/mobile-start" element={<MobileStart />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
+}
+
+function MobileStart() {
+  const { hasTaste, importTracks } = useTasteData();
+  const started = useRef(false);
+  const [error, setError] = useState(false);
+  useEffect(() => {
+    if (hasTaste || started.current) return;
+    started.current = true;
+    importTracks(getCombinedDemoTracks(), { preEnriched: true, demoUniverse: DEMO_UNIVERSES[0].id })
+      .then(result => { if (result?.ok === false) setError(true); }).catch(() => setError(true));
+  }, [hasTaste, importTracks]);
+  if (hasTaste) return <Navigate to="/taste-map/mobile" replace />;
+  if (error) return <main className="sa-page"><div className="sa-card"><h1>데모를 열지 못했어요</h1><a href="/">시작 페이지로 돌아가기</a></div></main>;
+  return <AuthLoading title="모바일 취향 지도를 준비하고 있어요" message="예시 음악으로 먼저 체험해 보세요." />;
 }
 
 function ResponsiveTasteMapRoute() {
@@ -66,7 +84,8 @@ function ResponsiveTasteMapRoute() {
     return () => mq.removeListener(onChange);
   }, []);
 
-  return isMobile && !openUniverse ? <TasteMapMobilePage /> : <TasteMapPage />;
+  const mobile = isMobile && !openUniverse;
+  return <>{mobile ? <TasteMapMobilePage /> : <TasteMapPage />}<MapOnboarding key={mobile ? 'mobile' : 'desktop'} mobile={mobile} /></>;
 }
 
 function TasteSession() {

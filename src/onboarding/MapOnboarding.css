@@ -1,0 +1,39 @@
+/* Spectra palette; keep the guide's type and action hierarchy. */
+.map-guide-panel, .map-guide-reopen {
+  --guide-surface: #111827;
+  --guide-border: #8198bf42;
+  --guide-accent: #70d6ff;
+  --guide-text: #eff3ff;
+  --guide-body: #b6c3d9;
+  --guide-muted: #91a1bc;
+}
+.map-guide-highlight { position: fixed; z-index: 10000; box-sizing: border-box; border: 2px solid var(--guide-accent, #70d6ff); border-radius: 12px; pointer-events: none; box-shadow: 0 0 0 4px #70d6ff20; }
+.map-guide-panel { position: fixed; z-index: 10001; margin: 0; width: min(340px, calc(100vw - 32px)); box-sizing: border-box; padding: 22px; border: 1px solid var(--guide-border); border-radius: 20px; background: var(--guide-surface); color: var(--guide-text); box-shadow: 0 16px 44px #0006, inset 0 1px 0 #ffffff06; font-family: inherit; text-align: left; }
+.map-guide-meta { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.map-guide-meta > span { display: flex; align-items: center; gap: 8px; color: var(--guide-accent); font-size: 12px; line-height: 1.5; font-weight: 600; }
+.map-guide-count { color: var(--guide-muted); font-size: 11px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.map-guide-panel button { display: inline-flex; align-items: center; justify-content: center; font: inherit; border: 0; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: background .15s; }
+.map-guide-panel .map-guide-dismiss { padding: 4px 0 4px 8px; color: var(--guide-muted); background: transparent; font-size: 12px; font-weight: 500; }
+.map-guide-panel .map-guide-dismiss:hover { color: var(--guide-body); }
+.map-guide-panel h2 { font-size: 21px; font-weight: 700; line-height: 1.4; letter-spacing: -.045em; margin: 0 0 12px; word-break: keep-all; }
+.map-guide-panel p { font-size: 14px; line-height: 1.65; letter-spacing: -.02em; color: var(--guide-body); margin: 0; word-break: keep-all; }
+.map-guide-panel p strong { font-weight: 600; color: var(--guide-text); }
+.map-guide-panel .map-guide-hint { margin-top: 8px; font-size: 12px; line-height: 1.6; color: var(--guide-muted); }
+.map-guide-footer { display: flex; gap: 8px; margin-top: 22px; }
+.map-guide-panel .map-guide-next, .map-guide-panel .map-guide-prev { min-height: 44px; padding: 12px 16px; border-radius: 11px; font-size: 14px; font-weight: 600; line-height: 20px; }
+.map-guide-panel .map-guide-next { flex: 1; background: linear-gradient(110deg, #70d6ff, #b9a3ff); color: #101827; }
+.map-guide-panel .map-guide-next:hover { background: linear-gradient(110deg, #94e1ff, #cbbaff); }
+.map-guide-panel .map-guide-next:active { background: linear-gradient(110deg, #60c7f2, #a58ee9); }
+.map-guide-panel .map-guide-prev { flex: 0 0 72px; background: #ffffff0a; color: var(--guide-body); }
+.map-guide-panel .map-guide-prev:hover { background: #ffffff12; }
+.map-guide-reopen { position: fixed; right: 20px; bottom: 20px; z-index: 9999; display: flex; align-items: center; gap: 8px; padding: 10px 14px; border: 1px solid var(--guide-border); border-radius: 24px; background: var(--guide-surface); color: var(--guide-body); box-shadow: 0 4px 16px #0004; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.map-guide-panel button:focus-visible, .map-guide-reopen:focus-visible { outline: 3px solid var(--guide-accent); outline-offset: 3px; }
+.map-guide-panel:focus { outline: none; }
+.map-guide-arrow { position: absolute; width: 12px; height: 12px; background: var(--guide-surface); transform: rotate(45deg); pointer-events: none; }
+.map-guide-panel[data-side="above"] .map-guide-arrow { bottom: -7px; left: calc(var(--guide-arrow) - 6px); border-right: 1px solid var(--guide-border); border-bottom: 1px solid var(--guide-border); }
+.map-guide-panel[data-side="below"] .map-guide-arrow { top: -7px; left: calc(var(--guide-arrow) - 6px); border-left: 1px solid var(--guide-border); border-top: 1px solid var(--guide-border); }
+.map-guide-panel[data-side="right"] .map-guide-arrow { left: -7px; top: calc(var(--guide-arrow) - 6px); border-left: 1px solid var(--guide-border); border-bottom: 1px solid var(--guide-border); }
+.map-guide-panel[data-side="left"] .map-guide-arrow { right: -7px; top: calc(var(--guide-arrow) - 6px); border-right: 1px solid var(--guide-border); border-top: 1px solid var(--guide-border); }
+@media (max-width: 699px) { .map-guide-panel { padding: 20px; } .map-guide-panel h2 { font-size: 20px; } }
+@media (max-height: 450px) { .map-guide-panel { padding: 16px; } .map-guide-meta { margin-bottom: 10px; } .map-guide-panel h2 { font-size: 18px; margin-bottom: 8px; } .map-guide-footer { margin-top: 14px; } }
+@media (prefers-reduced-motion: reduce) { .map-guide-panel button { transition: none; } }

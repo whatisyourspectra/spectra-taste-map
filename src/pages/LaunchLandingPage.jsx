@@ -2,10 +2,11 @@ import React, { useCallback, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './LaunchLandingPage.css';
 import LaunchTasteMapHero from './LaunchTasteMapHero';
-import { DEMO_UNIVERSES, getEnrichedDemoTracks } from '../taste/demoUniverses';
+import { DEMO_UNIVERSES, getCombinedDemoTracks } from '../taste/demoUniverses';
 import { parseTrackList } from '../utils/parseTrackList';
 import { MAX_IMPORT_TRACKS } from '../context/TasteDataContext';
 import AccountButton from '../auth/AccountButton';
+import MobileEntryCard from '../components/MobileEntryCard';
 import LaunchTasteJourney, { LaunchDemoPortal, LaunchImportOrbit } from './LaunchTasteJourney';
 
 const TUNE_MY_MUSIC_URL = 'https://www.tunemymusic.com/transfer';
@@ -24,6 +25,10 @@ export default function LaunchLandingPage({
   React.useEffect(() => {
     const root = landingRef.current;
     const sections = [...root.querySelectorAll('main > section[id]')];
+    const heroSize = new ResizeObserver(([entry]) => {
+      root.style.setProperty('--hero-height', `${entry.borderBoxSize?.[0]?.blockSize || entry.target.getBoundingClientRect().height}px`);
+    });
+    heroSize.observe(root.querySelector('#hero'));
     let frame = 0;
     const update = () => {
       frame = 0;
@@ -40,7 +45,7 @@ export default function LaunchLandingPage({
     window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('resize', onScroll);
     onScroll();
-    return () => { cancelAnimationFrame(frame); reveal.disconnect(); window.removeEventListener('scroll', onScroll); window.removeEventListener('resize', onScroll); };
+    return () => { cancelAnimationFrame(frame); reveal.disconnect(); heroSize.disconnect(); window.removeEventListener('scroll', onScroll); window.removeEventListener('resize', onScroll); };
   }, []);
   const [activeTab, setActiveTab] = useState('file'); // 'file' | 'paste'
   const [rawText, setRawText] = useState('');
@@ -131,8 +136,8 @@ export default function LaunchLandingPage({
     if (busy || !universe) return;
     setIsSubmitting(true);
     try {
-      const enriched = getEnrichedDemoTracks(universe);
-      const res = await onImportTracks(enriched, { preEnriched: true });
+      const enriched = getCombinedDemoTracks();
+      const res = await onImportTracks(enriched, { preEnriched: true, demoUniverse: universe.id });
       if (res?.ok !== false) {
         navigate('/taste-map');
       }
@@ -158,6 +163,7 @@ export default function LaunchLandingPage({
 
   return (
     <div className="llp-root" ref={landingRef} data-chapter={chapter}>
+      <LaunchTasteMapHero onTry={() => scrollToSection('features')} />
       {/* Ambient background fog layers */}
       <div className="llp-fog llp-fog-top" aria-hidden />
       <div className="llp-fog llp-fog-mid" aria-hidden />
@@ -173,10 +179,10 @@ export default function LaunchLandingPage({
 
           <div className="llp-nav-links">
             <button type="button" className="llp-nav-link" onClick={() => scrollToSection('demo')}>
-              데모 우주
+              취향 지도 체험
             </button>
             <button type="button" className="llp-nav-link" onClick={() => scrollToSection('features')}>
-              3D taste맵 기능
+              이해 · 분류 · 확장
             </button>
             <button type="button" className="llp-nav-link" onClick={() => scrollToSection('import')}>
               음악 가져오기
@@ -200,7 +206,7 @@ export default function LaunchLandingPage({
               className="llp-nav-demo-btn"
               onClick={() => handleSelectDemo(DEMO_UNIVERSES[0])}
             >
-              <span>Explore</span>
+              <span>데모 체험</span>
               <span aria-hidden="true">↗</span>
             </button>
             <div className="llp-nav-auth">
@@ -214,17 +220,16 @@ export default function LaunchLandingPage({
       <main className="llp-content">
         {/* ── Section 1: Hero Section ── */}
         <section className="llp-hero-section" id="hero">
-          <LaunchTasteMapHero />
           <div className="llp-hero-copy">
             <p className="llp-art-eyebrow">A PERSONAL ATLAS OF SOUND</p>
             <h1 className="llp-hero-title">
               <span>Your taste.</span>
               <em>In spectra.</em>
             </h1>
-            <p className="llp-hero-desc">당신이 사랑한 음악, 그 사이의 보이지 않는 연결.<br />취향이 하나의 우주가 되는 순간.</p>
+            <p className="llp-hero-desc">내가 왜 이 음악을 좋아하는지 이해하고,<br />닮은 곡을 모아 취향을 분류하고,<br />그 연결을 따라 새로운 음악으로 확장하세요.</p>
             <div className="llp-hero-cta-group">
               <button type="button" className="llp-btn-primary" onClick={() => handleSelectDemo(DEMO_UNIVERSES[0])} disabled={busy}>
-                <span>나의 우주를 발견하기</span><span aria-hidden="true">↗</span>
+                <span>데모 지도로 먼저 체험하기</span><span aria-hidden="true">↗</span>
               </button>
               <button type="button" className="llp-btn-secondary" onClick={() => scrollToSection('import')}>음악 가져오기</button>
             </div>
@@ -233,17 +238,18 @@ export default function LaunchLandingPage({
         </section>
 
         <LaunchTasteJourney onOpen={handleSelectDemo} busy={busy} />
+        <MobileEntryCard />
 
         {/* ── Section 3: One-Click Demo Universes ── */}
         <section className="llp-section" id="demo">
           <div className="llp-section-header">
             <span className="llp-section-eyebrow">02 / CHOOSE YOUR FREQUENCY</span>
             <h2 className="llp-section-title">
-              <span className="llp-title-chunk">어떤 무드에</span>{' '}
-              <span className="llp-title-chunk">끌리나요?</span>
+              <span className="llp-title-chunk">익숙한 음악에서</span>{' '}
+              <span className="llp-title-chunk">시작해 볼까요?</span>
             </h2>
             <p className="llp-section-sub">
-              버블을 눌러 곡을 살펴보고, 마음에 드는 우주 안으로 들어가세요.
+              아래는 예시 곡으로 만든 취향 지도입니다. 내 음악을 가져오면 나만의 지도가 만들어져요.
             </p>
           </div>
 

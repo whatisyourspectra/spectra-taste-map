@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { DEMO_UNIVERSES, getEnrichedDemoTracks } from '../src/taste/demoUniverses.js';
+import { DEMO_UNIVERSES, getEnrichedDemoTracks, getCombinedDemoTracks, getDemoUniverseIndex } from '../src/taste/demoUniverses.js';
 
 test('DEMO_UNIVERSES contains 3 rich preset universes with valid track structures', () => {
   assert.equal(DEMO_UNIVERSES.length, 3);
@@ -38,4 +38,15 @@ test('getEnrichedDemoTracks generates pre-computed 5D audio features and valid a
       assert.ok(track.imageUrl, 'Track must have imageUrl');
     });
   });
+});
+
+test('the shared demo field contains every entry card with stable filter membership', () => {
+  const tracks = getCombinedDemoTracks();
+  assert.equal(tracks.length, DEMO_UNIVERSES.reduce((sum, universe) => sum + universe.tracks.length, 0));
+  assert.equal(new Set(tracks.map(track => track.id)).size, tracks.length);
+  DEMO_UNIVERSES.forEach((universe, index) => {
+    assert.equal(tracks.filter(track => getDemoUniverseIndex(track) === index).length, universe.tracks.length);
+    assert.equal(getDemoUniverseIndex({ id: `demo-${universe.id}-0` }), index);
+  });
+  assert.equal(getDemoUniverseIndex({ id: 'personal-track' }), -1);
 });

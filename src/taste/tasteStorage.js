@@ -3,6 +3,18 @@ export function tasteStorageKey(ownerId) {
     return ownerId ? `${GUEST_TASTE_STORAGE_KEY}:user:${ownerId}` : GUEST_TASTE_STORAGE_KEY;
 }
 
+export function isDemoTaste(data) {
+    return data?.stats?.isDemo === true || Boolean(data?.tracks?.some(track => String(track?.id || '').startsWith('demo-')));
+}
+
+export function demoTasteStorageKey(ownerId = null) {
+    return `${GUEST_TASTE_STORAGE_KEY}:demo:${ownerId || 'guest'}`;
+}
+
+export function clearDemoTaste(storage, ownerId = null) {
+    try { storage.removeItem(demoTasteStorageKey(ownerId)); } catch { /* unavailable storage */ }
+}
+
 function parseTaste(raw) {
     try {
         const data = JSON.parse(raw || 'null');
@@ -21,14 +33,18 @@ function getSafeLocalStorage() {
 export function loadLocalTaste(storage, ownerId = null) {
     try {
         const key = tasteStorageKey(ownerId);
+        if (!ownerId) {
+            const preview = parseTaste(storage.getItem(demoTasteStorageKey()));
+            if (preview) return preview;
+        }
         let existing = parseTaste(storage.getItem(key));
-        if (existing) return existing;
+        if (existing && (!ownerId || !isDemoTaste(existing))) return existing;
 
         // Fallback to permanent localStorage if sessionStorage is fresh/cleared
         const local = getSafeLocalStorage();
         if (local && local !== storage) {
             existing = parseTaste(local.getItem(key));
-            if (existing) {
+            if (existing && (!ownerId || !isDemoTaste(existing))) {
                 try { storage.setItem(key, JSON.stringify(existing)); } catch { /* ignore */ }
                 return existing;
             }
@@ -36,7 +52,7 @@ export function loadLocalTaste(storage, ownerId = null) {
 
         if (!ownerId) return null;
         const guest = parseTaste(storage.getItem(GUEST_TASTE_STORAGE_KEY)) || (local ? parseTaste(local.getItem(GUEST_TASTE_STORAGE_KEY)) : null);
-        if (!guest) return null;
+        if (!guest || isDemoTaste(guest)) return null;
 
         // Preserve an existing guest import through the first sign-in, then
         // remove the guest alias so a different account cannot claim it later.
@@ -54,6 +70,12 @@ export function loadLocalTaste(storage, ownerId = null) {
 
 export function persistLocalTaste(storage, ownerId, data) {
     if (!data) return;
+    // Previews never replace a personal map or become a permanent account cache.
+    if (isDemoTaste(data)) {
+        try { storage.setItem(demoTasteStorageKey(ownerId), JSON.stringify(data)); } catch { /* unavailable storage */ }
+        return;
+    }
+    clearDemoTaste(storage, ownerId);
     const key = tasteStorageKey(ownerId);
     const serialized = JSON.stringify(data);
     try { storage.setItem(key, serialized); }
@@ -103,7 +125,8 @@ function enqueueCloudOperation(client, ownerId, operation) {
 }
 
 export function shouldRestoreCloudTaste(local, cloud) {
-    if (!cloud?.tracks?.length) return false;
+    if (!cloud?.tracks?.length || isDemoTaste(cloud)) return false;
+    if (isDemoTaste(local)) return true;
     if (!local?.tracks?.length) return true;
     const localTime = Date.parse(local.updatedAt);
     const cloudTime = Date.parse(cloud.updatedAt);
@@ -137,7 +160,7 @@ export async function fetchCloudTaste(supabase, ownerId) {
 }
 
 export async function saveCloudTaste(supabase, ownerId, tasteData) {
-    if (!supabase || !ownerId || !Array.isArray(tasteData?.tracks) || !tasteData.tracks.length) return null;
+    if (!supabase || !ownerId || !Array.isArray(tasteData?.tracks) || !tasteData.tracks.length || isDemoTaste(tasteData)) return null;
     const payload = {
         user_id: ownerId,
         map_id: tasteData.mapId || 'default-map',

@@ -108,3 +108,26 @@ test('cloud sync helpers handle saving, fetching and deleting gracefully', async
     await deleteCloudTaste(fakeSupabase, 'u1');
     assert.equal(await fetchCloudTaste(fakeSupabase, 'u1'), null);
 });
+
+test('demo previews never become the signed-in account map', () => {
+    const store = storage();
+    const demo = { mapId: 'demo-preview', tracks: [{ id: 'demo-cosmic-0' }] };
+    // Legacy demos shared the guest key. They must not migrate on login.
+    store.setItem(GUEST_TASTE_STORAGE_KEY, JSON.stringify(demo));
+    assert.equal(loadLocalTaste(store, 'user-a'), null);
+    assert.equal(store.getItem(tasteStorageKey('user-a')), null);
+    // New previews preserve the user's personal cache.
+    const own = { mapId: 'own', tracks: [{ id: 'personal' }] };
+    persistLocalTaste(store, 'user-a', own);
+    persistLocalTaste(store, 'user-a', demo);
+    assert.deepEqual(loadLocalTaste(store, 'user-a'), own);
+    persistLocalTaste(store, null, demo);
+    assert.deepEqual(loadLocalTaste(store), demo);
+    assert.equal(loadLocalTaste(store, 'user-b'), null);
+});
+
+test('legacy account demo caches are ignored on login', () => {
+    const store = storage();
+    store.setItem(tasteStorageKey('user-a'), JSON.stringify({ tracks: [{ id: 'demo-old-0' }] }));
+    assert.equal(loadLocalTaste(store, 'user-a'), null);
+});

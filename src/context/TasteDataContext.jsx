@@ -5,6 +5,8 @@ const api = (path) => `${API_BASE}${path}`;
 
 import {
     loadLocalTaste,
+    isDemoTaste,
+    clearDemoTaste,
     persistLocalTaste,
     clearLocalTaste,
     fetchCloudTaste,
@@ -153,9 +155,12 @@ export function TasteDataProvider({ children, ownerId = null }) {
 
         // Instant path for pre-enriched demo tracks or tracks with precomputed features
         if (options.preEnriched || (rawList.length > 0 && typeof rawList[0].valence === 'number')) {
+            const runId = ++importRunRef.current;
             const id = options.mapId || newMapId();
             const source = options.featuresSource || 'spotify-genres';
             const nextStats = {
+                isDemo: isDemoTaste({ tracks: list }),
+                demoUniverse: options.demoUniverse || null,
                 fetchedCount: list.length,
                 totalAvailable: list.length,
                 originalImportCount: originalTotal,
@@ -180,6 +185,7 @@ export function TasteDataProvider({ children, ownerId = null }) {
 
             if (typeof window !== 'undefined' && list.length > 0) {
                 enrichTracksWithArtwork(list, (updatedList) => {
+                    if (importRunRef.current !== runId) return;
                     setTracks(updatedList);
                     persistLocalTaste(sessionStorage, ownerId, {
                         tracks: updatedList,
@@ -407,7 +413,7 @@ export function TasteDataProvider({ children, ownerId = null }) {
                     total: Number(cloud.stats?.totalAvailable) || cloud.tracks.length,
                 });
                 persistLocalTaste(sessionStorage, ownerId, cloud);
-            } else if (initial?.tracks?.length && !initial?.stats?.backgroundEnriching
+            } else if (initial?.tracks?.length && !isDemoTaste(initial) && !initial?.stats?.backgroundEnriching
                 && (!cloud || Date.parse(initial.updatedAt) > Date.parse(cloud.updatedAt))) {
                 await saveCloudTaste(supabase, ownerId, initial);
             }
@@ -446,13 +452,15 @@ export function TasteDataProvider({ children, ownerId = null }) {
         setError(null);
         setProgress({ done: 0, total: 0 });
         resumeImportRef.current = null;
-        clearLocalTaste(sessionStorage, ownerId);
-        if (ownerId && supabase) {
+        const demo = isDemoTaste({ tracks, stats });
+        if (demo) clearDemoTaste(sessionStorage, ownerId);
+        else clearLocalTaste(sessionStorage, ownerId);
+        if (!demo && ownerId && supabase) {
             deleteCloudTaste(supabase, ownerId).catch((error) => {
                 console.error('[TasteStorage] Cloud delete failed:', error);
             });
         }
-    }, [ownerId]);
+    }, [ownerId, tracks, stats]);
 
     const recordDecision = useCallback((action, track, source = 'web') => {
         if (!track?.id) return;
@@ -467,6 +475,7 @@ export function TasteDataProvider({ children, ownerId = null }) {
             setTracks((prev) => {
                 const updated = uniqueTracks([...prev, track]);
                 const nextStats = {
+                    isDemo: stats?.isDemo === true,
                     fetchedCount: updated.length,
                     totalAvailable: updated.length,
                     processedCount: updated.length,
@@ -491,7 +500,7 @@ export function TasteDataProvider({ children, ownerId = null }) {
                 return updated;
             });
         }
-    }, [mapId, initial?.mapId, ownerId, featuresSource, stats?.failedCount]);
+    }, [mapId, initial?.mapId, ownerId, featuresSource, stats?.failedCount, stats?.isDemo]);
 
     const value = {
         tracks,

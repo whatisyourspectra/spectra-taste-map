@@ -75,3 +75,14 @@ test('a rejected mutation does not block the next request or a different account
     await assert.rejects(deleteCloudTaste(client, 'user'), failure);
     assert.equal(await fetchCloudTaste(client, 'other-user'), null);
 });
+
+test('a newer demo cannot replace an older personal cloud map', async () => {
+    const demo = { ...taste(later), tracks: [{ id: 'demo-cosmic-0' }] };
+    assert.equal(shouldRestoreCloudTaste(demo, taste(earlier)), true);
+    assert.equal(shouldRestoreCloudTaste(taste(earlier), demo), false);
+    let writes = 0;
+    const client = fakeClient({ save: async () => { writes++; return {}; } });
+    assert.equal(await saveCloudTaste(client, 'user', demo), null);
+    assert.equal(await saveCloudTaste(client, 'user', { ...demo, tracks: [{ id: 'recommendation' }], stats: { isDemo: true } }), null);
+    assert.equal(writes, 0);
+});

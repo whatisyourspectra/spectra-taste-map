@@ -4,7 +4,7 @@ const TAU = Math.PI * 2;
 const random = (n) => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
 
 // An artistic interpretation of a music atlas, not measured song coordinates.
-export default function LaunchTasteMapHero() {
+export default function LaunchTasteMapHero({ onTry }) {
   const canvasRef = useRef(null);
   const modeRef = useRef(0);
   const pulseRef = useRef(null);
@@ -80,7 +80,7 @@ export default function LaunchTasteMapHero() {
     const draw = (now) => {
       frame = requestAnimationFrame(draw);
       if (!visible || document.hidden || now - last < 32) return;
-      const targetBlend = Math.max(modeRef.current, scroll * 0.92);
+      const targetBlend = modeRef.current;
       const changed = Math.abs(blend - targetBlend) > 0.001;
       if (reduced.matches && !dirty && !changed) return;
       last = now;
@@ -187,12 +187,13 @@ export default function LaunchTasteMapHero() {
   const selectMode = (next) => { modeRef.current = next; setMode(next); };
   return (
     <div className="llp-sculpture">
-      <canvas ref={canvasRef} aria-hidden="true" />
-      <div className="llp-sculpture-caption"><span>FIG. 01 — THE SHAPE OF TASTE</span><span>드래그로 회전 · 클릭으로 파동</span></div>
+      <div className="llp-sculpture-backdrop"><canvas ref={canvasRef} aria-hidden="true" /></div>
+      <div className="llp-sculpture-caption"><span>FIG. 01 — THE SHAPE OF TASTE</span><span>드래그로 회전 · 클릭으로 파동 · 아래에서 실제 곡 탐색</span></div>
       <div className="llp-sculpture-controls" role="group" aria-label="음악 조형물 형태">
-        <button type="button" aria-pressed={mode === 0} onClick={() => selectMode(0)}><span>01</span> SPECTRA</button>
-        <button type="button" aria-pressed={mode === 1} onClick={() => selectMode(1)}><span>02</span> FIELD</button>
-        <button type="button" onClick={() => pulseRef.current?.()} aria-label="빛의 파동 만들기"><span>↗</span> PULSE</button>
+        <button type="button" aria-pressed={mode === 0} onClick={() => selectMode(0)}><span>01</span> 펼치기</button>
+        <button type="button" aria-pressed={mode === 1} onClick={() => selectMode(1)}><span>02</span> 모아보기</button>
+        <button type="button" onClick={() => pulseRef.current?.()} aria-label="빛의 파동 만들기"><span>↗</span> 파동</button>
+        <button type="button" onClick={onTry}>곡으로 직접 체험 ↗</button>
       </div>
     </div>
   );

@@ -163,6 +163,7 @@ export function getEnrichedDemoTracks(universe) {
 
     return {
       id: `demo-${universe.id}-${idx}`,
+      demoUniverseId: universe.id,
       name: t.name,
       artists: t.artists,
       album: `${t.artists} - ${t.name}`,
@@ -180,4 +181,14 @@ export function getEnrichedDemoTracks(universe) {
       popularity: 70 + Math.round(seed * 28),
     };
   });
+}
+
+// The three entry cards are filters over one shared demo field.
+export function getCombinedDemoTracks() {
+  return DEMO_UNIVERSES.flatMap(getEnrichedDemoTracks);
+}
+
+export function getDemoUniverseIndex(track) {
+  return DEMO_UNIVERSES.findIndex(universe => track?.demoUniverseId === universe.id
+    || String(track?.id || '').startsWith(`demo-${universe.id}-`));
 }

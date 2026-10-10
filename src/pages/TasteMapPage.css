@@ -6305,3 +6305,19 @@
 .tm-playback-dock .tm2-youtube-controls > button.primary {
     box-shadow: 0 8px 18px -5px rgba(0, 0, 0, 0.58), 0 0 16px rgba(126, 148, 255, 0.22), inset 0 1px 0 rgba(235, 242, 255, 0.24);
 }
+
+/* Keep discovery guidance clear of the account/map header at every size. */
+.tm-discovery-lens {
+    position: fixed;
+    top: calc(var(--tm-header-bottom, 154px) + 16px);
+    left: 20px;
+    width: min(310px, calc(100vw - 40px));
+    box-sizing: border-box;
+    padding: 18px;
+}
+.tm-discovery-lens-title-row { margin-top: 10px; }
+.tm-discovery-lens-title-row strong { white-space: normal; word-break: keep-all; line-height: 1.45; }
+.tm-discovery-legend { margin-top: 14px; padding-top: 12px; border-top: 1px solid #ffffff12; }
+@media (max-width: 980px) {
+    .tm-discovery-lens { left: 14px; width: min(310px, calc(100vw - 28px)); }
+}

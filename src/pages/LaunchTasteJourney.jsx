@@ -1,42 +1,20 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { DEMO_UNIVERSES } from '../taste/demoUniverses';
 import { generateAestheticCoverSvg } from '../taste/demoArtwork';
+import { getDemoCover } from '../taste/demoCoverAssets';
 import SpectraSymbol from '../components/SpectraSymbol';
 import './LaunchTasteJourney.css';
 
-const MOODS = ['몽환적인', '에너지 넘치는', '그루브 있는'];
+const REGIONS = ['드림 팝 · 인디', '신스웨이브 · 일렉트로', '재즈 · 알앤비'];
 const TRACKS = DEMO_UNIVERSES.flatMap((universe, group) =>
   universe.tracks.slice(0, 6).map((track, local) => ({
     ...track, id: `landing-preview-${group}-${local}`, group, local, color: universe.color,
-    coverUrl: generateAestheticCoverSvg({ ...track, color: universe.color, index: local }),
+    coverUrl: getDemoCover(track.artists, track.name) || generateAestheticCoverSvg({ ...track, color: universe.color, index: local }),
   })));
-const ARTWORK_REQUESTS = new Map();
-const normalize = (value) => String(value || '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
-
-async function resolveArtwork(track) {
-  const controller = new AbortController();
-  const timeout = window.setTimeout(() => controller.abort(), 6000);
-  try {
-    const query = encodeURIComponent(`${track.artists} ${track.name}`);
-    const response = await fetch(`https://itunes.apple.com/search?term=${query}&entity=song&limit=8`, { signal: controller.signal });
-    if (!response.ok) return null;
-    const data = await response.json();
-    const artist = normalize(track.artists.split(/[,;&]/)[0]);
-    const title = normalize(track.name);
-    // Search results can include tribute recordings. Only use artwork whose
-    // credited artist and song match this preview's actual demo track.
-    const match = data.results?.find(result => normalize(result.artistName).includes(artist) && normalize(result.trackName).startsWith(title));
-    return match?.artworkUrl100?.replace('100x100bb', '300x300bb') || null;
-  } catch {
-    return null;
-  } finally {
-    window.clearTimeout(timeout);
-  }
-}
 const CHAPTERS = [
-  { label: 'BUBBLES', title: '한 곡, 하나의 작은 세계.', text: '사랑하는 음악이 앨범을 품은 버블로 떠오릅니다. 익숙한 커버를 눌러, 그 안의 곡을 만나보세요.', hint: '버블을 선택하면 곡 정보가 나타나요.', symbol: 'sparkle' },
-  { label: 'TASTE FIELD', title: '닮은 취향은 가까이.', text: '몽환적인 밤부터 에너지 넘치는 오후까지. 비슷한 분위기의 곡들이 모여 나만의 음악 지형을 만듭니다.', hint: '무드 태그를 눌러 한 영역에 집중해 보세요.', symbol: 'wave' },
-  { label: 'CONSTELLATION', title: '다음 음악으로 이어지는 선.', text: '하나의 곡을 중심으로 연결이 펼쳐집니다. 별에서 별로 이동하며, 익숙한 음악 사이의 새로운 길을 발견하세요.', hint: '다른 별을 선택하면 연결의 중심이 바뀝니다.', symbol: 'matrix' },
+  { label: '이해', title: '좋아한 음악에서 나를 이해해요.', text: '내가 모아 온 곡을 한눈에 살펴보세요. 곡 정보와 장르, 곡 사이의 연결이 내가 좋아하는 음악의 공통점을 보여줍니다.', hint: '버블을 선택하면 곡 정보가 나타나요.', symbol: 'sparkle' },
+  { label: '분류', title: '닮은 곡을 모아 취향을 읽어요.', text: '장르와 음악적 특징이 닮은 곡들이 가까이 모입니다. 흩어져 있던 플레이리스트를 취향의 영역으로 살펴보세요.', hint: '장르 영역을 눌러 곡들이 어떻게 모이는지 살펴보세요.', symbol: 'wave' },
+  { label: '확장', title: '내 취향에서 새로운 음악으로.', text: '좋아하는 한 곡을 출발점으로 연결을 따라가세요. 실제 지도에서는 탐색 버튼으로 새로운 곡을 발견하고, 마음에 드는 곡을 내 지도에 담을 수 있어요.', hint: '다른 별을 선택하면 연결의 중심이 바뀝니다.', symbol: 'matrix' },
 ];
 
 function position(track, stage) {
@@ -52,32 +30,7 @@ function position(track, stage) {
   return [x + Math.cos(angle) * (stage === 2 ? 19 : 13), y + Math.sin(angle) * (stage === 2 ? 18 : 12)];
 }
 
-function useArtwork(mountRef, tracks) {
-  const [artwork, setArtwork] = useState({});
-  useEffect(() => {
-    let active = true;
-    const observer = new IntersectionObserver(async ([entry]) => {
-      if (!entry.isIntersecting) return;
-      observer.disconnect();
-      // Only resolve covers once the preview approaches the viewport. Shared
-      // promises avoid duplicate requests between the journey and demo portals.
-      for (let index = 0; index < tracks.length && active; index += 3) {
-        const batch = await Promise.all(tracks.slice(index, index + 3).map(async (track) => {
-          if (!ARTWORK_REQUESTS.has(track.id)) ARTWORK_REQUESTS.set(track.id, resolveArtwork(track));
-          return [track.id, await ARTWORK_REQUESTS.get(track.id)];
-        }));
-        if (active) setArtwork(current => ({ ...current, ...Object.fromEntries(batch.filter(([, url]) => url)) }));
-      }
-    }, { rootMargin: '150px' });
-    if (mountRef.current) observer.observe(mountRef.current);
-    return () => { active = false; observer.disconnect(); };
-  }, [mountRef, tracks]);
-  return artwork;
-}
-
 function BubbleAtlas({ stage, onOpen, busy }) {
-  const mountRef = useRef(null);
-  const artwork = useArtwork(mountRef, TRACKS);
   const [selectedId, setSelectedId] = useState(TRACKS[0].id);
   const [region, setRegion] = useState(null);
   const [hovered, setHovered] = useState(null);
@@ -93,10 +46,10 @@ function BubbleAtlas({ stage, onOpen, busy }) {
     if (region !== group) setSelectedId(TRACKS.find(track => track.group === group).id);
   };
   return (
-    <div ref={mountRef} className={`lj-atlas lj-atlas--${stage}`}>
+    <div className={`lj-atlas lj-atlas--${stage}`}>
       <div className="lj-atlas-heading"><span>SPECTRA / LIVE DEMO</span><span>18 SONGS</span></div>
-      <div className="lj-regions" role="group" aria-label="지도 무드 선택">
-        {DEMO_UNIVERSES.map((universe, group) => <button type="button" key={universe.id} style={{ '--region': universe.color }} aria-pressed={region === group} onClick={() => selectRegion(group)}><SpectraSymbol symbol={universe.symbol} />{MOODS[group]}</button>)}
+      <div className="lj-regions" role="group" aria-label="데모 장르 영역 선택">
+        {DEMO_UNIVERSES.map((universe, group) => <button type="button" key={universe.id} style={{ '--region': universe.color }} aria-pressed={region === group} onClick={() => selectRegion(group)}><SpectraSymbol symbol={universe.symbol} />{REGIONS[group]}</button>)}
       </div>
       <div className="lj-map" aria-label="18곡의 인터랙티브 데모 지도">
         <div className="lj-map-grid" aria-hidden="true" />
@@ -114,14 +67,14 @@ function BubbleAtlas({ stage, onOpen, busy }) {
             onClick={() => { setSelectedId(track.id); if (region !== null) setRegion(track.group); }}
             onPointerEnter={() => setHovered(track.id)} onPointerLeave={() => setHovered(null)}
             onFocus={() => setHovered(track.id)} onBlur={() => setHovered(null)}>
-            <span className="lj-bubble-cover"><img src={artwork[track.id] || track.coverUrl} alt="" loading="lazy" decoding="async" /></span>
+            <span className="lj-bubble-cover"><img src={track.coverUrl} alt="" loading="lazy" decoding="async" /></span>
             <span className="lj-bubble-label">{track.name}</span>
           </button>;
         })}
         <div className="lj-map-axis" aria-hidden="true"><span>SOFT</span><span>ENERGETIC →</span></div>
       </div>
       <div className="lj-track-detail" style={{ '--region': selected.color }}>
-        <img src={artwork[selected.id] || selected.coverUrl} alt="" decoding="async" />
+        <img src={selected.coverUrl} alt="" decoding="async" />
         <div aria-live="polite"><span>SELECTED TRACK</span><strong>{selected.name}</strong><small>{selected.artists}</small></div>
         <button type="button" onClick={() => onOpen(DEMO_UNIVERSES[selected.group])} disabled={busy} aria-label={`${selected.name}의 데모 taste맵 열기`}>탐험 ↗</button>
       </div>
@@ -156,7 +109,7 @@ export default function LaunchTasteJourney({ onOpen, busy }) {
   };
   return (
     <section className="lj-journey llp-section" id="features" ref={sectionRef}>
-      <header className="lj-intro"><span className="lj-kicker">01 / FROM SOUND TO SHAPE</span><h2>흐르던 음악이,<br /><span>당신의 지도가 됩니다.</span></h2><p>버블을 건드리고, 무드를 좁히고, 연결을 따라가세요.</p></header>
+      <header className="lj-intro"><span className="lj-kicker">01 / FROM SOUND TO SHAPE</span><h2>흐르던 음악이,<br /><span>당신의 지도가 됩니다.</span></h2><p>이해 → 분류 → 확장. 아래 지도에서 직접 체험해 보세요.</p></header>
       <div className="lj-story-grid">
         <div className="lj-story-copy">
           {CHAPTERS.map((chapter, i) => <article key={chapter.label} className={`lj-step${stage === i ? ' is-current' : ''}`}>
@@ -176,15 +129,13 @@ export default function LaunchTasteJourney({ onOpen, busy }) {
 
 const PORTAL_TRACKS = DEMO_UNIVERSES.map((_, group) => TRACKS.filter(track => track.group === group));
 export function LaunchDemoPortal({ group, onSelect }) {
-  const mountRef = useRef(null);
   const tracks = PORTAL_TRACKS[group];
-  const artwork = useArtwork(mountRef, tracks);
   const [selected, setSelected] = useState(0);
-  return <div className="lj-demo-portal" ref={mountRef}>
+  return <div className="lj-demo-portal">
     <div className="lj-demo-orbit" aria-hidden="true" />
     {tracks.map((track, i) => {
       const angle = (i - 1) * Math.PI / 3;
-      return <button type="button" key={track.id} className={`lj-demo-bubble${selected === i ? ' is-picked' : ''}`} style={{ left: `${50 + Math.cos(angle) * 32}%`, top: `${47 + Math.sin(angle) * 30}%`, '--region': track.color }} aria-label={`${track.name} 보기`} aria-pressed={selected === i} onClick={() => { setSelected(i); onSelect?.(); }}><img src={artwork[track.id] || track.coverUrl} alt="" loading="lazy" decoding="async" /></button>;
+      return <button type="button" key={track.id} className={`lj-demo-bubble${selected === i ? ' is-picked' : ''}`} style={{ left: `${50 + Math.cos(angle) * 32}%`, top: `${47 + Math.sin(angle) * 30}%`, '--region': track.color }} aria-label={`${track.name} 보기`} aria-pressed={selected === i} onClick={() => { setSelected(i); onSelect?.(); }}><img src={track.coverUrl} alt="" loading="lazy" decoding="async" /></button>;
     })}
     <span className="lj-demo-center" aria-hidden="true"><SpectraSymbol symbol={DEMO_UNIVERSES[group].symbol} /></span>
     <div className="lj-demo-track" aria-live="polite"><strong>{tracks[selected].name}</strong><span>{tracks[selected].artists}</span></div>

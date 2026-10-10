@@ -1,6 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AccountButton from '../auth/AccountButton';
+import { DEMO_UNIVERSES, getDemoUniverseIndex } from '../taste/demoUniverses';
 import { buildConstellationTopology, buildSeedConstellation, buildVoyageSequence, getVoyageNeighbor } from '../taste/constellationTopology';
 import { createVoyageGraph, extendVoyage, undoVoyageExpansion } from '../taste/voyageExpansion';
 import { getGenreIdentity } from '../taste/genreIdentity';
@@ -147,9 +148,9 @@ const TM_I18N = {
         contextMenuSaved: '필드에 있음',
         contextMenuSave: '내 필드에 추가',
         contextMenuNoCluster: '클러스터 정보를 찾지 못했습니다.',
-        discoveryLens: '탐색 기준',
+        discoveryLens: '새 음악 발견',
         discoveryTrackBasis: '이 곡을 기준으로 탐색',
-        discoveryGapBasis: '내 취향의 빈 영역 탐색',
+        discoveryGapBasis: '내 취향에 어울리는 새 음악',
         discoveryTrackDesc: '유사곡 · 태그 후보 · 현재 축 거리순',
         discoveryGapDesc: '대표 태그 후보 · 현재 축의 저밀도 영역 우선',
         discoverySpotifyTrackDesc: '아티스트·장르 후보 · 현재 축 거리순',
@@ -237,9 +238,9 @@ const TM_I18N = {
         contextMenuSaved: 'Already in field',
         contextMenuSave: 'Add to my field',
         contextMenuNoCluster: 'No cluster data for this track.',
-        discoveryLens: 'Discovery basis',
+        discoveryLens: 'Discover music',
         discoveryTrackBasis: 'Explore from this track',
-        discoveryGapBasis: 'Explore gaps in your taste',
+        discoveryGapBasis: 'New music for your taste',
         discoveryTrackDesc: 'Similar tracks and tags · current-axis distance',
         discoveryGapDesc: 'Leading-tag candidates · sparse regions on the current axes',
         discoverySpotifyTrackDesc: 'Artist and genre candidates · current-axis distance',
@@ -1887,21 +1888,26 @@ export default function TasteMapPage() {
         };
     }, [importedTracks, importedStats, activeMapView]);
 
+    const loadedFieldRef = useRef(null);
     useEffect(() => {
         if (!cacheReady) return;
         let cancelled = false;
-        setLoading(true);
+        const fieldKey = `${mapId}:${activeMapView}`;
+        const replacingField = loadedFieldRef.current !== fieldKey;
+        // Artwork enrichment updates the same map. Keep its filter and mounted viewport.
+        if (replacingField) setLoading(true);
         setError(null);
         fetchTracks().then((data) => {
             if (cancelled) return;
             setTracks(data.tracks);
             setTracksSource(data.source);
             setDataStats(data.stats);
-            setSelectedCluster(null);
+            if (replacingField) setSelectedCluster(null);
+            loadedFieldRef.current = fieldKey;
             setLoading(false);
         });
         return () => { cancelled = true; };
-    }, [fetchTracks, cacheReady]);
+    }, [fetchTracks, cacheReady, mapId, activeMapView]);
 
     // ── Run clustering via Web Worker (automatic cluster count) ─────────────
     useEffect(() => {
@@ -1918,6 +1924,25 @@ export default function TasteMapPage() {
             setGenreVocab([]);
             setNoiseClusterId(null);
             setEffectiveClusterBasis('audio');
+            setClusterLoading(false);
+            return;
+        }
+
+        // Curated demo groups remain stable across axis and map-view changes.
+        const demoGroups = tracks.map(getDemoUniverseIndex);
+        if (demoGroups.every(group => group >= 0)) {
+            const points = tracks.map(getTrackVector);
+            const centers = DEMO_UNIVERSES.map((_, group) => {
+                const members = points.filter((_, index) => demoGroups[index] === group);
+                return FEATURE_KEYS.map((_, dimension) => members.length
+                    ? members.reduce((sum, point) => sum + point[dimension], 0) / members.length : 0);
+            });
+            setClusterVectors(points);
+            setAssignments(demoGroups);
+            setCentroids(centers);
+            setGenreVocab([]);
+            setNoiseClusterId(null);
+            setEffectiveClusterBasis('genre');
             setClusterLoading(false);
             return;
         }
@@ -2017,7 +2042,10 @@ export default function TasteMapPage() {
                 const isNoiseCluster = effectiveClusterBasis === 'genre'
                     && Number.isInteger(noiseClusterId)
                     && j === noiseClusterId;
-                const label = isNoiseCluster
+                const demoUniverse = members.every(track => getDemoUniverseIndex(track) === j) ? DEMO_UNIVERSES[j] : null;
+                const label = demoUniverse
+                    ? { name: demoUniverse.koreanName, symbol: demoUniverse.symbol }
+                    : isNoiseCluster
                     ? { name: 'Mixed / Other', symbol: 'matrix' }
                     : effectiveClusterBasis === 'genre'
                         ? getGenreClusterLabel(topGenres)
@@ -2026,7 +2054,7 @@ export default function TasteMapPage() {
                     j,
                     label,
                     count: members.length,
-                    color: isNoiseCluster ? '#94a3b8' : CLUSTER_COLORS[j % CLUSTER_COLORS.length],
+                    color: demoUniverse?.color || (isNoiseCluster ? '#94a3b8' : CLUSTER_COLORS[j % CLUSTER_COLORS.length]),
                     members,
                     centroid: displayCentroid,
                     topGenres,
@@ -2078,9 +2106,10 @@ export default function TasteMapPage() {
         revealAmbientUi(1800);
     }, [viewMode, revealAmbientUi]);
 
+    const hasBubbleNodes = bubbleNodesResult.length > 0;
     useEffect(() => {
         if (viewMode !== 'bubble') return;
-        if (!bubbleNodesResult.length) return;
+        if (!hasBubbleNodes) return;
         if (formationPlayed) return;
 
         setFormationPhase('dark');
@@ -2098,7 +2127,7 @@ export default function TasteMapPage() {
             timers.forEach((id) => window.clearTimeout(id));
             formationTimersRef.current = [];
         };
-    }, [viewMode, bubbleNodesResult.length, formationPlayed]);
+    }, [viewMode, hasBubbleNodes, formationPlayed]);
 
     useEffect(() => () => {
         formationTimersRef.current.forEach((id) => window.clearTimeout(id));
@@ -2442,6 +2471,7 @@ export default function TasteMapPage() {
         bubbleLayoutWorkerRef.current = worker;
 
         worker.onmessage = ({ data }) => {
+            if (bubbleLayoutWorkerRef.current !== worker) return;
             const trackById = new Map(bubbleTracks.map((t) => [t.id, t]));
             const merged = data.nodes.map((n) => {
                 const track = trackById.get(n.id);
@@ -2601,7 +2631,7 @@ export default function TasteMapPage() {
         const ro = new ResizeObserver(update);
         if (bubbleFieldRef.current) ro.observe(bubbleFieldRef.current);
         return () => ro.disconnect();
-    }, [viewMode, tracks.length]);
+    }, [viewMode, tracks.length, loading]);
 
     useEffect(() => {
         const update = () => {
@@ -2614,7 +2644,7 @@ export default function TasteMapPage() {
         const ro = new ResizeObserver(update);
         if (threeFieldRef.current) ro.observe(threeFieldRef.current);
         return () => ro.disconnect();
-    }, [viewMode, tracks.length]);
+    }, [viewMode, tracks.length, loading]);
 
     const clampZoom = useCallback((z) => {
         return Math.min(BUBBLE_ZOOM_MAX, Math.max(BUBBLE_ZOOM_MIN, z));
@@ -4136,6 +4166,17 @@ export default function TasteMapPage() {
             window.requestAnimationFrame(() => focusCurrentBubbles({ smooth: true }));
         }
     }, [selectedCluster, spectraExpandTrackId, focusCurrentBubbles]);
+    const demoEntryAppliedRef = useRef(null);
+    useEffect(() => {
+        if (!isDemoUniverse || !importedStats?.demoUniverse || demoEntryAppliedRef.current === mapId) return;
+        const group = DEMO_UNIVERSES.findIndex(universe => universe.id === importedStats.demoUniverse);
+        const cluster = clusterStats.find(item => item.j === group && item.members.every(track => getDemoUniverseIndex(track) === group));
+        if (!cluster) return;
+        demoEntryAppliedRef.current = mapId;
+        pendingBubbleFocusRef.current = { mode: 'cluster', clusterId: group };
+        setSelectedCluster(group);
+    }, [isDemoUniverse, importedStats?.demoUniverse, mapId, clusterStats]);
+
     const handleClusterSelect = useCallback((clusterId) => {
         const nextCluster = selectedCluster === clusterId ? null : clusterId;
         pendingBubbleFocusRef.current = nextCluster === null
@@ -4166,7 +4207,7 @@ export default function TasteMapPage() {
         const id = window.requestAnimationFrame(() => {
             if (pendingBubbleFocusRef.current !== pending) return;
             pendingBubbleFocusRef.current = null;
-            focusCurrentBubbles({ smooth: true });
+            focusCurrentBubbles({ smooth: pending.mode !== 'cluster' });
         });
         return () => window.cancelAnimationFrame(id);
     }, [
@@ -5237,6 +5278,18 @@ export default function TasteMapPage() {
     const deepAnalysisDesc = lang === 'en'
         ? 'A focused view of how your taste changes over time'
         : '시간에 따라 달라진 취향을 차분하게 살펴보세요';
+    useLayoutEffect(() => {
+        const root = containerRef.current;
+        const header = root?.querySelector('.tm-header-main');
+        if (!header) return undefined;
+        const update = () => root.style.setProperty('--tm-header-bottom', `${header.getBoundingClientRect().bottom}px`);
+        const observer = new ResizeObserver(update);
+        observer.observe(header);
+        window.addEventListener('resize', update);
+        update();
+        return () => { observer.disconnect(); window.removeEventListener('resize', update); };
+    }, []);
+
     const deepAnalysisToggleLabel = deepAnalysisOpen
         ? (lang === 'en' ? 'Collapse' : '접기')
         : (lang === 'en' ? 'Expand' : '펼쳐보기');
@@ -5969,25 +6022,12 @@ export default function TasteMapPage() {
                                                     {isSpectraExpandMode && <span>{spectraExpandTrack.name} · {spectraExpandTrack.artists}</span>}
                                                 </div>
                                             </div>
-                                            <p>
-                                                {isSpectraExpandMode
-                                                    ? (activeMapView === 'spotify' ? copy.discoverySpotifyTrackDesc : copy.discoveryTrackDesc)
-                                                    : (activeMapView === 'spotify' ? copy.discoverySpotifyGapDesc : copy.discoveryGapDesc)}
-                                            </p>
-                                            <dl className="tm-discovery-criteria">
-                                                <div>
-                                                    <dt>{copy.discoveryCurrentAxes}</dt>
-                                                    <dd>{xMeta.label} × {yMeta.label}</dd>
-                                                </div>
-                                                <div>
-                                                    <dt>{copy.discoverySeedTags}</dt>
-                                                    <dd>{exploreSeedGenres.map((genre) => getGenreIdentity(genre).short).join(' · ')}</dd>
-                                                </div>
-                                            </dl>
+                                            <p>{lang === 'en'
+                                                ? 'Select a recommended song to learn more. Tap + to add it to your map.'
+                                                : '추천 곡을 눌러 살펴보세요. 마음에 들면 +로 내 지도에 담아요.'}</p>
                                             <div className="tm-discovery-legend">
-                                                <span><i className="tm-discovery-legend-dot mine" />{copy.discoveryMyBubble}</span>
                                                 <span><i className="tm-discovery-legend-dot rec" />{copy.discoveryRecommendation}</span>
-                                                <b>{exploreLoading ? '…' : exploreVisibleCount}</b>
+                                                <b>{exploreLoading ? (lang === 'en' ? 'Finding…' : '찾는 중…') : `${exploreVisibleCount}${lang === 'en' ? ' songs' : '곡'}`}</b>
                                             </div>
                                             {isSpectraExpandMode && (
                                                 <button
