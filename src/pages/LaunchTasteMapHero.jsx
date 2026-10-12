@@ -4,11 +4,13 @@ const TAU = Math.PI * 2;
 const random = (n) => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
 
 // An artistic interpretation of a music atlas, not measured song coordinates.
-export default function LaunchTasteMapHero({ onTry }) {
+export default function LaunchTasteMapHero({ onTry, onPulse }) {
   const canvasRef = useRef(null);
   const modeRef = useRef(0);
   const pulseRef = useRef(null);
   const [mode, setMode] = useState(0);
+  const onPulseRef = useRef(onPulse);
+  useEffect(() => { onPulseRef.current = onPulse; }, [onPulse]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -45,6 +47,7 @@ export default function LaunchTasteMapHero({ onTry }) {
       dirty = true;
     };
     const pulse = (x = 0.68, y = 0.49) => {
+      onPulseRef.current?.();
       waves.push({ x, y, start: performance.now() });
       waves = waves.slice(-4);
       dirty = true;
@@ -190,9 +193,9 @@ export default function LaunchTasteMapHero({ onTry }) {
       <div className="llp-sculpture-backdrop"><canvas ref={canvasRef} aria-hidden="true" /></div>
       <div className="llp-sculpture-caption"><span>FIG. 01 — THE SHAPE OF TASTE</span><span>드래그로 회전 · 클릭으로 파동 · 아래에서 실제 곡 탐색</span></div>
       <div className="llp-sculpture-controls" role="group" aria-label="음악 조형물 형태">
-        <button type="button" aria-pressed={mode === 1} onClick={() => selectMode(1)}><span>01</span> 펼치기</button>
-        <button type="button" aria-pressed={mode === 0} onClick={() => selectMode(0)}><span>02</span> 모아보기</button>
-        <button type="button" onClick={() => pulseRef.current?.()} aria-label="빛의 파동 만들기"><span>↗</span> 파동</button>
+        <button type="button" data-sound="expand" aria-pressed={mode === 1} onClick={() => selectMode(1)}><span>01</span> 펼치기</button>
+        <button type="button" data-sound="collect" aria-pressed={mode === 0} onClick={() => selectMode(0)}><span>02</span> 모아보기</button>
+        <button type="button" data-sound="pulse" onClick={() => pulseRef.current?.()} aria-label="빛의 파동 만들기"><span>↗</span> 파동</button>
         <button type="button" onClick={onTry}>곡으로 직접 체험 ↗</button>
       </div>
     </div>

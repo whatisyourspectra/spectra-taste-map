@@ -1198,9 +1198,35 @@
 .llp-mobile-qr img { display: block; }
 .llp-mobile-qr span { font: 12px monospace; letter-spacing: .13em; }
 .llp-mobile-status { min-height: 20px; margin-bottom: 0; overflow-wrap: anywhere; }
+.llp-sound-toggle {
+  display: grid;
+  place-items: center;
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid #e4eaff22;
+  border-radius: 50%;
+  background: transparent;
+  color: #9baac2;
+  cursor: pointer;
+}
+.llp-sound-toggle svg { width: 19px; height: 19px; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
+.llp-sound-toggle[aria-pressed='true'] { color: #70d6ff; border-color: #70d6ff66; background: #70d6ff0c; }
+.llp-sound-toggle:hover { color: #e4eaff; }
+.llp-sound-status { position: absolute; top: 100%; right: 0; padding: 12px; background: #10172b; color: #b4c0d5; font-size: 14px; border-radius: 8px; }
+@media (max-width: 399px) {
+  .llp-root .llp-nav-brand { --spectra-logo-width: clamp(100px, 32vw, 128px); }
+  .llp-root .llp-nav-return-btn { width: 36px; height: 36px; padding: 0; justify-content: center; }
+  .llp-root .llp-nav-return-btn > span:first-child { display: none; }
+}
 .llp-root .llp-demo-card { border-radius: 16px; background: linear-gradient(145deg, #10182be6, #0a101be6); }
 .llp-root .llp-import-box { border-radius: 20px; }
 @media (max-width: 699px) {
+  .llp-nav-actions { gap: 8px; }
+  .llp-nav-return-btn { max-width: 70px; min-width: 0; }
+  .llp-nav-return-btn > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .llp-sound-toggle { flex-basis: 36px; width: 36px; height: 36px; }
   .llp-mobile-entry { flex-direction: column; align-items: flex-start; padding: 26px; gap: 22px; margin-top: 35px; }
   .llp-mobile-qr { align-self: center; }
   .llp-sculpture-controls { gap: 16px; left: 22px; justify-content: space-between; }

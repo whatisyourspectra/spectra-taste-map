@@ -10,6 +10,7 @@ import { MAX_IMPORT_TRACKS } from '../context/TasteDataContext';
 import AccountButton from '../auth/AccountButton';
 import MobileEntryCard from '../components/MobileEntryCard';
 import LaunchTasteJourney, { LaunchDemoPortal, LaunchImportOrbit } from './LaunchTasteJourney';
+import useLandingSound from '../audio/useLandingSound';
 
 const TUNE_MY_MUSIC_URL = 'https://www.tunemymusic.com/transfer';
 
@@ -22,6 +23,7 @@ export default function LaunchLandingPage({
   onReset = null,
 }) {
   const navigate = useNavigate();
+  const sound = useLandingSound();
   const landingRef = useRef(null);
   const [chapter, setChapter] = useState('hero');
   React.useEffect(() => {
@@ -164,8 +166,8 @@ export default function LaunchLandingPage({
   };
 
   return (
-    <div className="llp-root" ref={landingRef} data-chapter={chapter}>
-      <LaunchTasteMapHero onTry={() => scrollToSection('features')} />
+    <div className="llp-root" ref={landingRef} data-chapter={chapter} onClickCapture={sound.handleClick}>
+      <LaunchTasteMapHero onTry={() => scrollToSection('features')} onPulse={() => sound.play('pulse')} />
       {/* Ambient background fog layers */}
       <div className="llp-fog llp-fog-top" aria-hidden />
       <div className="llp-fog llp-fog-mid" aria-hidden />
@@ -191,12 +193,28 @@ export default function LaunchLandingPage({
           </div>
 
           <div className="llp-nav-actions">
+            <button
+              type="button"
+              className="llp-sound-toggle"
+              data-sound-toggle
+              aria-pressed={sound.enabled}
+              aria-label={sound.enabled ? '사운드 끄기' : '사운드 켜기'}
+              title={sound.unavailable ? '이 브라우저에서는 사운드를 재생할 수 없어요' : sound.enabled ? '사운드 끄기' : '몽환적인 BGM과 효과음 켜기'}
+              onClick={sound.toggle}
+            >
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M11 5 6 9H3v6h3l5 4V5Z" />
+                {sound.enabled ? <path d="M15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14" /> : <path d="m16 9 5 6m0-6-5 6" />}
+              </svg>
+            </button>
+            {sound.unavailable && <span className="llp-sound-status" role="status">사운드를 재생할 수 없어요.</span>}
             {hasTaste && (
               <button
                 type="button"
                 className="llp-nav-return-btn"
                 onClick={() => navigate('/taste-map')}
                 title="현재 열려 있는 3D taste맵으로 돌아가기"
+                aria-label="현재 취향 지도로 돌아가기"
               >
                 <span>taste맵으로 돌아가기{importStatus === 'enriching' && pct > 0 ? ` (${pct}%)` : ''}</span>
                 <span className="llp-nav-return-arrow">↗</span>
