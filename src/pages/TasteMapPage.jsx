@@ -2181,16 +2181,22 @@ export default function TasteMapPage() {
 
     const hasTrackFilter = selectedCluster !== null || !!visibleGroup;
 
+    // Recommendation updates must not invalidate the library layout when no
+    // saved group is being viewed. In particular, clearing recommendations
+    // must not restart the layout worker and discovery effects indefinitely.
+    const visibleGroupTracks = useMemo(() => {
+        if (!visibleGroup) return null;
+        const ids = new Set(visibleGroup.trackIds);
+        const available = new Map(tracks.map((track) => [track.id, track]));
+        exploreRecs.forEach(({ track }) => { if (track?.id && !available.has(track.id)) available.set(track.id, track); });
+        return [...available.values()].filter((track) => ids.has(track.id));
+    }, [tracks, visibleGroup, exploreRecs]);
+
     const bubbleCandidateTracks = useMemo(() => {
-        if (visibleGroup) {
-            const ids = new Set(visibleGroup.trackIds);
-            const available = new Map(tracks.map((track) => [track.id, track]));
-            exploreRecs.forEach(({ track }) => { if (track?.id && !available.has(track.id)) available.set(track.id, track); });
-            return [...available.values()].filter((track) => ids.has(track.id));
-        }
+        if (visibleGroupTracks) return visibleGroupTracks;
         if (!hasTrackFilter) return tracks;
         return tracks.filter((track) => activeTrackIds.has(track.id));
-    }, [tracks, hasTrackFilter, activeTrackIds, visibleGroup, exploreRecs]);
+    }, [tracks, hasTrackFilter, activeTrackIds, visibleGroupTracks]);
     const shareSelectedTracks = useMemo(() => Object.values(shareSelectedMap), [shareSelectedMap]);
     const shareSelectedIds = useMemo(() => Object.keys(shareSelectedMap), [shareSelectedMap]);
     const expandPinIds = useMemo(() => Object.keys(expandPinMap), [expandPinMap]);
@@ -3811,7 +3817,7 @@ export default function TasteMapPage() {
         if (!exploreEnabled) {
             setExploreLoading(false);
             setExploreError(null);
-            setExploreRecs([]);
+            setExploreRecs((previous) => previous.length === 0 ? previous : []);
             return;
         }
         if (viewMode !== 'bubble' || loading || tracks.length === 0) {
@@ -4913,6 +4919,7 @@ export default function TasteMapPage() {
             : [group, ...previous]);
         setEditingGroupId(id);
         setVisibleGroupId(id);
+        pendingBubbleFocusRef.current = { mode: 'all' };
         exitConstellationVoyage();
         setSelectedTrackCard(null);
         setBubbleContextMenu(null);
@@ -6520,7 +6527,7 @@ export default function TasteMapPage() {
                                                         {customGroups.map((group) => (
                                                             <article key={group.id} className={visibleGroupId === group.id ? 'active' : ''}>
                                                                 <i style={{ background: group.color }} />
-                                                                <button type="button" className="tm-saved-group-main" onClick={() => { exitConstellationVoyage(); setVisibleGroupId(group.id); setSelectedCluster(null); setShareMode(false); setSelectedTrackCard(null); setBubbleContextMenu(null); }}>
+                                                                <button type="button" className="tm-saved-group-main" onClick={() => { exitConstellationVoyage(); pendingBubbleFocusRef.current = { mode: 'all' }; setVisibleGroupId(group.id); setSelectedCluster(null); setShareMode(false); setSelectedTrackCard(null); setBubbleContextMenu(null); }}>
                                                                     <strong>{group.name}</strong>
                                                                     <small>{group.trackIds.length}{lang === 'en' ? ' tracks · View on map' : '곡 · 맵에서 보기'}</small>
                                                                 </button>
@@ -6544,7 +6551,7 @@ export default function TasteMapPage() {
                                 {visibleGroup && (
                                     <span className="tm-group-map-filter">
                                         <strong>{visibleGroup.name} · {bubbleCandidateTracks.length}{lang === 'en' ? ' tracks' : '곡'}</strong>
-                                        <button type="button" onClick={() => setVisibleGroupId(null)}>{lang === 'en' ? 'Show all tracks' : '전체 곡 보기'}</button>
+                                        <button type="button" onClick={() => { pendingBubbleFocusRef.current = { mode: 'all' }; setVisibleGroupId(null); }}>{lang === 'en' ? 'Show all tracks' : '전체 곡 보기'}</button>
                                     </span>
                                 )}
                                 {isConstellationView

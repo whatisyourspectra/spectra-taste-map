@@ -5,6 +5,23 @@ import { DEMO_UNIVERSES } from '../../src/taste/demoUniverses.js';
 const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROMIUM_EXECUTABLE || undefined });
 try {
     const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+    const renderErrors = [];
+    page.on('pageerror', error => renderErrors.push(error.message));
+    page.on('console', message => {
+        if (message.type() === 'error' && message.text().includes('Maximum update depth')) {
+            renderErrors.push(message.text());
+        }
+    });
+    await page.addInitScript(() => {
+        window.layoutWorkerStarts = 0;
+        const OriginalWorker = window.Worker;
+        window.Worker = class extends OriginalWorker {
+            constructor(...args) {
+                super(...args);
+                if (String(args[0]).includes('bubbleLayoutWorker')) window.layoutWorkerStarts++;
+            }
+        };
+    });
     await page.addInitScript(() => localStorage.setItem('spectra:map-guide:v1:desktop', 'seen'));
     await page.route(/\/src\/auth\/supabaseClient\.js(?:\?.*)?$/, route => route.fulfill({ contentType: 'application/javascript', body: 'export const supabase=null;export function finishGoogleLogin(){return Promise.reject();}' }));
     await page.route('**/itunes.apple.com/search?**', async route => {
@@ -33,6 +50,11 @@ try {
         // Camera/layout transitions must settle and stay populated after all late updates.
         await page.waitForTimeout(700);
         assert.ok(await page.locator('.tm-bubble-item').count() >= 10);
+        const settledWorkerStarts = await page.evaluate(() => window.layoutWorkerStarts);
+        await page.waitForTimeout(700);
+        assert.equal(await page.evaluate(() => window.layoutWorkerStarts), settledWorkerStarts,
+            'Idle demo must not keep restarting the bubble layout worker');
+        assert.deepEqual(renderErrors, [], 'Demo must not enter an infinite React update loop');
         assert.ok((await active.innerText()).includes(DEMO_UNIVERSES[i].koreanName));
         assert.equal(await page.locator('.tm-map-tag-chip').count(), 4);
         assert.equal(await page.evaluate(() => JSON.parse(sessionStorage.getItem('spectra:taste:v5:demo:guest')).tracks.length), total);
@@ -51,4 +73,27 @@ try {
         await page.waitForFunction(id => { const nodes = [...document.querySelectorAll('.tm-bubble-item')]; return nodes.length >= 10 && nodes.every(node => node.dataset.bubbleId.startsWith(`demo-${id}-`)); }, DEMO_UNIVERSES[i].id);
         console.log(`Selected ${DEMO_UNIVERSES[i].id}, shared field ${total} tracks, All resets filter.`);
     }
+    // Saved-group filtering shares the discovery dependencies that caused the
+    // demo loop. Exercise that path and returning to the complete library.
+    await page.evaluate(() => {
+        const taste = JSON.parse(sessionStorage.getItem('spectra:taste:v5:demo:guest'));
+        const tracks = taste.tracks.slice(0, 2);
+        localStorage.setItem(`spectra-custom-groups-v1.${taste.mapId}`, JSON.stringify({
+            version: 1,
+            groups: [{ id: 'browser-regression-group', name: 'Regression group', color: '#70d6ff',
+                tracks, trackIds: tracks.map(track => track.id) }],
+        }));
+    });
+    await page.reload();
+    await page.locator('.tm-dock-action').last().click();
+    await page.locator('.tm-saved-group-main').filter({ hasText: 'Regression group' }).click();
+    await page.waitForFunction(() => document.querySelectorAll('.tm-bubble-item').length === 2);
+    await page.waitForTimeout(700);
+    const groupWorkerStarts = await page.evaluate(() => window.layoutWorkerStarts);
+    await page.waitForTimeout(700);
+    assert.equal(await page.evaluate(() => window.layoutWorkerStarts), groupWorkerStarts);
+    await page.getByRole('button', { name: '전체 곡 보기', exact: true }).click();
+    await page.waitForFunction(count => document.querySelectorAll('.tm-bubble-item').length === count, total);
+    assert.deepEqual(renderErrors, []);
+    console.log('Saved group renders two tracks without worker churn; Show all restores the library.');
 } finally { await browser.close(); }
