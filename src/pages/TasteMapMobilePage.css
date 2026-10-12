@@ -19,8 +19,6 @@
 .tmm-appbar-right { display: flex; align-items: center; gap: 8px; }
 .tmm-home-pill { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 999px; background: rgba(112, 214, 255, 0.12); border: 1px solid rgba(112, 214, 255, 0.3); color: #70d6ff; font-size: 11px; font-weight: 700; cursor: pointer; }
 .tmm-home-pill:active { background: rgba(112, 214, 255, 0.25); color: #ffffff; }
-.tmm-brand-mark { position: relative; display: block; width: 18px; height: 18px; border: 1px solid #a9bbd4; transform: rotate(45deg); border-radius: 5px 0; }
-.tmm-brand-mark::after { content: ''; position: absolute; width: 4px; height: 4px; background: #d6e3f8; border-radius: 50%; inset: 6px; }
 .tmm-language { height: 44px; width: 44px; border: 1px solid #26313f; border-radius: 50%; background: transparent; color: #b7c6da; font-size: 11px; letter-spacing: .08em; }
 .tmm-living { height: clamp(370px, 56svh, 600px); display: grid; grid-template-rows: auto minmax(0, 1fr) auto; padding-top: 28px; }
 .tmm-living-heading { text-align: center; position: relative; z-index: 1; }
@@ -73,8 +71,6 @@
 .tmm-root { padding-top: calc(env(safe-area-inset-top, 0px) + 12px); }
 .tmm-shell { max-width: 520px; }
 .tmm-brand { font-size: 12px; letter-spacing: .24em; }
-.tmm-brand-mark { width: 14px; height: 14px; }
-.tmm-brand-mark::after { inset: 4px; }
 .tmm-menu { position: relative; z-index: 5; }
 .tmm-menu summary { list-style: none; width: 44px; height: 44px; display: grid; place-items: center; cursor: pointer; font-size: 26px; color: #aabbd2; }
 .tmm-menu summary::-webkit-details-marker { display: none; }

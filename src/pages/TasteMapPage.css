@@ -6321,3 +6321,28 @@
 @media (max-width: 980px) {
     .tm-discovery-lens { left: 14px; width: min(310px, calc(100vw - 28px)); }
 }
+
+.tm-group-map-filter {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 10px;
+    max-width: calc(100vw - 40px);
+    margin-bottom: 8px;
+    padding: 9px 12px;
+    border: 1px solid var(--tm-border);
+    border-radius: 12px;
+    background: var(--tm-surface, #151c28);
+    color: var(--tm-text, #e0e7f6);
+}
+
+.tm-group-map-filter button {
+    padding: 6px 10px;
+    border: 1px solid var(--tm-border);
+    border-radius: 8px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+}

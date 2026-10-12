@@ -1,3 +1,5 @@
+import { BRAND_TAGLINE } from '../brand/drawSpectraLogo';
+import SpectraLogo from '../components/SpectraLogo';
 import React, { useCallback, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './LaunchLandingPage.css';
@@ -173,8 +175,7 @@ export default function LaunchLandingPage({
       <header className="llp-nav-wrap">
         <nav className="llp-nav" aria-label="Main Navigation">
           <div className="llp-nav-brand">
-            <span className="llp-brand-symbol" aria-hidden>✦</span>
-            <span className="llp-brand-title">SPECTRA</span>
+            <SpectraLogo />
           </div>
 
           <div className="llp-nav-links">
@@ -221,12 +222,12 @@ export default function LaunchLandingPage({
         {/* ── Section 1: Hero Section ── */}
         <section className="llp-hero-section" id="hero">
           <div className="llp-hero-copy">
-            <p className="llp-art-eyebrow">A PERSONAL ATLAS OF SOUND</p>
+            <p className="llp-art-eyebrow">음악 취향 관리 서비스</p>
             <h1 className="llp-hero-title">
               <span>Your taste.</span>
               <em>In spectra.</em>
             </h1>
-            <p className="llp-hero-desc">내가 왜 이 음악을 좋아하는지 이해하고,<br />닮은 곡을 모아 취향을 분류하고,<br />그 연결을 따라 새로운 음악으로 확장하세요.</p>
+            <p className="llp-hero-desc">당신의 취향을 이해하고,<br />닮은 곡을 모아 취향을 분류하고,<br />그 연결을 따라 새로운 음악으로 확장하세요.</p>
             <div className="llp-hero-cta-group">
               <button type="button" className="llp-btn-primary" onClick={() => handleSelectDemo(DEMO_UNIVERSES[0])} disabled={busy}>
                 <span>데모 지도로 먼저 체험하기</span><span aria-hidden="true">↗</span>
@@ -243,7 +244,7 @@ export default function LaunchLandingPage({
         {/* ── Section 3: One-Click Demo Universes ── */}
         <section className="llp-section" id="demo">
           <div className="llp-section-header">
-            <span className="llp-section-eyebrow">02 / CHOOSE YOUR FREQUENCY</span>
+            <span className="llp-section-eyebrow">02 / BEFORE EXPLORE YOUR TASTE</span>
             <h2 className="llp-section-title">
               <span className="llp-title-chunk">익숙한 음악에서</span>{' '}
               <span className="llp-title-chunk">시작해 볼까요?</span>
@@ -458,11 +459,11 @@ export default function LaunchLandingPage({
       <footer className="llp-footer">
         <div className="llp-footer-inner">
           <div className="llp-footer-brand">
-            <span>SPECTRA</span>
-            <span className="llp-footer-tag">CELESTIAL MUSIC TOPOLOGY</span>
+            <SpectraLogo />
+            <span className="llp-footer-tag">{BRAND_TAGLINE}</span>
           </div>
           <p className="llp-footer-copy">
-            © 2026 SPECTRA. All musical galaxies securely rendered on client.
+            © 2026 SPECTRA. All rights reserved.
           </p>
         </div>
       </footer>

@@ -1,3 +1,4 @@
+import SpectraLogo from '../components/SpectraLogo';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTasteData } from '../context/TasteDataContext';
@@ -211,8 +212,7 @@ function MobileConstellation({ tracks, status, progress, storageKey }) {
                         className="tmm-brand"
                         aria-label="SPECTRA home"
                     >
-                        <span className="tmm-brand-mark" aria-hidden="true" />
-                        SPECTRA
+                        <SpectraLogo decorative />
                     </button>
                     <div className="tmm-appbar-right">
                         <button

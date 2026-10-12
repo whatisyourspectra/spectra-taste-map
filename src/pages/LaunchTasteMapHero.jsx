@@ -190,8 +190,8 @@ export default function LaunchTasteMapHero({ onTry }) {
       <div className="llp-sculpture-backdrop"><canvas ref={canvasRef} aria-hidden="true" /></div>
       <div className="llp-sculpture-caption"><span>FIG. 01 — THE SHAPE OF TASTE</span><span>드래그로 회전 · 클릭으로 파동 · 아래에서 실제 곡 탐색</span></div>
       <div className="llp-sculpture-controls" role="group" aria-label="음악 조형물 형태">
-        <button type="button" aria-pressed={mode === 0} onClick={() => selectMode(0)}><span>01</span> 펼치기</button>
-        <button type="button" aria-pressed={mode === 1} onClick={() => selectMode(1)}><span>02</span> 모아보기</button>
+        <button type="button" aria-pressed={mode === 1} onClick={() => selectMode(1)}><span>01</span> 펼치기</button>
+        <button type="button" aria-pressed={mode === 0} onClick={() => selectMode(0)}><span>02</span> 모아보기</button>
         <button type="button" onClick={() => pulseRef.current?.()} aria-label="빛의 파동 만들기"><span>↗</span> 파동</button>
         <button type="button" onClick={onTry}>곡으로 직접 체험 ↗</button>
       </div>

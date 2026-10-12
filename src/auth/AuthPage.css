@@ -1,10 +1,6 @@
 .sa-page { min-height: 100dvh; display: grid; place-items: center; padding: max(24px, env(safe-area-inset-top)) 24px max(24px, env(safe-area-inset-bottom)); color: #e7edf8; background: #080c13; }
 .sa-card { width: min(100%, 400px); text-align: center; }
 .sa-wordmark { display: inline-block; padding: 12px; color: #dbe5f5; text-decoration: none; font-size: 16px; font-weight: 650; }
-.sa-emblem { height: 150px; margin: 24px 0; display: grid; place-items: center; }
-.sa-emblem svg { width: 160px; height: 110px; }
-.sa-emblem path { stroke: #8facdc; stroke-width: .8; opacity: .6; }
-.sa-emblem circle { fill: #d1e3ff; filter: drop-shadow(0 0 5px #80a8e4); }
 .sa-eyebrow { color: #8da3c3; font-size: 10px; letter-spacing: .17em; }
 .sa-card h1 { margin: 12px 0; font-size: clamp(24px, 6vw, 28px); letter-spacing: -.045em; font-weight: 550; }
 .sa-card p { color: #9cacc2; font-size: 13px; line-height: 1.8; word-break: keep-all; }

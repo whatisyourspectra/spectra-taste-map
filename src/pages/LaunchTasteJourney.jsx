@@ -1,3 +1,4 @@
+import SpectraLogo from '../components/SpectraLogo';
 import React, { useEffect, useRef, useState } from 'react';
 import { DEMO_UNIVERSES } from '../taste/demoUniverses';
 import { generateAestheticCoverSvg } from '../taste/demoArtwork';
@@ -47,7 +48,7 @@ function BubbleAtlas({ stage, onOpen, busy }) {
   };
   return (
     <div className={`lj-atlas lj-atlas--${stage}`}>
-      <div className="lj-atlas-heading"><span>SPECTRA / LIVE DEMO</span><span>18 SONGS</span></div>
+      <div className="lj-atlas-heading"><span className="spectra-logo-caption"><SpectraLogo />LIVE DEMO</span><span>18 SONGS</span></div>
       <div className="lj-regions" role="group" aria-label="데모 장르 영역 선택">
         {DEMO_UNIVERSES.map((universe, group) => <button type="button" key={universe.id} style={{ '--region': universe.color }} aria-pressed={region === group} onClick={() => selectRegion(group)}><SpectraSymbol symbol={universe.symbol} />{REGIONS[group]}</button>)}
       </div>
@@ -109,7 +110,7 @@ export default function LaunchTasteJourney({ onOpen, busy }) {
   };
   return (
     <section className="lj-journey llp-section" id="features" ref={sectionRef}>
-      <header className="lj-intro"><span className="lj-kicker">01 / FROM SOUND TO SHAPE</span><h2>흐르던 음악이,<br /><span>당신의 지도가 됩니다.</span></h2><p>이해 → 분류 → 확장. 아래 지도에서 직접 체험해 보세요.</p></header>
+      <header className="lj-intro"><span className="lj-kicker">01 / FROM SOUND TO SHAPE</span><h2>당신이 좋아한 음악을<br /><span>지도로 펼쳐보아요.</span></h2><p>이해 → 분류 → 확장. 아래 지도에서 직접 체험해 보세요.</p></header>
       <div className="lj-story-grid">
         <div className="lj-story-copy">
           {CHAPTERS.map((chapter, i) => <article key={chapter.label} className={`lj-step${stage === i ? ' is-current' : ''}`}>

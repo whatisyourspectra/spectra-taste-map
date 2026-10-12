@@ -1,3 +1,5 @@
+import { drawSpectraLogo, BRAND_TAGLINE } from '../brand/drawSpectraLogo';
+
 // Capture the rendered SVG with its current colors and animation pose, without
 // external stylesheets or images that could taint the export canvas.
 export async function createConstellationImage(source, { title, genres, count }) {
@@ -36,7 +38,7 @@ export async function createConstellationImage(source, { title, genres, count })
         ctx.textAlign = 'center';
         ctx.fillStyle = '#93a7c3';
         ctx.font = '18px sans-serif';
-        ctx.fillText('S P E C T R A', 540, 220);
+        await drawSpectraLogo(ctx, { top: 186 });
         ctx.font = '20px sans-serif';
         ctx.fillText(new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase(), 540, 280);
         ctx.fillStyle = '#e6edf8';
@@ -63,7 +65,7 @@ function paintStoryBackground(ctx, accent = '#a9bff1') {
     ctx.strokeStyle = '#9aafd433'; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(460, 1660); ctx.lineTo(620, 1660); ctx.stroke();
     ctx.textAlign = 'center'; ctx.fillStyle = '#8395b2'; ctx.font = '18px sans-serif';
-    ctx.fillText('YOUR TASTE. YOUR UNIVERSE.', 540, 1720);
+    ctx.fillText(BRAND_TAGLINE, 540, 1720);
 }
 function ellipsis(ctx, value, width) {
     const original = String(value || '');
@@ -92,7 +94,8 @@ export async function createDailyStoryImage({ theme, day, tracks, lang }) {
     paintStoryBackground(ctx, theme.color);
     const en = lang === 'en';
     ctx.textAlign = 'center'; ctx.fillStyle = '#a5b5ce'; ctx.font = '22px sans-serif';
-    ctx.fillText('D A I L Y   S P E C T R A', 540, 220);
+    await drawSpectraLogo(ctx, { top: 166 });
+    ctx.fillText('DAILY', 540, 240);
     ctx.font = '20px sans-serif'; ctx.fillText(day.replaceAll('-', ' . '), 540, 275);
     ctx.strokeStyle = `${theme.color}55`; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.ellipse(540, 450, 230, 75, -.25, 0, Math.PI * 2); ctx.stroke();
@@ -186,7 +189,7 @@ export async function createDailyStoryImage({ theme, day, tracks, lang }) {
     ctx.textAlign = 'center';
     ctx.fillStyle = '#5a6c86';
     ctx.font = '16px sans-serif';
-    ctx.fillText('S P E C T R A   ·   M U S I C   T A S T E   M A P', 540, 1780);
+    ctx.fillText(BRAND_TAGLINE, 540, 1780);
 
     return new Promise((resolve, reject) => canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('PNG encoding failed')), 'image/png'));
 }

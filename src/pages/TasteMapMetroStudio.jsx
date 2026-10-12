@@ -1,3 +1,4 @@
+import SpectraLogo from '../components/SpectraLogo';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import './TasteMapMetroStudio.css';
 import MetroYouTubePlayer from './MetroYouTubePlayer';
@@ -493,7 +494,7 @@ function MetroCreationWizard({ tracks, lineOptions, lang, canCancel, onCancel, o
             <aside className="tm2-create-panel">
                 <button type="button" className="tm2-create-close" onClick={onCancel} aria-label={copy.close}>×</button>
                 <div className="tm2-wizard-hero">
-                    <span>SPECTRA · {copy.newMetro}</span>
+                    <span className="spectra-logo-caption"><SpectraLogo />{copy.newMetro}</span>
                     <h2>{copy.createTitle}</h2>
                     <p>{copy.createDescription}</p>
                 </div>

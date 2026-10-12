@@ -1,3 +1,4 @@
+import SpectraLogo from '../components/SpectraLogo';
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
@@ -7,11 +8,7 @@ import './AuthPage.css';
 
 function AuthSurface({ children }) {
     return <main className="sa-page"><div className="sa-card">
-        <Link to="/taste-map" className="sa-wordmark">S P E C T R A</Link>
-        <div className="sa-emblem" aria-hidden="true"><svg viewBox="0 0 160 110" fill="none">
-            <path d="m23 68 27-44 44 14 38 41-70 15-12-70m12 70 32-56" />
-            {[[23, 68], [50, 24], [94, 38], [132, 79], [62, 94]].map(([x, y]) => <circle key={x} cx={x} cy={y} r="3" />)}
-        </svg></div>
+        <Link to="/" className="sa-wordmark" aria-label="SPECTRA home"><SpectraLogo decorative /></Link>
         {children}
     </div></main>;
 }

@@ -1,3 +1,4 @@
+import SpectraLogo from '../components/SpectraLogo';
 import React, { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AccountButton from '../auth/AccountButton';
@@ -1691,6 +1692,8 @@ export default function TasteMapPage() {
     const [selectionSpacePressed, setSelectionSpacePressed] = useState(false);
     const [customGroups, setCustomGroups] = useState(() => loadCustomGroups(mapId || 'guest'));
     const [editingGroupId, setEditingGroupId] = useState(null);
+    const [visibleGroupId, setVisibleGroupId] = useState(null);
+    const visibleGroup = customGroups.find((group) => group.id === visibleGroupId) || null;
     const [groupName, setGroupName] = useState(() => getNextCustomGroupName(
         customGroups,
         typeof window !== 'undefined' && window.localStorage.getItem(TM_LOCALE_STORAGE_KEY) === 'en' ? 'en' : 'ko',
@@ -2176,12 +2179,18 @@ export default function TasteMapPage() {
         return set;
     }, [tracks, assignments, selectedCluster]);
 
-    const hasTrackFilter = selectedCluster !== null;
+    const hasTrackFilter = selectedCluster !== null || !!visibleGroup;
 
     const bubbleCandidateTracks = useMemo(() => {
+        if (visibleGroup) {
+            const ids = new Set(visibleGroup.trackIds);
+            const available = new Map(tracks.map((track) => [track.id, track]));
+            exploreRecs.forEach(({ track }) => { if (track?.id && !available.has(track.id)) available.set(track.id, track); });
+            return [...available.values()].filter((track) => ids.has(track.id));
+        }
         if (!hasTrackFilter) return tracks;
         return tracks.filter((track) => activeTrackIds.has(track.id));
-    }, [tracks, hasTrackFilter, activeTrackIds]);
+    }, [tracks, hasTrackFilter, activeTrackIds, visibleGroup, exploreRecs]);
     const shareSelectedTracks = useMemo(() => Object.values(shareSelectedMap), [shareSelectedMap]);
     const shareSelectedIds = useMemo(() => Object.keys(shareSelectedMap), [shareSelectedMap]);
     const expandPinIds = useMemo(() => Object.keys(expandPinMap), [expandPinMap]);
@@ -2205,6 +2214,7 @@ export default function TasteMapPage() {
     );
 
     const bubbleTracks = useMemo(() => {
+        if (visibleGroup) return bubbleCandidateTracks;
         if (bubbleCandidateTracks.length <= BUBBLE_MAX_COUNT) return bubbleCandidateTracks;
         if (hasTrackFilter) {
             const selected = [];
@@ -2260,7 +2270,7 @@ export default function TasteMapPage() {
         }
 
         return selected.slice(0, BUBBLE_MAX_COUNT);
-    }, [bubbleCandidateTracks, assignmentByTrackId, hasTrackFilter, activeTrackIds]);
+    }, [bubbleCandidateTracks, assignmentByTrackId, hasTrackFilter, activeTrackIds, visibleGroup]);
     const knownTrackIds = useMemo(() => new Set(tracks.map((track) => track.id)), [tracks]);
     const spectraExpandTrack = useMemo(
         () => (spectraExpandTrackId ? tracks.find((track) => track.id === spectraExpandTrackId) || null : null),
@@ -3887,7 +3897,7 @@ export default function TasteMapPage() {
     ]);
 
     const exploreRenderItems = useMemo(() => {
-        if (voyageState.active || !exploreEnabled || viewMode !== 'bubble') return [];
+        if (visibleGroup || voyageState.active || !exploreEnabled || viewMode !== 'bubble') return [];
         if (!bubbleFieldSize.w || !bubbleFieldSize.h) return [];
         if (!exploreRecs.length) return [];
 
@@ -4054,6 +4064,7 @@ export default function TasteMapPage() {
         bubbleFieldSize.h,
         bubbleRenderItems,
         visibleBubbleRenderItems,
+        visibleGroup,
         exploreRecs,
         bubbleZoom,
         bubbleWorldScale,
@@ -4835,6 +4846,7 @@ export default function TasteMapPage() {
 
     const startNewCustomGroup = useCallback(() => {
         setEditingGroupId(null);
+        setVisibleGroupId(null);
         setGroupName(getNextCustomGroupName(customGroups, lang));
         setShareSelectedMap({});
         setShareMessage(null);
@@ -4854,6 +4866,7 @@ export default function TasteMapPage() {
                 coverUrl: track.coverUrl || '',
             };
         });
+        setVisibleGroupId(null);
         setEditingGroupId(group.id);
         setGroupName(group.name);
         setShareSelectedMap(nextSelectedMap);
@@ -4899,8 +4912,13 @@ export default function TasteMapPage() {
             ? previous.map((item) => item.id === id ? group : item)
             : [group, ...previous]);
         setEditingGroupId(id);
+        setVisibleGroupId(id);
+        exitConstellationVoyage();
+        setSelectedTrackCard(null);
+        setBubbleContextMenu(null);
+        setSelectedCluster(null);
         setShareMessage(lang === 'en' ? 'Group saved.' : '그룹을 저장했어요.');
-    }, [commitCustomGroups, customGroups, editingGroupId, groupName, lang, shareSelectedTracks, trackLookupById]);
+    }, [commitCustomGroups, customGroups, editingGroupId, groupName, lang, shareSelectedTracks, trackLookupById, exitConstellationVoyage]);
 
     const deleteCustomGroup = useCallback((groupId) => {
         const group = customGroups.find((item) => item.id === groupId);
@@ -4910,8 +4928,9 @@ export default function TasteMapPage() {
             : `‘${group.name}’ 그룹을 삭제할까요?`);
         if (!confirmed) return;
         commitCustomGroups((previous) => previous.filter((item) => item.id !== groupId));
+        if (visibleGroupId === groupId) setVisibleGroupId(null);
         if (editingGroupId === groupId) startNewCustomGroup();
-    }, [commitCustomGroups, customGroups, editingGroupId, lang, startNewCustomGroup]);
+    }, [commitCustomGroups, customGroups, editingGroupId, lang, startNewCustomGroup, visibleGroupId]);
 
     const removeTrackFromGroupDraft = useCallback((trackId) => {
         setShareSelectedMap((previous) => {
@@ -5318,7 +5337,7 @@ export default function TasteMapPage() {
                             style={{ cursor: 'pointer' }}
                             title={lang === 'en' ? 'Return to Launch Home' : '런칭 홈으로 이동'}
                         >
-                            S P E C T R A
+                            <SpectraLogo />
                         </span>
                         {isDemoUniverse && (
                             <span className="tm-demo-badge" title="체험용 데모 은하입니다">DEMO FIELD</span>
@@ -5364,7 +5383,7 @@ export default function TasteMapPage() {
                         onClick={handleGoHome}
                         title={lang === 'en' ? 'Launch Home' : '런칭 홈으로 이동'}
                     >
-                        <span className="tm-nav-home-icon">✦</span>
+                        <span className="tm-nav-home-icon" aria-hidden="true">⌂</span>
                         <span>{lang === 'en' ? 'Launch Home' : '런칭 홈'}</span>
                     </button>
                     <AccountButton lang={lang} />
@@ -6499,11 +6518,11 @@ export default function TasteMapPage() {
                                                 {customGroups.length > 0 ? (
                                                     <div className="tm-saved-group-list">
                                                         {customGroups.map((group) => (
-                                                            <article key={group.id} className={editingGroupId === group.id ? 'active' : ''}>
+                                                            <article key={group.id} className={visibleGroupId === group.id ? 'active' : ''}>
                                                                 <i style={{ background: group.color }} />
-                                                                <button type="button" className="tm-saved-group-main" onClick={() => editCustomGroup(group)}>
+                                                                <button type="button" className="tm-saved-group-main" onClick={() => { exitConstellationVoyage(); setVisibleGroupId(group.id); setSelectedCluster(null); setShareMode(false); setSelectedTrackCard(null); setBubbleContextMenu(null); }}>
                                                                     <strong>{group.name}</strong>
-                                                                    <small>{group.trackIds.length}{lang === 'en' ? ' tracks' : '곡'} · Metro Map 2</small>
+                                                                    <small>{group.trackIds.length}{lang === 'en' ? ' tracks · View on map' : '곡 · 맵에서 보기'}</small>
                                                                 </button>
                                                                 <button type="button" className="tm-saved-group-edit" onClick={() => editCustomGroup(group)}>
                                                                     {lang === 'en' ? 'Edit' : '수정'}
@@ -6522,6 +6541,12 @@ export default function TasteMapPage() {
                                     )}
                             </div>
                             <div className="tm-track-count">
+                                {visibleGroup && (
+                                    <span className="tm-group-map-filter">
+                                        <strong>{visibleGroup.name} · {bubbleCandidateTracks.length}{lang === 'en' ? ' tracks' : '곡'}</strong>
+                                        <button type="button" onClick={() => setVisibleGroupId(null)}>{lang === 'en' ? 'Show all tracks' : '전체 곡 보기'}</button>
+                                    </span>
+                                )}
                                 {isConstellationView
                                     ? `${bubbleTracks.length}개의 별 · connect / drag / zoom`
                                     : `${bubbleCoverage || `${bubbleTracks.length}곡 버블 탐색`} · drag / zoom`}

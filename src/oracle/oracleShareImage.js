@@ -1,3 +1,4 @@
+import { drawSpectraLogo, BRAND_TAGLINE } from '../brand/drawSpectraLogo';
 import { hash01 } from '../taste/constellationTopology.js';
 
 function withAlpha(hex, alpha) {
@@ -72,7 +73,7 @@ export async function createOracleStoryImage({ result, track, day, lang = 'ko' }
     ctx.textAlign = 'center';
     ctx.fillStyle = '#a8b9d8';
     ctx.font = '600 24px "Space Grotesk", sans-serif';
-    ctx.fillText('S P E C T R A  /  TODAY', 540, 146);
+    await drawSpectraLogo(ctx, { top: 112, width: 320 });
     ctx.fillStyle = '#7d8ba9';
     ctx.font = '400 23px "Space Grotesk", sans-serif';
     ctx.fillText(String(day || '').replaceAll('-', ' . '), 540, 205);
@@ -158,7 +159,7 @@ export async function createOracleStoryImage({ result, track, day, lang = 'ko' }
     ctx.fillText(en ? 'What does your sky look like today?' : '당신의 오늘은 어떤 별자리인가요?', 540, 1820);
     ctx.fillStyle = '#7183a4';
     ctx.font = '500 20px "Space Grotesk", sans-serif';
-    ctx.fillText('SPECTRA · YOUR MUSIC, YOUR SKY', 540, 1860);
+    ctx.fillText(BRAND_TAGLINE, 540, 1860);
 
     return new Promise((resolve, reject) => canvas.toBlob(
         (blob) => blob ? resolve(blob) : reject(new Error('PNG encoding failed')),

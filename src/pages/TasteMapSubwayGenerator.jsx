@@ -1,3 +1,4 @@
+import SpectraLogo from '../components/SpectraLogo';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import './TasteMapSubwayGenerator.css';
 import {
@@ -1106,7 +1107,7 @@ export default function TasteMapSubwayGenerator({
             <section className="tm-subway-modal">
                 <header className="tm-subway-head">
                     <div className="tm-subway-head-copy">
-                        <span className="tm-subway-pill">S P E C T R A</span>
+                        <span className="tm-subway-pill"><SpectraLogo /></span>
                         <h2>{copy.title}</h2>
                         <p>{copy.subtitle}</p>
                         {system ? (

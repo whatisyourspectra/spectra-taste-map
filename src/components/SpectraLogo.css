@@ -1,0 +1,30 @@
+.spectra-logo {
+    display: inline-block;
+    width: var(--spectra-logo-width, 160px);
+    max-width: 100%;
+    height: auto;
+    flex-shrink: 0;
+    vertical-align: middle;
+    object-fit: contain;
+}
+
+.llp-nav-brand { --spectra-logo-width: 170px; }
+.llp-footer-brand { --spectra-logo-width: 150px; flex-wrap: wrap; }
+.tmm-brand { --spectra-logo-width: 138px; }
+.tm-pill { --spectra-logo-width: 130px; }
+.sa-wordmark { --spectra-logo-width: 240px; margin-bottom: 36px; }
+
+@media (max-width: 699px) {
+    .llp-nav-brand { --spectra-logo-width: 138px; }
+    .llp-footer-brand { --spectra-logo-width: 138px; }
+}
+
+.spectra-logo-caption {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    --spectra-logo-width: 120px;
+}
+
+.tm-subway-pill { --spectra-logo-width: 130px; }
