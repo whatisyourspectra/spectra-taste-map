@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
 import { TasteDataProvider, useTasteData, MAX_IMPORT_TRACKS } from './context/TasteDataContext';
 import { parseTrackList } from './utils/parseTrackList';
 import TasteMapPage from './pages/TasteMapPage';
@@ -12,9 +12,12 @@ import AccountButton from './auth/AccountButton';
 import LaunchLandingPage from './pages/LaunchLandingPage';
 import { DEMO_UNIVERSES, getCombinedDemoTracks } from './taste/demoUniverses';
 import MapOnboarding from './onboarding/MapOnboarding';
+import SpectraLogo from './components/SpectraLogo';
 
 function AppInner() {
   const { hasTaste, cloudSyncing, importTracks, status, progress, error, reset } = useTasteData();
+  const { user } = useAuth();
+  const emptyMap = user ? <EmptyPersonalMap /> : <Navigate to="/" replace />;
 
   if (cloudSyncing) {
     return <AuthLoading title="취향 지도를 불러오고 있어요" message="저장된 나의 우주를 안전하게 연결하고 있습니다." />;
@@ -37,16 +40,27 @@ function AppInner() {
       />
       <Route
         path="/taste-map"
-        element={hasTaste ? <ResponsiveTasteMapRoute /> : <Navigate to="/" replace />}
+        element={hasTaste ? <ResponsiveTasteMapRoute /> : emptyMap}
       />
       <Route
         path="/taste-map/mobile"
-        element={hasTaste ? <><TasteMapMobilePage /><MapOnboarding mobile /></> : <Navigate to="/" replace />}
+        element={hasTaste ? <><TasteMapMobilePage /><MapOnboarding mobile /></> : emptyMap}
       />
       <Route path="/mobile-start" element={<MobileStart />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
+}
+
+function EmptyPersonalMap() {
+  return <main className="sa-page tm-empty-account"><div className="sa-card">
+    <Link to="/" className="sa-wordmark" aria-label="SPECTRA home"><SpectraLogo decorative /></Link>
+    <span className="sa-eyebrow">YOUR MUSIC TASTE MAP</span>
+    <h1>나의 취향 지도</h1>
+    <p>아직 이 계정에 저장된 곡이 없어요.<br />좋아하는 음악을 가져오면 이곳에 내 지도가 펼쳐집니다.</p>
+    <Link to="/" className="sa-primary">음악 가져오기</Link>
+    <AccountButton />
+  </div></main>;
 }
 
 function MobileStart() {

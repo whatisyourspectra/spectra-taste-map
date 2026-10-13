@@ -53,6 +53,7 @@ export default function AuthPage() {
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState('');
     const returnTo = safeReturnTo(new URLSearchParams(location.search).get('returnTo') || savedReturnTo(window.sessionStorage));
+    const mapDestination = returnTo.startsWith('/taste-map') ? returnTo : '/taste-map';
 
     const handleSignIn = async () => {
         if (busy) return;
@@ -92,7 +93,7 @@ export default function AuthPage() {
         <p>{user ? 'SPECTRA 계정에 로그인되어 있어요.' : 'Google 계정으로 간편하게 시작하세요.'}</p>
         {user ? <>
             <div className="sa-profile"><strong>{user.user_metadata?.full_name || 'SPECTRA 리스너'}</strong><span>{user.email}</span></div>
-            <Link className="sa-primary" to={returnTo}>내 취향 공간으로</Link>
+            <Link className="sa-primary" to={mapDestination}>내 취향 공간으로</Link>
             <button type="button" className="sa-secondary" onClick={handleSignOut} disabled={busy}>{busy ? '로그아웃 중…' : '이 기기에서 로그아웃'}</button>
         </> : <>
             <button type="button" className="sa-google" disabled={(!configured && !isMock) || !ready || busy} onClick={handleSignIn}>

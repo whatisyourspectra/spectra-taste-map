@@ -1,5 +1,6 @@
 {
   "rewrites": [
+    { "source": "/mobile-start", "destination": "/index.html" },
     { "source": "/auth/(.*)", "destination": "/index.html" },
     { "source": "/taste-map", "destination": "/index.html" },
     { "source": "/taste-map/(.*)", "destination": "/index.html" }

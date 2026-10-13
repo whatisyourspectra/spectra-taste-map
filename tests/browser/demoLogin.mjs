@@ -38,12 +38,26 @@ try {
             await page.waitForFunction(() => JSON.parse(sessionStorage.getItem('spectra:taste:v5:user:account') || 'null')?.mapId === 'personal-map');
             await page.locator('.tm-root').waitFor();
             assert.equal(await page.locator('.tm-demo-badge').count(), 0);
+            // Opening the account from the landing sets returnTo=/, but the
+            // signed-in "My space" action must still open the personal map.
+            await page.locator('.tm-nav-home-btn').click();
+            await page.locator('.llp-nav-auth .sa-account-button').click();
+            const mySpace = page.getByRole('link', { name: '내 취향 공간으로', exact: true });
+            assert.equal(await mySpace.getAttribute('href'), '/taste-map');
+            await mySpace.click();
+            await page.waitForURL('**/taste-map');
+            await page.locator('.tm-root').waitFor();
+            assert.equal(await page.locator('.tm-demo-badge').count(), 0);
         } else {
-            await page.waitForURL(`${process.env.BASE_URL || 'http://127.0.0.1:5188'}/`);
-            await page.locator('.llp-hero-title').waitFor();
+            await page.locator('.tm-empty-account').waitFor();
+            assert.ok(page.url().endsWith('/taste-map'));
+            await page.locator('.tm-empty-account .sa-account-button').click();
+            await page.getByRole('link', { name: '내 취향 공간으로', exact: true }).click();
+            await page.locator('.tm-empty-account').waitFor();
+            assert.ok(page.url().endsWith('/taste-map'));
         }
         assert.equal(await page.evaluate(() => window.cloudWrites.length), 0);
         await page.close();
     }
-    console.log('Demo sign-in restores the saved personal map; empty accounts return to import; no demo cloud writes.');
+    console.log('My space opens the saved map or an empty personal map; no landing redirect or demo cloud writes.');
 } finally { await browser.close(); }
