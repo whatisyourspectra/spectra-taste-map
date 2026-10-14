@@ -34,3 +34,6 @@
 .share-map-manager summary { min-height: 44px; padding: 12px 0; cursor: pointer; }
 .share-map-manager > div { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 0; }
 .share-map-manager button { min-height: 44px; padding: 10px; border: 1px solid #8198bf42; background: none; color: #cfddf0; border-radius: 8px; }
+
+.share-map-link-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+.share-map-link-actions a, .share-map-link-actions button { flex: 1; min-height: 44px; padding: 12px; border: 1px solid #8198bf42; border-radius: 10px; background: #ffffff08; color: #cbeeff; font: inherit; font-size: 14px; text-align: center; text-decoration: none; }
