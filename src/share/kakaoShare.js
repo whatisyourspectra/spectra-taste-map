@@ -45,14 +45,14 @@ export function validCardImage(value) {
     }
     catch { return null; }
 }
-export async function prepareKakaoCard(file, title) {
+export async function prepareKakaoCard(file, title, shareId = null) {
     const kakao = await loadKakaoShare();
     const files = new DataTransfer(); files.items.add(file);
     const uploaded = await withTimeout(kakao.Share.uploadImage({ file: files.files }), 15000, 'KAKAO_UPLOAD_TIMEOUT');
     const image = validCardImage(uploaded?.infos?.original?.url);
     if (!image) throw new Error('KAKAO_IMAGE_FAILED');
     const origin = import.meta.env.VITE_PUBLIC_APP_URL || window.location.origin;
-    const url = new URL('/share/card', origin);
-    url.searchParams.set('image', image); url.searchParams.set('title', title.slice(0, 80));
-    return { kakao, settings: { objectType: 'feed', content: { title, description: '음악으로 만든 나의 취향 공간 · SPECTRA', imageUrl: image, link: { mobileWebUrl: url.href, webUrl: url.href } }, buttons: [{ title: '취향 카드 보기', link: { mobileWebUrl: url.href, webUrl: url.href } }] } };
+    const url = new URL(shareId ? `/share/map/${shareId}` : '/share/card', origin);
+    if (!shareId) { url.searchParams.set('image', image); url.searchParams.set('title', title.slice(0, 80)); }
+    return { kakao, settings: { objectType: 'feed', content: { title, description: '음악으로 만든 나의 취향 공간 · SPECTRA', imageUrl: image, link: { mobileWebUrl: url.href, webUrl: url.href } }, buttons: [{ title: shareId ? '친구의 취향 구경하기' : '취향 카드 보기', link: { mobileWebUrl: url.href, webUrl: url.href } }] } };
 }

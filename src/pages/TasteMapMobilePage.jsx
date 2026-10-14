@@ -368,7 +368,7 @@ function MobileConstellation({ tracks, status, progress, storageKey }) {
                         <a href={exportImage.url} download={exportImage.file.name}>{en ? 'Save image' : '이미지 저장'}</a>
                         {canShareImage && <button type="button" disabled={sharing} onClick={shareImage}>{sharing ? (en ? 'Opening…' : '여는 중…') : (en ? 'Share' : '공유하기')}</button>}
                     </div>
-                    <KakaoCardShare key={exportImage.url} file={exportImage.file} title={exportImage.daily ? "오늘의 스펙트라" : "나의 스펙트라"} />
+                    <KakaoCardShare key={exportImage.url} file={exportImage.file} tracks={exportImage.daily ? [] : library} style={exportImage.cardStyle} genres={taste.coreGenres.slice(0, 3).map(item => titleizeGenre(item.genre))} title={exportImage.daily ? "오늘의 스펙트라" : "나의 스펙트라"} />
                     <p>{canShareImage ? (en ? 'Choose Instagram if available in the share menu. Otherwise save the image and add it to your story.' : '공유 메뉴에 Instagram이 있으면 선택하세요. 없으면 이미지를 저장해 스토리에 추가할 수 있어요.') : (en ? 'Save the image, then select it in Instagram Stories. You can also touch and hold to save.' : '이미지를 저장한 뒤 Instagram 스토리에서 선택하세요. 이미지를 길게 눌러 저장할 수도 있어요.')}</p>
                     {exportError && <p role="alert">{exportError}</p>}
                 </dialog>}

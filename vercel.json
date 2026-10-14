@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/share/map/(.*)",
+      "destination": "/index.html"
+    },
+    {
       "source": "/share/card",
       "destination": "/index.html"
     },

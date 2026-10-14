@@ -7,3 +7,30 @@
 .kakao-card-share > button { width: 100%; min-height: 48px; border: 0; border-radius: 12px; background: #fee500; color: #191919; font: inherit; font-weight: 600; }
 .kakao-card-share > button:disabled { opacity: .5; }
 .kakao-card-share > p { font-size: 13px; line-height: 1.7; color: #a9b9d0; }
+
+.share-map-option { display: flex; align-items: center; gap: 10px; margin: 12px 0; font-size: 14px; line-height: 1.7; }
+.share-map-option input { width: 20px; height: 20px; }
+.public-map-page { min-height: 100dvh; padding: 20px; background: #080c13; color: #e6edf8; display: flex; flex-direction: column; align-items: center; gap: 18px; }
+.public-map-page header { width: min(100%,900px); display: flex; justify-content: space-between; gap: 12px; font-size: 13px; color: #9badc6; }
+.public-map-page header a { color: #c1a5ff; text-decoration: none; letter-spacing: .1em; font-weight: 700; }
+.public-map-title { text-align: center; }
+.public-map-title h1 { font-size: 24px; }
+.public-map-title p, .public-map-note { color: #9badc6; font-size: 14px; line-height: 1.8; }
+.public-map-controls { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.public-map-controls button { min-height: 44px; padding: 10px 12px; border: 1px solid #8198bf42; border-radius: 12px; background: #111827; color: #cfddf0; font: inherit; font-size: 14px; }
+.public-map-controls button[aria-pressed=true] { border-color: #70d6ff; color: #70d6ff; }
+.public-map-canvas { width: min(100%,900px); height: min(65dvh,700px); background: radial-gradient(ellipse,#35345555,transparent); border-radius: 20px; touch-action: none; }
+.public-map-canvas g[role=button] { cursor: pointer; }
+.public-map-canvas g[role=button]:focus { outline: none; }
+.public-map-canvas g[role=button]:focus circle { stroke: white; stroke-width: 4; }
+.public-map-track { width: min(100%,600px); padding: 20px; border: 1px solid #8198bf42; border-radius: 18px; background: #111827; }
+.public-map-track h2 { font-size: 20px; }
+.public-map-track p { color: #9badc6; margin: 8px 0 16px; }
+.public-map-track > div { display: flex; gap: 16px; flex-wrap: wrap; }
+.public-map-track a { color: #70d6ff; min-height: 44px; padding: 12px 0; }
+.public-map-close { float: right; width: 44px; height: 44px; border: 0; color: #cfddf0; background: #ffffff08; border-radius: 50%; font-size: 24px; }
+
+.share-map-manager { margin-top: 16px; font-size: 13px; }
+.share-map-manager summary { min-height: 44px; padding: 12px 0; cursor: pointer; }
+.share-map-manager > div { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 0; }
+.share-map-manager button { min-height: 44px; padding: 10px; border: 1px solid #8198bf42; background: none; color: #cfddf0; border-radius: 8px; }

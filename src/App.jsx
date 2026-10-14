@@ -11,6 +11,7 @@ import AccountButton from './auth/AccountButton';
 
 import LaunchLandingPage from './pages/LaunchLandingPage';
 import { DEMO_UNIVERSES, getCombinedDemoTracks } from './taste/demoUniverses';
+import SharedMapPage from './share/SharedMapPage';
 import SharedCardPage from './share/SharedCardPage';
 import MapOnboarding from './onboarding/MapOnboarding';
 import SpectraLogo from './components/SpectraLogo';
@@ -120,6 +121,7 @@ function App() {
     <Router>
       <AuthProvider>
         <Routes>
+          <Route path="/share/map/:id" element={<SharedMapPage />} />
           <Route path="/share/card" element={<SharedCardPage />} />
           <Route path="/auth/login" element={<AuthPage />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
