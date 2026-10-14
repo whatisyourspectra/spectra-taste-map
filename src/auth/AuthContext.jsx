@@ -50,7 +50,8 @@ export function AuthProvider({ children }) {
         return () => { disposed = true; window.clearTimeout(timeout); subscription.unsubscribe(); };
     }, [retry, isMock]);
 
-    const signIn = useCallback(async (returnTo) => {
+    const signIn = useCallback(async (returnTo, provider = 'google') => {
+        if (!['google', 'kakao'].includes(provider)) throw new Error('unsupported_auth_provider');
         if (isMock) {
             const mockUser = {
                 id: 'spectra-mock-user-1',
@@ -67,11 +68,11 @@ export function AuthProvider({ children }) {
         // PKCE and the return path need storage in the same browser as the callback.
         rememberReturnTo(window.sessionStorage, returnTo);
         const { data, error } = await supabase.auth.signInWithOAuth({
-            provider: 'google',
+            provider,
             options: {
                 redirectTo: `${window.location.origin}/auth/callback`,
                 skipBrowserRedirect: true,
-                queryParams: { prompt: 'select_account' },
+                ...(provider === 'google' ? { queryParams: { prompt: 'select_account' } } : {}),
             },
         });
         if (error || !data.url) throw error || new Error('oauth_unavailable');

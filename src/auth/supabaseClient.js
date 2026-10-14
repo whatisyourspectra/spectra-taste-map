@@ -11,6 +11,7 @@ export const supabase = config ? createClient(config.url, config.key, {
     },
 }) : null;
 
+// Google and Kakao share this Supabase PKCE callback.
 // A code is single-use. Share the promise across React StrictMode remounts.
 let pendingCode = null;
 let pendingExchange = null;

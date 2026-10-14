@@ -1,6 +1,6 @@
-# SPECTRA 계정 및 Google 로그인 설정 가이드
+# SPECTRA 계정 및 Google·카카오 로그인 설정 가이드
 
-SPECTRA Taste Map은 **Supabase Auth (Google OAuth PKCE 방식)**를 통해 사용자 인증을 처리합니다.
+SPECTRA Taste Map은 **Supabase Auth (Google·카카오 OAuth PKCE 방식)**를 통해 사용자 인증을 처리합니다.
 이 가이드를 따라 Supabase와 Google Cloud 설정을 완료하면 실제 Google 로그인을 사용할 수 있습니다.
 
 ---
@@ -85,3 +85,23 @@ VITE_AUTH_MOCK=1
 ```
 
 이 옵션을 켜거나 로그인 화면의 **"테스트 계정으로 체험하기"** 버튼을 사용하면 백엔드 설정 없이도 즉시 가상 사용자로 로그인/로그아웃 및 데이터 보존 동작을 검증할 수 있습니다.
+
+
+## 7. 카카오 로그인 연결
+
+기존 Google 로그인과 같은 Supabase 프로젝트를 사용합니다. 별도의 브라우저 API 키는 필요하지 않습니다.
+
+1. [카카오 개발자 콘솔](https://developers.kakao.com)에서 SPECTRA 앱을 생성하거나 선택하고 카카오 로그인을 활성화합니다.
+2. 앱의 **REST API 키** 설정에서 카카오 로그인 Redirect URI에 아래 주소를 등록합니다. Supabase의 **Authentication → Sign In / Providers → Kakao**에 표시되는 Callback URL을 복사하면 됩니다.
+   ```
+   https://<your-project-id>.supabase.co/auth/v1/callback
+   ```
+3. 카카오 로그인 **Client Secret**을 발급하고 활성화합니다.
+4. Supabase의 **Authentication → Sign In / Providers → Kakao**를 활성화하고 **Client ID**에 REST API 키, **Client Secret**에 카카오 로그인 Client Secret을 입력한 뒤 저장합니다.
+5. 위 4단계의 Supabase Redirect URLs에 실제 사용하는 SPECTRA 주소의 `/auth/callback`이 등록되어 있는지 확인합니다.
+6. Mock 모드를 끄고 로그인 화면의 **카카오로 계속하기**를 눌러 동의 화면 → SPECTRA 복귀 → 계정 저장 → 새로고침 및 로그아웃을 확인합니다. 취소 후 다시 로그인하는 흐름도 확인합니다.
+
+카카오에 등록하는 주소는 **Supabase `/auth/v1/callback`**, Supabase에 등록하는 복귀 주소는 **SPECTRA `/auth/callback`**입니다.
+REST API 키와 Client Secret은 Supabase 대시보드에만 입력하고 `VITE_` 환경 변수에 추가하지 않습니다.
+
+공식 설정 안내: [Supabase 카카오 로그인 가이드](https://supabase.com/docs/guides/auth/social-login/auth-kakao).
