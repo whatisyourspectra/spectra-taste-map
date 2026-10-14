@@ -30,4 +30,5 @@
 
 .sa-kakao { margin-top: 12px; background: #fee500; border: 1px solid #fee500; color: #191919; font-weight: 550; }
 
-.sa-spotify { margin-top: 12px; background: #191414; border: 1px solid #1ed760; color: #1ed760; font-weight: 550; }
+.sa-spotify { margin-top: 12px; background: #1ed760; border: 1px solid #1ed760; color: #191414; font-weight: 550; }
+.sa-spotify svg g { stroke: #1ed760; }
