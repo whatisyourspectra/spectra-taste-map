@@ -109,3 +109,15 @@ REST API 키와 Client Secret은 Supabase 대시보드에만 입력하고 `VITE_
 ### 이메일 권한이 없는 카카오 앱 (KOE205)
 
 SPECTRA는 카카오 로그인 시 `profile_nickname profile_image`만 요청하고 이메일은 요청하지 않습니다. 카카오 동의항목에서 닉네임·프로필 사진을 설정하고, Supabase Kakao Provider의 **Allow users without an email**을 켠 뒤 저장하세요. 계정 데이터는 이메일 대신 Supabase 사용자 ID로 저장합니다. 이메일이 없는 카카오 계정과 기존 Google 계정은 자동으로 연결되지 않습니다.
+
+
+## 8. Spotify 로그인 연결
+
+1. Spotify Developer Dashboard에서 로그인용 앱의 Settings에 Supabase Kakao/Spotify 설정에 표시되는 Callback URL (`https://<your-project-id>.supabase.co/auth/v1/callback`)을 Redirect URI로 등록합니다.
+2. Supabase **Authentication → Sign In / Providers → Spotify**를 활성화하고 앱의 Client ID와 Client Secret을 입력한 뒤 저장합니다.
+3. Supabase Redirect URLs에는 실제 SPECTRA 사이트의 `/auth/callback`을 등록합니다.
+4. 로그인 화면의 **Spotify로 계속하기**로 동의 → 사이트 복귀 → 새로고침 → 로그아웃을 확인합니다.
+
+Spotify 로그인은 SPECTRA 계정 인증에 사용합니다. 사용자 음악 목록을 가져오기 위한 추가 권한은 요청하지 않습니다. 카탈로그 검색용 서버 환경 변수와 별도로 Supabase에 로그인용 앱 자격 증명을 설정해야 합니다.
+
+공식 안내: [Supabase Spotify 로그인](https://supabase.com/docs/guides/auth/social-login/auth-spotify).

@@ -51,7 +51,7 @@ export function AuthProvider({ children }) {
     }, [retry, isMock]);
 
     const signIn = useCallback(async (returnTo, provider = 'google') => {
-        if (!['google', 'kakao'].includes(provider)) throw new Error('unsupported_auth_provider');
+        if (!['google', 'kakao', 'spotify'].includes(provider)) throw new Error('unsupported_auth_provider');
         if (isMock) {
             const mockUser = {
                 id: 'spectra-mock-user-1',
@@ -75,7 +75,7 @@ export function AuthProvider({ children }) {
                 // Override Kakao's default email scope; this app only needs a profile.
                 queryParams: provider === 'google'
                     ? { prompt: 'select_account' }
-                    : { scope: 'profile_nickname profile_image' },
+                    : provider === 'kakao' ? { scope: 'profile_nickname profile_image' } : {},
             },
         });
         if (error || !data.url) throw error || new Error('oauth_unavailable');

@@ -90,7 +90,7 @@ export default function AuthPage() {
     return <AuthSurface>
         <span className="sa-eyebrow">YOUR SPECTRA ACCOUNT</span>
         <h1>{user ? '다시 만나서 반가워요' : '나의 SPECTRA로 연결'}</h1>
-        <p>{user ? 'SPECTRA 계정에 로그인되어 있어요.' : 'Google 또는 카카오 계정으로 간편하게 시작하세요.'}</p>
+        <p>{user ? 'SPECTRA 계정에 로그인되어 있어요.' : 'Google, 카카오, Spotify 계정으로 간편하게 시작하세요.'}</p>
         {user ? <>
             <div className="sa-profile"><strong>{user.user_metadata?.full_name || 'SPECTRA 리스너'}</strong><span>{user.email}</span></div>
             <Link className="sa-primary" to={mapDestination}>내 취향 공간으로</Link>
@@ -103,6 +103,10 @@ export default function AuthPage() {
             <button type="button" className="sa-kakao" disabled={!configured || !ready || busy} onClick={() => handleSignIn('kakao')}>
                 <svg aria-hidden="true" viewBox="0 0 24 24"><path fill="currentColor" d="M12 3C6.5 3 2 6.5 2 10.8c0 2.8 1.9 5.2 4.7 6.6l-1.2 4.2c-.1.3.2.5.4.3l4.9-3.4 1.2.1c5.5 0 10-3.5 10-7.8S17.5 3 12 3Z" /></svg>
                 {!ready ? '계정 확인 중…' : busy ? '이동 중…' : isMock ? '카카오로 계속하기 (Mock)' : '카카오로 계속하기'}
+            </button>
+            <button type="button" className="sa-spotify" disabled={!configured || !ready || busy} onClick={() => handleSignIn('spotify')}>
+                <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="currentColor" /><g fill="none" stroke="#191414" strokeLinecap="round"><path strokeWidth="2" d="M6 9c4-1.2 8.5-.8 12 1" /><path strokeWidth="1.7" d="M7 12.5c3.4-1 6.9-.5 9.8 1" /><path strokeWidth="1.5" d="M8 16c2.6-.7 5.1-.4 7.4.8" /></g></svg>
+                {!ready ? '계정 확인 중…' : busy ? '이동 중…' : isMock ? 'Spotify로 계속하기 (Mock)' : 'Spotify로 계속하기'}
             </button>
             {!isMock && !configured && (
                 <button type="button" className="sa-secondary" style={{ marginTop: '0.625rem', width: '100%' }} onClick={handleMockSignIn}>
