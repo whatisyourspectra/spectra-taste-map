@@ -1,0 +1,14 @@
+# 카카오톡 취향 카드 공유 설정
+
+1. 카카오 개발자 콘솔 → 앱 → 플랫폼 키 → JavaScript 키를 복사합니다.
+2. 로컬 `.env`와 Vercel 환경 변수에 `VITE_KAKAO_JAVASCRIPT_KEY`로 등록합니다. REST API 키나 Client Secret을 넣지 않습니다.
+3. JavaScript 키의 SDK 도메인에 실제 사용하는 사이트 origin을 등록합니다. 예: `https://spectra-music.org`, `https://www.spectra-music.org`, 개발용 `http://localhost:5173`.
+4. 앱 → 제품 링크의 Web 도메인에도 실제 공유 링크의 사이트 도메인을 등록합니다.
+5. 환경 변수 변경 후 개발 서버 재시작 또는 재배포합니다.
+6. 모바일 공유 카드에서 별자리/앨범 버블 선택 → 카카오톡 공유 준비 → 카카오톡 열기 → 대화방 선택을 검증합니다.
+
+기본 Feed 템플릿을 사용하므로 사용자 정의 템플릿 ID는 필요하지 않습니다. 카드 준비를 누를 때만 이미지를 카카오 서버에 업로드하고, 전송은 사용자가 대화방을 선택해 완료합니다. `/share/card` 링크로 로그인 없이 이미지가 열립니다. 개인 지도 전체나 계정 ID는 링크에 포함하지 않습니다.
+
+카카오에 업로드한 이미지는 최대 100일 보관됩니다. 영구 공개 지도 링크가 아닌 이미지 카드 공유입니다.
+
+공식 문서: https://developers.kakao.com/docs/ko/kakaotalk-share/js-link

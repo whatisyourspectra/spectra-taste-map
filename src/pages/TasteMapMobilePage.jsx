@@ -1,3 +1,5 @@
+import KakaoCardShare from '../share/KakaoCardShare';
+import '../share/share.css';
 import SpectraLogo from '../components/SpectraLogo';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -12,7 +14,7 @@ import { loadReflection, saveReflection, reflectionKey, reflectionChanges } from
 import { useAuth } from '../auth/AuthContext';
 import './TasteMapMobilePage.css';
 import DailySpectra from '../daily/DailySpectra';
-import { createConstellationImage, createDailyStoryImage } from '../avatar/exportConstellation';
+import { createConstellationImage, createDailyStoryImage, createBubbleShareImage } from '../avatar/exportConstellation';
 import AccountButton from '../auth/AccountButton';
 import SpectraOrbitTour from '../tour/SpectraOrbitTour';
 import ConstellationOracle from '../oracle/ConstellationOracle';
@@ -162,19 +164,19 @@ function MobileConstellation({ tracks, status, progress, storageKey }) {
         dialogRef.current?.showModal();
         return () => URL.revokeObjectURL(exportImage.url);
     }, [exportImage]);
-    const exportConstellation = async (daily = null) => {
+    const exportConstellation = async (daily = null, cardStyle = 'constellation') => {
         if (exportLock.current) return;
         exportLock.current = true;
         setExporting(true);
         setExportError('');
         try {
-            const blob = daily ? await createDailyStoryImage({ ...daily, lang }) : await createConstellationImage(stageRef.current.querySelector('.tmm-space-present svg'), {
+            const blob = daily ? await createDailyStoryImage({ ...daily, lang }) : await (cardStyle === 'bubbles' ? createBubbleShareImage : createConstellationImage)(cardStyle === 'bubbles' ? library : stageRef.current.querySelector('.tmm-space-present svg'), {
                 title: en ? 'My Spectra' : '나의 스펙트라',
                 genres: taste.coreGenres.slice(0, 3).map((item) => titleizeGenre(item.genre)),
                 count: uniqueTracks([...library, ...session.decisions.filter(item => item.action === 'absorb').map(item => item.track)]).length,
             });
             const file = new File([blob], daily ? `daily-spectra-${daily.day}.png` : 'my-spectra-story.png', { type: 'image/png' });
-            setExportImage({ url: URL.createObjectURL(blob), file, daily: Boolean(daily) });
+            setExportImage({ url: URL.createObjectURL(blob), file, daily: Boolean(daily), cardStyle });
         } catch {
             setExportError(en ? 'Could not create the image. Please try again.' : '이미지를 만들지 못했어요. 다시 시도해 주세요.');
         } finally { setExporting(false); exportLock.current = false; }
@@ -357,11 +359,16 @@ function MobileConstellation({ tracks, status, progress, storageKey }) {
                 </div>
                 {exportImage && <dialog className="tmm-export-dialog" ref={dialogRef} onClose={() => setExportImage(null)} aria-labelledby="tmm-export-title">
                     <header><h2 id="tmm-export-title">{exportImage.daily ? 'Daily Spectra' : 'My Spectra'} · {en ? 'Story card' : '스토리 카드'}</h2><button type="button" autoFocus onClick={() => dialogRef.current.close()} aria-label={en ? 'Close' : '닫기'}>×</button></header>
+                    {!exportImage.daily && <div className="tmm-export-options" role="group" aria-label="공유 카드 스타일">
+                        <button type="button" aria-pressed={exportImage.cardStyle === 'constellation'} disabled={exporting} onClick={() => exportConstellation(null, 'constellation')}>별자리</button>
+                        <button type="button" aria-pressed={exportImage.cardStyle === 'bubbles'} disabled={exporting} onClick={() => exportConstellation(null, 'bubbles')}>앨범 버블</button>
+                    </div>}
                     <img src={exportImage.url} alt={en ? 'Your Spectra export preview' : '내 스펙트라 이미지 미리보기'} />
                     <div className="tmm-export-options">
                         <a href={exportImage.url} download={exportImage.file.name}>{en ? 'Save image' : '이미지 저장'}</a>
                         {canShareImage && <button type="button" disabled={sharing} onClick={shareImage}>{sharing ? (en ? 'Opening…' : '여는 중…') : (en ? 'Share' : '공유하기')}</button>}
                     </div>
+                    <KakaoCardShare key={exportImage.url} file={exportImage.file} title={exportImage.daily ? "오늘의 스펙트라" : "나의 스펙트라"} />
                     <p>{canShareImage ? (en ? 'Choose Instagram if available in the share menu. Otherwise save the image and add it to your story.' : '공유 메뉴에 Instagram이 있으면 선택하세요. 없으면 이미지를 저장해 스토리에 추가할 수 있어요.') : (en ? 'Save the image, then select it in Instagram Stories. You can also touch and hold to save.' : '이미지를 저장한 뒤 Instagram 스토리에서 선택하세요. 이미지를 길게 눌러 저장할 수도 있어요.')}</p>
                     {exportError && <p role="alert">{exportError}</p>}
                 </dialog>}

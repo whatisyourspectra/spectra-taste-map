@@ -1,0 +1,9 @@
+.spectra-shared-card { min-height: 100dvh; padding: 32px 20px; display: flex; flex-direction: column; align-items: center; gap: 24px; background: #080c13; color: #e6edf8; }
+.spectra-shared-card .spectra-logo { width: 180px; }
+.spectra-shared-card h1 { font-size: 24px; text-align: center; }
+.shared-card-image { width: min(100%, 440px); border-radius: 20px; }
+.shared-card-cta { padding: 16px 24px; background: #253752; color: #e6edf8; border-radius: 14px; text-decoration: none; }
+.kakao-card-share { margin-top: 16px; }
+.kakao-card-share > button { width: 100%; min-height: 48px; border: 0; border-radius: 12px; background: #fee500; color: #191919; font: inherit; font-weight: 600; }
+.kakao-card-share > button:disabled { opacity: .5; }
+.kakao-card-share > p { font-size: 13px; line-height: 1.7; color: #a9b9d0; }

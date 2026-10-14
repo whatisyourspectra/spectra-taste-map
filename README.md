@@ -67,14 +67,14 @@ credentials, set `SPOTIFY_MOCK=1` and `LASTFM_MOCK=1` for deterministic demos.
 Run the Vite client (`:5173`) and the API server (`:3001`) together:
 
 ```bash
-npm run dev:all
+npm run dev
 ```
 
 Or run them separately:
 
 ```bash
 npm run server   # Express API on :3001
-npm run dev      # Vite dev client on :5173 (proxies /api → :3001)
+npm run dev:web  # Vite client only on :5173 (requires server on :3001)
 ```
 
 Open http://127.0.0.1:5173, then import a track list to generate your map.

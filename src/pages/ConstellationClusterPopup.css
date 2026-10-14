@@ -352,3 +352,19 @@
         max-height: calc(100dvh - 32px);
     }
 }
+
+@media (max-width: 699px) {
+ .ccp-card { left: 8px; right: 8px; bottom: max(8px, env(safe-area-inset-bottom)); width: auto; max-width: none; max-height: 56dvh; padding: 14px; gap: 10px; border-radius: 22px 22px 16px 16px; }
+ .ccp-card::before { content: ''; width: 36px; height: 4px; border-radius: 4px; background: #ffffff40; align-self: center; }
+ .ccp-constellation-canvas { display: none; }
+ .ccp-essence-text { display: none; }
+ .ccp-constellation-pill { max-width: calc(100vw - 90px); }
+ .ccp-constellation-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+ .ccp-close-btn { min-width: 44px; min-height: 44px; }
+ .ccp-track-name { font-size: 18px; }
+ .ccp-track-artist { font-size: 14px; }
+ .ccp-primary-actions { gap: 8px; }
+ .ccp-primary-actions button { min-height: 46px; padding: 10px; font-size: 14px; }
+ .ccp-action-bar { flex-wrap: wrap; }
+ .ccp-action-chip { min-height: 40px; font-size: 13px; }
+}

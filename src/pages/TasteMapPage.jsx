@@ -1592,6 +1592,14 @@ export default function TasteMapPage() {
     const panVisualFrameRef = useRef(0);
     const panVisualOffsetRef = useRef({ x: 0, y: 0 });
     const pendingPanCommitRef = useRef(false);
+    const touchGestureUntilRef = useRef(0);
+    const [compactMap, setCompactMap] = useState(() => window.matchMedia('(max-width: 699px)').matches);
+    useEffect(() => {
+        const media = window.matchMedia('(max-width: 699px)');
+        const update = () => setCompactMap(media.matches);
+        media.addEventListener('change', update);
+        return () => media.removeEventListener('change', update);
+    }, []);
     const pinchRef = useRef({ pointers: new Map(), active: false, startDist: 0, startZoom: 1, anchorX: 0, anchorY: 0 });
     const pendingAxisFocusRef = useRef(false);
     const pendingBubbleFocusRef = useRef({ mode: 'all', source: 'spotify' });
@@ -3089,6 +3097,7 @@ export default function TasteMapPage() {
             pinchRef.current.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
             if (pinchRef.current.pointers.size >= 2) {
                 const [p1, p2] = [...pinchRef.current.pointers.values()];
+                touchGestureUntilRef.current = Date.now() + 500;
                 pinchRef.current.active = true;
                 pinchRef.current.startDist = Math.hypot(p2.x - p1.x, p2.y - p1.y) || 1;
                 pinchRef.current.startZoom = queuedZoomCameraRef.current?.zoom || bubbleZoomRef.current;
@@ -3120,6 +3129,7 @@ export default function TasteMapPage() {
             const [p1, p2] = [...pinchRef.current.pointers.values()];
             const dist = Math.hypot(p2.x - p1.x, p2.y - p1.y) || 1;
             const ratio = dist / (pinchRef.current.startDist || 1);
+            touchGestureUntilRef.current = Date.now() + 500;
             const next = pinchRef.current.startZoom * ratio;
             setZoomAroundPoint(next, pinchRef.current.anchorX, pinchRef.current.anchorY);
             if (e.cancelable) e.preventDefault();
@@ -3160,6 +3170,7 @@ export default function TasteMapPage() {
             }
         }
         panRef.current.dragging = false;
+        if (panRef.current.moved || pinchRef.current.active) touchGestureUntilRef.current = Date.now() + 350;
         const moved = panRef.current.moved;
         const finalCamera = panRef.current.nextCamera;
         if (moved) {
@@ -3291,6 +3302,7 @@ export default function TasteMapPage() {
         expandedClusterPulseId,
         voyageState.active,
         voyageTrackIdSet,
+        compactMap, activeMapView, shareMode,
     ]);
 
     // Only mount bubbles near the viewport. Analytics and clustering still use
@@ -3308,6 +3320,23 @@ export default function TasteMapPage() {
             && item.yPx >= -overscan
             && item.yPx <= bubbleFieldSize.h + overscan
         ));
+        if (compactMap && activeMapView !== 'constellation' && !shareMode) {
+            const selectedId = selectedTrackCard?.track?.id;
+            const spacing = bubbleZoom < 0.65 ? 62 : bubbleZoom < 1.1 ? 54 : 46;
+            const occupied = [];
+            const ranked = [...visible].sort((a, b) => {
+                const priority = item => (item.node.track.id === selectedId ? 100000 : 0)
+                    + (item.node.track.id === spectraExpandTrackId ? 90000 : 0)
+                    + (item.active ? 1000 : 0) + item.sizePx + hash01(item.node.track.id);
+                return priority(b) - priority(a);
+            });
+            return ranked.filter(item => {
+                const pinned = item.node.track.id === selectedId || item.node.track.id === spectraExpandTrackId;
+                if (!pinned && occupied.some(other => Math.hypot(item.xPx - other.xPx, item.yPx - other.yPx) < spacing)) return false;
+                occupied.push(item);
+                return true;
+            });
+        }
         const maxMounted = bubbleZoom < 0.5 ? 800 : bubbleZoom < 0.85 ? 1200 : 1600;
         if (visible.length <= maxMounted) return visible;
 
@@ -3410,6 +3439,7 @@ export default function TasteMapPage() {
     }, [getMountedBubbleElement]);
 
     const handleBubbleDragStart = useCallback((event, trackId) => {
+        if (event.pointerType === 'touch') return;
         if (event.button !== undefined && event.button !== 0) return;
         const element = event.currentTarget;
         if (!element || !trackId) return;
@@ -4569,7 +4599,7 @@ export default function TasteMapPage() {
     const handleBubbleClick = useCallback((track) => {
         const justPanned = Date.now() - (panRef.current.lastMoveAt || 0) < 120;
         const justDragged = Date.now() - (bubbleDragRef.current.lastMoveAt || 0) < 180;
-        if (panRef.current.moved || justPanned || justDragged) return;
+        if (Date.now() < touchGestureUntilRef.current || pinchRef.current.active || panRef.current.moved || justPanned || justDragged) return;
         if (isSpectraExpandMode && track.id === spectraExpandTrackId) {
             setExploreEnabled(false);
             setSpectraExpandTrackId(null);
@@ -5300,6 +5330,9 @@ export default function TasteMapPage() {
         const first = base.split(/\s+/)[0] || base;
         return first.length > 18 ? `${first.slice(0, 18)}…` : first;
     }, [explorerName]);
+    const [mobileMapSearch, setMobileMapSearch] = useState('');
+    const [mobileMapMenu, setMobileMapMenu] = useState(false);
+    const mobileSearchResults = mobileMapSearch.trim() ? tracks.filter(track => `${track.name} ${track.artists}`.toLowerCase().includes(mobileMapSearch.trim().toLowerCase())).slice(0, 6) : [];
     const deepAnalysisLabel = lang === 'en' ? 'Taste Story' : '취향 스토리';
     const deepAnalysisDesc = lang === 'en'
         ? 'A focused view of how your taste changes over time'
@@ -5323,6 +5356,22 @@ export default function TasteMapPage() {
 
     return (
         <div className={`tm-root tm-lang-${lang}${mapFullscreen ? ' tm-root-fullscreen' : ''}${voyageState.active ? ' is-voyage-mode' : ''}`} ref={containerRef}>
+            <div className="tm-mobile-map-toolbar">
+                <div className="tm-mobile-searchbar">
+                    <button type="button" aria-label="모바일 홈으로" onClick={() => navigate('/taste-map/mobile')}>←</button>
+                    <input aria-label="곡 또는 아티스트 찾기" placeholder={lang === 'en' ? 'Find a song or artist' : '곡 또는 아티스트 찾기'} value={mobileMapSearch} onChange={event => setMobileMapSearch(event.target.value)} />
+                    <button type="button" aria-label="지도 메뉴" aria-expanded={mobileMapMenu} onClick={() => setMobileMapMenu(value => !value)}>⋯</button>
+                </div>
+                {mobileMapSearch && <div className="tm-mobile-search-results">
+                    {mobileSearchResults.length ? mobileSearchResults.map(track => <button type="button" key={track.id} onClick={() => { openTrackCard(track, knownTrackIds.has(track.id) ? 'library' : 'recommendation'); focusBubbleTrack(track.id, { ensureZoom: 0.85 }); setMobileMapSearch(''); }}><strong>{track.name}</strong><span>{track.artists}</span></button>) : <p>일치하는 곡이 없어요.</p>}
+                </div>}
+                {mobileMapMenu && <div className="tm-mobile-map-menu">
+                    <AccountButton lang={lang} />
+                    <button type="button" onClick={() => setLang(lang === 'ko' ? 'en' : 'ko')}>{lang === 'ko' ? 'English' : '한국어'}</button>
+                    <button type="button" onClick={handleGoHome}>{lang === 'ko' ? '런칭 홈' : 'Launch home'}</button>
+                    <span>{tracks.length}곡 · {clusterStats.length}개 영역</span>
+                </div>}
+            </div>
             {/* Header */}
             <header className="tm-header">
                 <div className="tm-header-main">
@@ -6155,7 +6204,7 @@ export default function TasteMapPage() {
                                     <div
                                         ref={bubbleLayerRef}
                                         className={`tm-bubble-layer${isConstellationView ? ' tm-constellation-layer' : ''}${isSpectraExpandMode ? ' spectra-expanding' : ''}${visibleBubbleRenderItems.length > 280 ? ' high-density' : ''}${shareMode ? ' selection-mode' : ''}${shareMode && selectionSpacePressed ? ' selection-pan-ready' : ''}`}
-                                        style={{ '--tm-bubble-scale': getBubbleVisualScale(bubbleZoom) }}
+                                        style={{ '--tm-bubble-scale': compactMap && !isConstellationView ? 1 : getBubbleVisualScale(bubbleZoom) }}
                                         onPointerDown={(event) => {
                                             if (shareMode) {
                                                 if (bubbleContextMenu) setBubbleContextMenu(null);
@@ -6171,7 +6220,7 @@ export default function TasteMapPage() {
                                                 handleGroupSelectionStart(event);
                                                 return;
                                             }
-                                            if (!isConstellationView && event.target?.closest?.('.tm-bubble, .tm-bubble-share-select')) return;
+                                            if (event.pointerType !== 'touch' && !isConstellationView && event.target?.closest?.('.tm-bubble, .tm-bubble-share-select')) return;
                                             if (event.target?.closest?.('.tm-bubble-share-select')) return;
                                             if (bubbleContextMenu) setBubbleContextMenu(null);
                                             if (selectedTrackCard) {
@@ -6242,7 +6291,7 @@ export default function TasteMapPage() {
                                                     onPointerUp={(isConstellationView || shareMode) ? undefined : handleBubbleDragEnd}
                                                     onPointerCancel={(isConstellationView || shareMode) ? undefined : handleBubbleDragEnd}
                                                     style={{
-                                                        '--tm-bubble-size': node.style['--tm-bubble-size'],
+                                                        '--tm-bubble-size': compactMap && !isConstellationView ? `${Math.max(40, Math.min(66, node.size * getBubbleVisualScale(bubbleZoom)))}px` : node.style['--tm-bubble-size'],
                                                         '--tm-bubble-color': node.style['--tm-bubble-color'],
                                                         '--tm-float-duration': node.style['--tm-float-duration'],
                                                         '--tm-drift-x': node.style['--tm-drift-x'],

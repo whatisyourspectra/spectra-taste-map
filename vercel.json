@@ -1,8 +1,29 @@
 {
   "rewrites": [
-    { "source": "/mobile-start", "destination": "/index.html" },
-    { "source": "/auth/(.*)", "destination": "/index.html" },
-    { "source": "/taste-map", "destination": "/index.html" },
-    { "source": "/taste-map/(.*)", "destination": "/index.html" }
-  ]
+    {
+      "source": "/share/card",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/mobile-start",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/auth/(.*)",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/taste-map",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/taste-map/(.*)",
+      "destination": "/index.html"
+    }
+  ],
+  "build": {
+    "env": {
+      "VITE_KAKAO_JAVASCRIPT_KEY": "43f36b1e7bb7a9f73f5b634b5ae6f4b4"
+    }
+  }
 }

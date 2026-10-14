@@ -3,15 +3,16 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "SPECTRA Taste Map — dual Last.fm and Spotify-derived spatial visualizations with login-free cover matching.",
+  "description": "SPECTRA Taste Map \u2014 dual Last.fm and Spotify-derived spatial visualizations with login-free cover matching.",
   "scripts": {
-    "dev": "vite",
+    "dev": "concurrently --kill-others --names web,api \"npm run dev:web\" \"npm run server\"",
     "server": "nodemon server.js",
-    "dev:all": "concurrently \"npm run dev\" \"npm run server\"",
+    "dev:all": "npm run dev",
     "test": "node --test tests/*.test.mjs",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "dev:web": "vite"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",

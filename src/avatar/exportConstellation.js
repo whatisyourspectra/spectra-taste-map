@@ -193,3 +193,38 @@ export async function createDailyStoryImage({ theme, day, tracks, lang }) {
 
     return new Promise((resolve, reject) => canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('PNG encoding failed')), 'image/png'));
 }
+
+// Bubble card uses local/approved album images, with initials when loading fails.
+export async function createBubbleShareImage(tracks, { title, genres, count }) {
+    const canvas = document.createElement('canvas'); canvas.width = 1080; canvas.height = 1920;
+    const ctx = canvas.getContext('2d');
+    paintStoryBackground(ctx, '#a9bff1');
+    await drawSpectraLogo(ctx, { top: 186 });
+    ctx.textAlign = 'center'; ctx.fillStyle = '#e6edf8'; ctx.font = '52px sans-serif';
+    ctx.fillText(title, 540, 400, 940);
+    const sample = tracks.slice(0, 18);
+    const images = await Promise.all(sample.map(track => new Promise(resolve => {
+        const value = track.coverUrl || track.imageUrl;
+        if (!value) { resolve(null); return; }
+        const img = new Image(); img.crossOrigin = 'anonymous';
+        const timer = setTimeout(() => { img.src = ''; resolve(null); }, 4000);
+        img.onload = () => { clearTimeout(timer); resolve(img); };
+        img.onerror = () => { clearTimeout(timer); resolve(null); };
+        img.src = value;
+    })));
+    sample.forEach((track, index) => {
+        const column = index % 3, row = Math.floor(index / 3);
+        const x = 240 + column * 300 + (row % 2 ? 25 : -25);
+        const y = 560 + row * 142;
+        const radius = 64 + (index % 3) * 8;
+        ctx.save(); ctx.beginPath(); ctx.arc(x, y, radius, 0, Math.PI * 2); ctx.clip();
+        ctx.fillStyle = ['#334f75', '#574779', '#784761'][index % 3]; ctx.fillRect(x-radius, y-radius, radius*2, radius*2);
+        if (images[index]) ctx.drawImage(images[index], x-radius, y-radius, radius*2, radius*2);
+        else { ctx.fillStyle = '#dce6ff'; ctx.font = '32px sans-serif'; ctx.fillText(String(track.name || track.title || '♪').slice(0, 2), x, y+10); }
+        ctx.restore(); ctx.strokeStyle = '#b9cbeb77'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(x,y,radius,0,Math.PI*2); ctx.stroke();
+    });
+    ctx.fillStyle = '#b5c4d9'; ctx.font = '24px sans-serif'; ctx.fillText(genres.join(' · '), 540, 1510, 940);
+    ctx.fillStyle = '#8999b0'; ctx.font = '19px sans-serif'; ctx.fillText(`${count.toLocaleString()} TRACKS / MY TASTE IN BUBBLES`, 540, 1570);
+    return new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error('PNG encoding failed')),'image/png'));
+}
