@@ -105,3 +105,7 @@ VITE_AUTH_MOCK=1
 REST API 키와 Client Secret은 Supabase 대시보드에만 입력하고 `VITE_` 환경 변수에 추가하지 않습니다.
 
 공식 설정 안내: [Supabase 카카오 로그인 가이드](https://supabase.com/docs/guides/auth/social-login/auth-kakao).
+
+### 이메일 권한이 없는 카카오 앱 (KOE205)
+
+SPECTRA는 카카오 로그인 시 `profile_nickname profile_image`만 요청하고 이메일은 요청하지 않습니다. 카카오 동의항목에서 닉네임·프로필 사진을 설정하고, Supabase Kakao Provider의 **Allow users without an email**을 켠 뒤 저장하세요. 계정 데이터는 이메일 대신 Supabase 사용자 ID로 저장합니다. 이메일이 없는 카카오 계정과 기존 Google 계정은 자동으로 연결되지 않습니다.

@@ -72,7 +72,10 @@ export function AuthProvider({ children }) {
             options: {
                 redirectTo: `${window.location.origin}/auth/callback`,
                 skipBrowserRedirect: true,
-                ...(provider === 'google' ? { queryParams: { prompt: 'select_account' } } : {}),
+                // Override Kakao's default email scope; this app only needs a profile.
+                queryParams: provider === 'google'
+                    ? { prompt: 'select_account' }
+                    : { scope: 'profile_nickname profile_image' },
             },
         });
         if (error || !data.url) throw error || new Error('oauth_unavailable');
