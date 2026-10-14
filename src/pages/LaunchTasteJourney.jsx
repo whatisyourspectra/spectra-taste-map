@@ -13,7 +13,7 @@ const TRACKS = DEMO_UNIVERSES.flatMap((universe, group) =>
     coverUrl: getDemoCover(track.artists, track.name) || generateAestheticCoverSvg({ ...track, color: universe.color, index: local }),
   })));
 const CHAPTERS = [
-  { label: '이해', title: '좋아한 음악에서 나를 이해해요.', text: '내가 모아 온 곡을 한눈에 살펴보세요. 곡 정보와 장르, 곡 사이의 연결이 내가 좋아하는 음악의 공통점을 보여줍니다.', hint: '버블을 선택하면 곡 정보가 나타나요.', symbol: 'sparkle' },
+  { label: '이해', title: '좋아하는 음악에서 나를 이해해요.', text: '내가 모아 온 곡을 한눈에 살펴보세요. 곡 정보와 장르, 곡 사이의 연결이 내가 좋아하는 음악의 공통점을 보여줍니다.', hint: '버블을 선택하면 곡 정보가 나타나요.', symbol: 'sparkle' },
   { label: '분류', title: '닮은 곡을 모아 취향을 읽어요.', text: '장르와 음악적 특징이 닮은 곡들이 가까이 모입니다. 흩어져 있던 플레이리스트를 취향의 영역으로 살펴보세요.', hint: '장르 영역을 눌러 곡들이 어떻게 모이는지 살펴보세요.', symbol: 'wave' },
   { label: '확장', title: '내 취향에서 새로운 음악으로.', text: '좋아하는 한 곡을 출발점으로 연결을 따라가세요. 실제 지도에서는 탐색 버튼으로 새로운 곡을 발견하고, 마음에 드는 곡을 내 지도에 담을 수 있어요.', hint: '다른 별을 선택하면 연결의 중심이 바뀝니다.', symbol: 'matrix' },
 ];
@@ -110,7 +110,7 @@ export default function LaunchTasteJourney({ onOpen, busy }) {
   };
   return (
     <section className="lj-journey llp-section" id="features" ref={sectionRef}>
-      <header className="lj-intro"><span className="lj-kicker">01 / FROM SOUND TO SHAPE</span><h2>당신이 좋아한 음악을<br /><span>지도로 펼쳐보아요.</span></h2><p>이해 → 분류 → 확장. 아래 지도에서 직접 체험해 보세요.</p></header>
+      <header className="lj-intro llp-section-header"><span className="llp-section-eyebrow">01 / FROM SOUND TO SHAPE</span><h2 className="llp-section-title">당신이 좋아하는 음악을<br /><span>지도로 펼쳐보아요.</span></h2><p className="llp-section-sub">이해 → 분류 → 확장. 아래 지도에서 직접 체험해 보세요.</p></header>
       <div className="lj-story-grid">
         <div className="lj-story-copy">
           {CHAPTERS.map((chapter, i) => <article key={chapter.label} className={`lj-step${stage === i ? ' is-current' : ''}`}>

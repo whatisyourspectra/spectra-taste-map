@@ -9,10 +9,16 @@ import { parseTrackList } from '../utils/parseTrackList';
 import { MAX_IMPORT_TRACKS } from '../context/TasteDataContext';
 import AccountButton from '../auth/AccountButton';
 import MobileEntryCard from '../components/MobileEntryCard';
+import ImportVideoGuide from '../components/ImportVideoGuide';
 import LaunchTasteJourney, { LaunchDemoPortal, LaunchImportOrbit } from './LaunchTasteJourney';
 import useLandingSound from '../audio/useLandingSound';
 
 const TUNE_MY_MUSIC_URL = 'https://www.tunemymusic.com/transfer';
+const IMPORT_PLATFORMS = [
+  { id: 'spotify', label: 'Spotify', format: 'CSV', url: 'https://www.tunemymusic.com/ko/transfer/spotify-to-file' },
+  { id: 'apple', label: 'Apple Music', url: TUNE_MY_MUSIC_URL },
+  { id: 'youtube', label: 'YouTube Music', format: 'TXT', url: TUNE_MY_MUSIC_URL },
+];
 
 export default function LaunchLandingPage({
   onImportTracks,
@@ -51,6 +57,15 @@ export default function LaunchLandingPage({
     onScroll();
     return () => { cancelAnimationFrame(frame); reveal.disconnect(); heroSize.disconnect(); window.removeEventListener('scroll', onScroll); window.removeEventListener('resize', onScroll); };
   }, []);
+  const [selectedPlatform, setSelectedPlatform] = useState(() => {
+    try { return window.sessionStorage.getItem('spectra:import-platform') || ''; }
+    catch { return ''; }
+  });
+  const platform = IMPORT_PLATFORMS.find(item => item.id === selectedPlatform);
+  const selectPlatform = (id) => {
+    setSelectedPlatform(id);
+    try { window.sessionStorage.setItem('spectra:import-platform', id); } catch { /* selection still works */ }
+  };
   const [activeTab, setActiveTab] = useState('file'); // 'file' | 'paste'
   const [rawText, setRawText] = useState('');
   const [fileName, setFileName] = useState('');
@@ -328,32 +343,38 @@ export default function LaunchLandingPage({
           }} />
           <div className={`llp-import-box${dragActive ? ' is-receiving' : ''}${parseInfo ? ' has-music' : ''}`}>
 
-            {/* Platform Badges */}
-            <div className="llp-platform-strip">
-              <span className="llp-platform-chip">Apple Music 지원</span>
-              <span className="llp-platform-chip">Spotify 지원</span>
-              <span className="llp-platform-chip">YouTube Music 지원</span>
-              <span className="llp-platform-chip">CSV · TXT 파일</span>
+            <p className="llp-platform-question" id="import-platform-label">어디에서 음악을 듣고 있나요?</p>
+            <div className="llp-platform-strip" role="group" aria-labelledby="import-platform-label">
+              {IMPORT_PLATFORMS.map(item => (
+                <button key={item.id} type="button" className="llp-platform-chip" aria-pressed={selectedPlatform === item.id} onClick={() => selectPlatform(item.id)}>{item.label}</button>
+              ))}
+              <button type="button" className="llp-platform-chip" aria-pressed={selectedPlatform === 'file'} onClick={() => selectPlatform('file')}>이미 파일이 있어요</button>
             </div>
+            {platform && <div className="llp-export-start">
+              <a href={platform.url} target="_blank" rel="noopener noreferrer" className="llp-export-link">{platform.label} 곡 목록 내보내기 ↗<span>새 탭에서 열기</span></a>
+              <p>{platform.format || 'CSV 또는 TXT'} 파일을 다운로드한 뒤 이 화면으로 돌아와 파일을 선택해 주세요.</p>
+            </div>}
+
+            {['spotify', 'youtube'].includes(selectedPlatform) && !parseInfo && <ImportVideoGuide platform={selectedPlatform} onChooseFile={() => { setActiveTab('file'); window.requestAnimationFrame(() => fileInputRef.current?.click()); }} />}
 
             {/* Collapsible 3-Step Guide */}
             <details className="llp-guide-accordion">
               <summary className="llp-guide-summary">
-                <span className="llp-guide-title">💡 스트리밍 서비스에서 곡 목록 파일(CSV) 가져오는 법</span>
+                <span className="llp-guide-title">💡 스트리밍 서비스에서 곡 목록 파일({platform?.format || 'CSV / TXT'}) 가져오는 법</span>
                 <span className="llp-guide-toggle">안내 보기 ▾</span>
               </summary>
               <div className="llp-guide-body">
                 <ol className="llp-guide-steps">
                   <li>
-                    무료 변환 도구인{' '}
-                    <a href={TUNE_MY_MUSIC_URL} target="_blank" rel="noopener noreferrer" className="llp-guide-link">
+                    곡 목록 내보내기 도구인{' '}
+                    <a href={platform?.url || TUNE_MY_MUSIC_URL} target="_blank" rel="noopener noreferrer" className="llp-guide-link">
                       Tune My Music ↗
                     </a>
                     을 엽니다.
                   </li>
                   <li>이용 중인 음악 서비스(Apple Music, Spotify, YouTube Music 등)를 소스로 연결합니다.</li>
-                  <li>내보낼 보관함/플레이리스트를 고른 뒤, 목적지를 <b>Export to file (CSV)</b>로 선택해 다운로드합니다.</li>
-                  <li>다운로드한 CSV 또는 TXT 파일을 아래 영역에 끌어다 놓으세요.</li>
+                  <li>내보낼 보관함/플레이리스트를 고른 뒤, 목적지를 <b>파일 내보내기</b>로 고르고, <b>{platform?.format || 'CSV 또는 TXT'}</b> 형식으로 다운로드합니다.</li>
+                  <li>다운로드한 CSV 또는 TXT 파일을 아래에서 선택하세요. PC에서는 끌어다 놓아도 됩니다.</li>
                 </ol>
               </div>
             </details>
@@ -400,7 +421,7 @@ export default function LaunchLandingPage({
                   {fileName ? (
                     <strong className="llp-file-name">{fileName}</strong>
                   ) : (
-                    <span>파일을 여기로 드래그하거나 클릭하여 업로드</span>
+                    <span>다운로드한 파일 선택</span>
                   )}
                 </div>
                 <div className="llp-dropzone-hint">
@@ -435,6 +456,8 @@ export default function LaunchLandingPage({
                 )}
               </div>
             )}
+
+            {activeTab === 'file' && !fileName && <p className="llp-file-location">파일을 찾기 어렵나요? 모바일에서는 파일 선택기의 ‘다운로드’ 폴더를 확인해 주세요. PC에서는 파일을 위 영역에 끌어다 놓아도 됩니다.</p>}
 
             {parseInfo && parseInfo.count > MAX_IMPORT_TRACKS && (
               <div className="llp-import-notice">

@@ -1,14 +1,13 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 
 const TAU = Math.PI * 2;
 const random = (n) => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
 
 // An artistic interpretation of a music atlas, not measured song coordinates.
-export default function LaunchTasteMapHero({ onTry, onPulse }) {
+export default function LaunchTasteMapHero({ onPulse }) {
   const canvasRef = useRef(null);
   const modeRef = useRef(0);
   const pulseRef = useRef(null);
-  const [mode, setMode] = useState(0);
   const onPulseRef = useRef(onPulse);
   useEffect(() => { onPulseRef.current = onPulse; }, [onPulse]);
 
@@ -72,7 +71,19 @@ export default function LaunchTasteMapHero({ onTry, onPulse }) {
       canvas.style.cursor = 'grab';
     };
     const leave = () => { if (drag.active) return; pointer.active = false; pointer.tx = 0; pointer.ty = 0; dirty = true; };
+    const toggleShape = () => {
+      modeRef.current = modeRef.current === 0 ? 1 : 0;
+      dirty = true;
+    };
+    const keydown = (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        toggleShape();
+      }
+    };
     const onScroll = () => { scroll = Math.min(1, window.scrollY / height); dirty = true; };
+    canvas.addEventListener('dblclick', toggleShape);
+    canvas.addEventListener('keydown', keydown);
     canvas.addEventListener('pointermove', move, { passive: true });
     canvas.addEventListener('pointerleave', leave);
     canvas.addEventListener('pointerdown', down);
@@ -169,14 +180,22 @@ export default function LaunchTasteMapHero({ onTry, onPulse }) {
         context.strokeStyle = 'rgba(112,214,255,.5)';
         context.lineWidth = 0.6;
         context.beginPath(); context.arc(x, y, 24, 0, TAU); context.stroke();
-        context.fillStyle = '#b9cbeb'; context.font = '9px monospace';
-        if (width >= 700) context.fillText(drag.active ? 'SHAPING YOUR SPECTRA' : 'DRAG TO ROTATE · CLICK TO PULSE', Math.min(x + 35, width - 245), y + 3);
+        context.fillStyle = '#dbe8ff'; context.font = '10px monospace';
+        if (width >= 700) {
+          const label = drag.active ? 'ROTATING' : `DRAG TO ROTATE · CLICK TO PULSE · DOUBLE CLICK TO ${modeRef.current ? 'COLLECT' : 'EXPAND'}`;
+          const labelWidth = context.measureText(label).width;
+          const labelX = Math.max(12, Math.min(x + 35, width - labelWidth - 12));
+          const labelY = Math.max(22, Math.min(y + 4, height - 16));
+          context.fillText(label, labelX, labelY);
+        }
       }
     };
     frame = requestAnimationFrame(draw);
     return () => {
       cancelAnimationFrame(frame);
       resize.disconnect(); observer.disconnect();
+      canvas.removeEventListener('dblclick', toggleShape);
+      canvas.removeEventListener('keydown', keydown);
       canvas.removeEventListener('pointermove', move);
       canvas.removeEventListener('pointerleave', leave);
       canvas.removeEventListener('pointerdown', down);
@@ -187,17 +206,9 @@ export default function LaunchTasteMapHero({ onTry, onPulse }) {
     };
   }, []);
 
-  const selectMode = (next) => { modeRef.current = next; setMode(next); };
   return (
     <div className="llp-sculpture">
-      <div className="llp-sculpture-backdrop"><canvas ref={canvasRef} aria-hidden="true" /></div>
-      <div className="llp-sculpture-caption"><span>FIG. 01 — THE SHAPE OF TASTE</span><span>드래그로 회전 · 클릭으로 파동 · 아래에서 실제 곡 탐색</span></div>
-      <div className="llp-sculpture-controls" role="group" aria-label="음악 조형물 형태">
-        <button type="button" data-sound="expand" aria-pressed={mode === 1} onClick={() => selectMode(1)}><span>01</span> 펼치기</button>
-        <button type="button" data-sound="collect" aria-pressed={mode === 0} onClick={() => selectMode(0)}><span>02</span> 모아보기</button>
-        <button type="button" data-sound="pulse" onClick={() => pulseRef.current?.()} aria-label="빛의 파동 만들기"><span>↗</span> 파동</button>
-        <button type="button" onClick={onTry}>곡으로 직접 체험 ↗</button>
-      </div>
+      <div className="llp-sculpture-backdrop"><canvas ref={canvasRef} tabIndex={0} role="button" aria-label="음악 조형물: 드래그로 회전, 클릭으로 파동, 더블클릭 또는 Enter로 펼치기·모아보기 전환" /></div>
     </div>
   );
 }

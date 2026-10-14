@@ -1,10 +1,24 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { fetchCloudTaste, saveCloudTaste, deleteCloudTaste, shouldRestoreCloudTaste } from '../src/taste/tasteStorage.js';
+import { fetchCloudTaste, saveCloudTaste, deleteCloudTaste, shouldRestoreCloudTaste, shouldUploadLocalTaste } from '../src/taste/tasteStorage.js';
 
 const taste = (updatedAt, mapId = 'same-map') => ({ tracks: [{ id: 'track' }], mapId, updatedAt });
 const earlier = '2026-09-08T00:00:00.000Z';
 const later = '2026-09-09T00:00:00.000Z';
+
+test('personal uploads replace legacy demo rows even without a revision timestamp', () => {
+    const demo = { ...taste(later), tracks: [{ id: 'demo-cosmic-0' }] };
+    assert.equal(shouldUploadLocalTaste(taste(undefined), demo), true);
+    assert.equal(shouldUploadLocalTaste(taste(earlier), demo), true);
+    assert.equal(shouldUploadLocalTaste(taste(undefined), null), true);
+    assert.equal(shouldUploadLocalTaste(demo, null), false);
+    assert.equal(shouldUploadLocalTaste({ ...taste(later), stats: { backgroundEnriching: true } }, demo), false);
+    assert.equal(shouldUploadLocalTaste(taste(earlier), taste(later)), false);
+});
+
+test('an empty save response must not be shown as a confirmed database save', async () => {
+    await assert.rejects(saveCloudTaste(fakeClient({ save: async () => ({ data: null }) }), 'user', taste(later)), /not confirmed/);
+});
 
 function fakeClient({ read, save, remove } = {}) {
     return { from: () => ({

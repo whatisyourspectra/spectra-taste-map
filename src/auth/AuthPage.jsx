@@ -118,6 +118,6 @@ export default function AuthPage() {
         </>}
         {(error || sessionError) && <p className="sa-error" role="alert">{error || '로그인 상태를 확인하지 못했어요. 잠시 후 다시 시도해 주세요.'}</p>}
         {sessionError && <button className="sa-secondary" type="button" onClick={retrySession}>로그인 상태 다시 확인</button>}
-        <p className="sa-footnote">곡 목록은 현재 브라우저에 보관됩니다.<br />기기 간 지도 동기화는 준비 중이에요.</p>
+        <p className="sa-footnote">곡 목록은 브라우저에 보관하며, 로그인 후에는 계정에도 저장합니다.<br />지도 화면에서 계정 저장 상태를 확인해 주세요.</p>
     </AuthSurface>;
 }

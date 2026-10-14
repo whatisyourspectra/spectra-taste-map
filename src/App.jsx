@@ -13,6 +13,7 @@ import LaunchLandingPage from './pages/LaunchLandingPage';
 import { DEMO_UNIVERSES, getCombinedDemoTracks } from './taste/demoUniverses';
 import MapOnboarding from './onboarding/MapOnboarding';
 import SpectraLogo from './components/SpectraLogo';
+import TasteSaveStatus from './components/TasteSaveStatus';
 
 function AppInner() {
   const { hasTaste, cloudSyncing, importTracks, status, progress, error, reset } = useTasteData();
@@ -24,7 +25,7 @@ function AppInner() {
   }
 
   return (
-    <Routes>
+    <><TasteSaveStatus /><Routes>
       <Route
         path="/"
         element={
@@ -44,11 +45,11 @@ function AppInner() {
       />
       <Route
         path="/taste-map/mobile"
-        element={hasTaste ? <><TasteMapMobilePage /><MapOnboarding mobile /></> : emptyMap}
+        element={hasTaste ? <TasteMapMobilePage /> : emptyMap}
       />
       <Route path="/mobile-start" element={<MobileStart />} />
       <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    </Routes></>
   );
 }
 
@@ -99,7 +100,7 @@ function ResponsiveTasteMapRoute() {
   }, []);
 
   const mobile = isMobile && !openUniverse;
-  return <>{mobile ? <TasteMapMobilePage /> : <TasteMapPage />}<MapOnboarding key={mobile ? 'mobile' : 'desktop'} mobile={mobile} /></>;
+  return <>{mobile ? <TasteMapMobilePage /> : <TasteMapPage />}{!isMobile && <MapOnboarding />}</>;
 }
 
 function TasteSession() {

@@ -37,3 +37,7 @@
 @media (max-width: 699px) { .map-guide-panel { padding: 20px; } .map-guide-panel h2 { font-size: 20px; } }
 @media (max-height: 450px) { .map-guide-panel { padding: 16px; } .map-guide-meta { margin-bottom: 10px; } .map-guide-panel h2 { font-size: 18px; margin-bottom: 8px; } .map-guide-footer { margin-top: 14px; } }
 @media (prefers-reduced-motion: reduce) { .map-guide-panel button { transition: none; } }
+
+/* Mobile guidance participates in layout so it cannot cover nearby actions. */
+.map-guide-inline-host { width: 100%; margin: 16px 0; scroll-margin-top: 90px; }
+.map-guide-panel.is-mobile { position: relative; inset: auto; width: 100%; max-width: 100%; z-index: 1; }

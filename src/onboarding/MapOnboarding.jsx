@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import './MapOnboarding.css';
 import { positionGuide } from './guidePosition';
 
 const DESKTOP = [
   { target: '.tm-canvas-wrap', label: '별자리 항해', title: '좋아하는 곡에서 항해를 시작해요', action: '앨범이나 별을 누른 뒤', text: ' 곡 정보에서 ‘별자리 항해’를 선택해 보세요.', hint: '연결된 곡을 따라가며 새로운 음악을 발견할 수 있어요.' },
+  { target: '.ccp-card', openTrack: true, label: '곡 정보와 듣기', title: '선택한 곡에서 다음 탐험으로', action: '우하단 곡 정보 패널에서', text: ' 곡과 별자리를 확인하고, YouTube로 듣거나 ‘별자리 항해’를 시작할 수 있어요.', hint: 'Spotify로 열기, 내 지도에 추가, 닮은 곡으로 확장도 이곳에서 할 수 있어요.' },
   { target: '.tm-view-switcher', label: '지도 바꾸기', title: '취향을 다른 시선으로 봐요', action: 'Taste Field와 Spectra', text: '를 바꿔 보며 닮은 곡과 연결을 살펴보세요.' },
   { target: '.tm-dock-actions .tm-dock-action:first-child', label: '새 음악 찾기', title: '내 취향에서 한 걸음 더', action: '탐색을 켜면', text: ' 지도에 새로운 추천 곡이 나타나요.', hint: '마음에 드는 곡은 추가 버튼으로 내 지도에 담아요.' },
   { target: '.tm-dock-actions .tm-dock-action:last-child', label: '곡 모으기', title: '좋아하는 곡끼리 모아봐요', action: '선택을 켠 뒤', text: ' 곡들을 드래그해 골라보세요.', hint: '이름을 붙여 나만의 그룹으로 저장할 수 있어요.' },
@@ -17,7 +19,7 @@ const MOBILE = [
 ];
 
 export default function MapOnboarding({ mobile = false }) {
-  const key = `spectra:map-guide:v1:${mobile ? 'mobile' : 'desktop'}`;
+  const key = mobile ? 'spectra:map-guide:v1:mobile' : 'spectra:map-guide:v2:desktop';
   const steps = mobile ? MOBILE : DESKTOP;
   const [step, setStep] = useState(() => {
     try { return localStorage.getItem(key) ? null : 0; } catch { return 0; }
@@ -25,6 +27,7 @@ export default function MapOnboarding({ mobile = false }) {
   const [rect, setRect] = useState(null);
   const [placement, setPlacement] = useState(null);
   const panelRef = useRef(null);
+  const [mobileHost, setMobileHost] = useState(null);
   const restoreFocus = useRef(null);
   const close = () => {
     try { localStorage.setItem(key, 'seen'); } catch { /* The guide still closes if storage is unavailable. */ }
@@ -38,10 +41,29 @@ export default function MapOnboarding({ mobile = false }) {
     panelRef.current?.focus({ preventScroll: true });
     let target;
     let scrolled = false;
+    let openedTrack = false;
+    let triedTrack = false;
+    let host = null;
     const update = () => {
       target = document.querySelector(steps[step].target);
+      if (!target && steps[step].openTrack && !triedTrack) {
+        const trackButton = document.querySelector('.tm-bubble-item:not(.muted) .tm-bubble');
+        if (trackButton) {
+          triedTrack = true;
+          openedTrack = true;
+          trackButton.click();
+        }
+      }
+      // Keep navigation available while the track panel opens or if no track is visible.
+      if (!target && steps[step].openTrack) target = document.querySelector('.tm-canvas-wrap');
       if (!target) { setRect(null); setPlacement(null); return; }
-      if (!scrolled) { target.scrollIntoView({ block: 'center', behavior: 'instant' }); scrolled = true; }
+      if (mobile && !host) {
+        host = document.createElement('div');
+        host.className = 'map-guide-inline-host';
+        target.insertAdjacentElement('afterend', host);
+        setMobileHost(host);
+      }
+      if (!scrolled) { target.scrollIntoView({ block: mobile ? 'start' : 'center', behavior: 'instant' }); scrolled = true; }
       const box = target.getBoundingClientRect();
       const panel = panelRef.current?.getBoundingClientRect();
       if (panel) setPlacement(positionGuide(box, panel, { width: window.innerWidth, height: window.innerHeight }));
@@ -55,16 +77,15 @@ export default function MapOnboarding({ mobile = false }) {
     const observer = new ResizeObserver(update);
     if (panelRef.current) observer.observe(panelRef.current);
     window.addEventListener('keydown', escape, true);
-    return () => { window.clearInterval(timer); observer.disconnect(); window.removeEventListener('scroll', update, true); window.removeEventListener('resize', update); window.removeEventListener('keydown', escape, true); };
+    return () => { host?.remove(); if (mobile) setMobileHost(null); if (openedTrack) document.querySelector('.ccp-close-btn')?.click(); window.clearInterval(timer); observer.disconnect(); window.removeEventListener('scroll', update, true); window.removeEventListener('resize', update); window.removeEventListener('keydown', escape, true); };
   }, [step, mobile]);
   if (step === null) return <button type="button" className="map-guide-reopen" onClick={() => setStep(0)} aria-label="취향 지도 사용 안내 다시 보기">? <span>사용 안내</span></button>;
-  return <>
-    {rect && <div className="map-guide-highlight" aria-hidden="true" style={{ left: rect.left, top: rect.top, width: rect.width, height: rect.height }} />}
+  const panel = (
     <section ref={panelRef} tabIndex={-1} role="dialog" aria-labelledby="map-guide-title" aria-describedby="map-guide-description"
       className={`map-guide-panel${mobile ? ' is-mobile' : ''}`}
-      data-side={placement?.side || undefined}
-      style={{ left: placement?.left ?? 16, top: placement?.top ?? 16, visibility: placement ? 'visible' : 'hidden', '--guide-arrow': `${placement?.arrow || 24}px` }}>
-      {placement?.side && <span className="map-guide-arrow" aria-hidden="true" />}
+      data-side={!mobile ? placement?.side || undefined : undefined}
+      style={mobile ? undefined : { left: placement?.left ?? 16, top: placement?.top ?? 16, visibility: placement ? 'visible' : 'hidden', '--guide-arrow': `${placement?.arrow || 24}px` }}>
+      {!mobile && placement?.side && <span className="map-guide-arrow" aria-hidden="true" />}
       <div className="map-guide-meta">
         <span>{steps[step].label}<span className="map-guide-count" aria-live="polite">{step + 1}/{steps.length}</span></span>
         <button type="button" className="map-guide-dismiss" onClick={close}>나중에 보기</button>
@@ -77,5 +98,9 @@ export default function MapOnboarding({ mobile = false }) {
         <button type="button" className="map-guide-next" onClick={() => step === steps.length - 1 ? close() : setStep(step + 1)}>{step === steps.length - 1 ? '시작하기' : '다음'}</button>
       </div>
     </section>
+  );
+  return <>
+    {rect && <div className="map-guide-highlight" aria-hidden="true" style={{ left: rect.left, top: rect.top, width: rect.width, height: rect.height }} />}
+    {mobile ? mobileHost && createPortal(panel, mobileHost) : panel}
   </>;
 }

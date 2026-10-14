@@ -1,0 +1,26 @@
+.import-video-guide { margin: 20px 0; padding: 20px; border: 1px solid #a1bcf32b; border-radius: 16px; background: #0a1120; text-align: left; }
+.ivg-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; padding: 0; margin: 0 0 20px; list-style: none; }
+.ivg-steps button { width: 100%; min-height: 60px; padding: 10px; border: 0; border-bottom: 2px solid #ffffff15; background: none; color: #a0aec5; text-align: left; font: inherit; font-size: 14px; cursor: pointer; }
+.ivg-steps button span { display: block; margin-bottom: 6px; color: #8da6ca; font-size: 12px; }
+.ivg-steps button[aria-current] { color: #d9f3ff; border-bottom-color: #70d6ff; }
+.ivg-copy h3 { margin: 0 0 8px; color: #e4ecfa; font-size: 18px; font-weight: 550; }
+.ivg-copy p { margin: 0 0 16px; color: #b1bfd4; font-size: 15px; line-height: 1.8; word-break: keep-all; }
+.ivg-media video { display: block; width: 100%; aspect-ratio: 16 / 9; background: #070b18; border-radius: 10px; }
+.ivg-media .ivg-note { color: #96a8c3; font-size: 13px; line-height: 1.7; margin: 10px 0 0; }
+.ivg-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+.ivg-actions button, .ivg-expand { min-height: 44px; padding: 10px 14px; border: 1px solid #70d6ff44; border-radius: 8px; background: transparent; color: #cbeeff; font: inherit; font-size: 14px; cursor: pointer; }
+.ivg-actions button:last-child { margin-left: auto; background: #70d6ff12; }
+.ivg-actions button:disabled { opacity: .4; cursor: default; }
+.ivg-expand, .ivg-mobile-copy { display: none; }
+.import-video-guide button:focus-visible { outline: 2px solid #70d6ff; outline-offset: 3px; }
+@media (max-width: 600px) {
+ .import-video-guide { padding: 16px; }
+ .ivg-steps { gap: 6px; }
+ .ivg-steps button { padding: 8px 3px; font-size: 13px; }
+ .ivg-desktop-copy { display: none; }
+ .ivg-mobile-copy, .ivg-expand { display: block; }
+ .ivg-media, .ivg-replay { display: none; }
+ .is-expanded .ivg-media { display: block; margin-top: 12px; }
+ .is-expanded .ivg-replay { display: block; }
+ .ivg-actions button:last-child { margin-left: 0; }
+}

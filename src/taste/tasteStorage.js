@@ -135,6 +135,13 @@ export function shouldRestoreCloudTaste(local, cloud) {
     return Number.isFinite(cloudTime) && cloudTime > localTime;
 }
 
+export function shouldUploadLocalTaste(local, cloud) {
+    if (!local?.tracks?.length || isDemoTaste(local) || local.stats?.backgroundEnriching) return false;
+    // Old demo rows are not a personal revision, regardless of their timestamp.
+    if (!cloud || isDemoTaste(cloud)) return true;
+    return Date.parse(local.updatedAt) > Date.parse(cloud.updatedAt);
+}
+
 export async function fetchCloudTaste(supabase, ownerId) {
     if (!supabase || !ownerId) return null;
     return enqueueCloudOperation(supabase, ownerId, async () => {
@@ -176,6 +183,7 @@ export async function saveCloudTaste(supabase, ownerId, tasteData) {
             .select('updated_at')
             .maybeSingle();
         if (error) throw error;
+        if (!data) throw new Error('Cloud save was not confirmed');
         return data;
     });
 }

@@ -13,6 +13,7 @@ import {
     saveCloudTaste,
     deleteCloudTaste,
     shouldRestoreCloudTaste,
+    shouldUploadLocalTaste,
 } from '../taste/tasteStorage';
 import { uniqueTracks } from '../taste/buildTasteState';
 import { appendDecision, reflectionKey } from '../reflection/reflectionStorage';
@@ -142,6 +143,24 @@ export function TasteDataProvider({ children, ownerId = null }) {
     }));
     const [error, setError] = useState(null);
     const [cloudSyncing, setCloudSyncing] = useState(() => Boolean(ownerId && supabase && (!initial?.tracks || initial.tracks.length === 0)));
+    const [cloudSaveStatus, setCloudSaveStatus] = useState('local');
+    const cloudSaveAttemptRef = useRef(0);
+    const currentTasteRef = useRef(initial);
+
+    const saveToAccount = useCallback(async (taste) => {
+        if (!ownerId || !supabase || !taste?.tracks?.length || isDemoTaste(taste)) return false;
+        const attempt = ++cloudSaveAttemptRef.current;
+        setCloudSaveStatus('saving');
+        try {
+            await saveCloudTaste(supabase, ownerId, taste);
+            if (attempt === cloudSaveAttemptRef.current) setCloudSaveStatus('saved');
+            return true;
+        } catch (error) {
+            if (attempt === cloudSaveAttemptRef.current) setCloudSaveStatus('error');
+            console.error('[TasteStorage] Account save failed:', error);
+            return false;
+        }
+    }, [ownerId]);
 
     const importTracks = useCallback(async (parsedList, options = {}) => {
         const rawList = Array.isArray(parsedList) ? parsedList : [];
@@ -152,6 +171,7 @@ export function TasteDataProvider({ children, ownerId = null }) {
         }
 
         const { items: list, capped, originalTotal } = limitImportTracks(rawList);
+        setCloudSaveStatus('local');
 
         // Instant path for pre-enriched demo tracks or tracks with precomputed features
         if (options.preEnriched || (rawList.length > 0 && typeof rawList[0].valence === 'number')) {
@@ -175,13 +195,15 @@ export function TasteDataProvider({ children, ownerId = null }) {
             setMapId(id);
             setStatus('ready');
             setError(null);
-            persistLocalTaste(sessionStorage, ownerId, {
+            const completedTaste = {
                 tracks: list,
                 featuresSource: source,
                 stats: nextStats,
                 mapId: id,
                 updatedAt: new Date().toISOString(),
-            });
+            };
+            currentTasteRef.current = completedTaste;
+            persistLocalTaste(sessionStorage, ownerId, completedTaste);
 
             if (typeof window !== 'undefined' && list.length > 0) {
                 enrichTracksWithArtwork(list, (updatedList) => {
@@ -205,6 +227,7 @@ export function TasteDataProvider({ children, ownerId = null }) {
                 }
             }
 
+            await saveToAccount(completedTaste);
             return { ok: true };
         }
 
@@ -261,6 +284,7 @@ export function TasteDataProvider({ children, ownerId = null }) {
                 updatedAt: new Date().toISOString(),
             };
             persistLocalTaste(sessionStorage, ownerId, payloadToPersist);
+            currentTasteRef.current = payloadToPersist;
             return payloadToPersist;
         };
 
@@ -368,13 +392,9 @@ export function TasteDataProvider({ children, ownerId = null }) {
 
         if (importRunRef.current !== runId) return { ok: false, cancelled: true };
         const completedTaste = publish('ready');
-        if (ownerId && supabase) {
-            saveCloudTaste(supabase, ownerId, completedTaste).catch((error) => {
-                console.error('[TasteStorage] Cloud save failed:', error);
-            });
-        }
+        await saveToAccount(completedTaste);
         return { ok: true, count: collectedById.size, failedCount, isCapped: capped, originalImportCount: originalTotal };
-    }, [ownerId]);
+    }, [ownerId, saveToAccount]);
 
     useEffect(() => {
         let disposed = false;
@@ -413,17 +433,23 @@ export function TasteDataProvider({ children, ownerId = null }) {
                     total: Number(cloud.stats?.totalAvailable) || cloud.tracks.length,
                 });
                 persistLocalTaste(sessionStorage, ownerId, cloud);
-            } else if (initial?.tracks?.length && !isDemoTaste(initial) && !initial?.stats?.backgroundEnriching
-                && (!cloud || Date.parse(initial.updatedAt) > Date.parse(cloud.updatedAt))) {
-                await saveCloudTaste(supabase, ownerId, initial);
+                currentTasteRef.current = cloud;
+                setCloudSaveStatus('saved');
+            } else if (shouldUploadLocalTaste(initial, cloud)) {
+                await saveToAccount(initial);
+            } else if (cloud?.tracks?.length && !isDemoTaste(cloud)) {
+                setCloudSaveStatus('saved');
             }
         }).catch((error) => {
-            if (!disposed) console.error('[TasteStorage] Initial cloud sync failed:', error);
+            if (!disposed) {
+                setCloudSaveStatus('error');
+                console.error('[TasteStorage] Initial cloud sync failed:', error);
+            }
         }).finally(() => {
             if (!disposed) setCloudSyncing(false);
         });
         return () => { disposed = true; };
-    }, [ownerId, initial]);
+    }, [ownerId, initial, saveToAccount]);
 
     useEffect(() => {
         if (tracks.length > 0 && tracks.some((t) => !t.coverUrl || t.coverUrl.startsWith('data:image/svg+xml'))) {
@@ -451,6 +477,9 @@ export function TasteDataProvider({ children, ownerId = null }) {
         setStatus('idle');
         setError(null);
         setProgress({ done: 0, total: 0 });
+        currentTasteRef.current = null;
+        cloudSaveAttemptRef.current++;
+        setCloudSaveStatus('local');
         resumeImportRef.current = null;
         const demo = isDemoTaste({ tracks, stats });
         if (demo) clearDemoTaste(sessionStorage, ownerId);
@@ -492,15 +521,41 @@ export function TasteDataProvider({ children, ownerId = null }) {
                     updatedAt: new Date().toISOString(),
                 };
                 persistLocalTaste(sessionStorage, ownerId, payload);
-                if (ownerId && supabase) {
-                    saveCloudTaste(supabase, ownerId, payload).catch((err) => {
-                        console.error('[TasteStorage] Cloud save on recordDecision failed:', err);
-                    });
-                }
+                currentTasteRef.current = payload;
+                void saveToAccount(payload);
                 return updated;
             });
         }
-    }, [mapId, initial?.mapId, ownerId, featuresSource, stats?.failedCount, stats?.isDemo]);
+    }, [mapId, initial?.mapId, ownerId, featuresSource, stats?.failedCount, stats?.isDemo, saveToAccount]);
+
+    const retryCloudSync = useCallback(async () => {
+        if (!ownerId || !supabase) return;
+        const runId = importRunRef.current;
+        setCloudSyncing(true);
+        try {
+            // Read before retrying a save: another device may have a newer map.
+            const cloud = await fetchCloudTaste(supabase, ownerId);
+            if (importRunRef.current !== runId) return;
+            const local = currentTasteRef.current;
+            if (!local?.stats?.backgroundEnriching && shouldRestoreCloudTaste(local, cloud)) {
+                currentTasteRef.current = cloud;
+                setTracks(cloud.tracks);
+                setFeaturesSource(cloud.featuresSource);
+                setStats(cloud.stats);
+                setMapId(cloud.mapId);
+                setStatus('ready');
+                persistLocalTaste(sessionStorage, ownerId, cloud);
+                setCloudSaveStatus('saved');
+            } else if (shouldUploadLocalTaste(local, cloud)) {
+                await saveToAccount(local);
+            } else {
+                setCloudSaveStatus(cloud && !isDemoTaste(cloud) ? 'saved' : 'local');
+            }
+        } catch (error) {
+            if (importRunRef.current === runId) setCloudSaveStatus('error');
+            console.error('[TasteStorage] Retry failed:', error);
+        } finally { setCloudSyncing(false); }
+    }, [ownerId, saveToAccount]);
 
     const value = {
         tracks,
@@ -511,6 +566,8 @@ export function TasteDataProvider({ children, ownerId = null }) {
         progress,
         error,
         cloudSyncing,
+        cloudSaveStatus,
+        retryCloudSync,
         hasTaste: tracks.length > 0,
         importTracks,
         recordDecision,

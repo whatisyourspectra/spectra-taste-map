@@ -1,0 +1,6 @@
+.taste-save-status { position: fixed; left: 16px; bottom: max(16px, env(safe-area-inset-bottom)); z-index: 45; display: flex; align-items: center; gap: 12px; max-width: calc(100vw - 32px); padding: 10px 14px; border: 1px solid #8ca9d333; border-radius: 12px; background: #101827ed; color: #b7c8de; font-size: 13px; box-shadow: 0 4px 20px #0003; }
+.taste-save-status.saved { color: #a7daca; }
+.taste-save-status.error { border-color: #dba86c66; color: #efc695; }
+.taste-save-status button { border: 1px solid currentColor; border-radius: 7px; padding: 5px 9px; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+
+@media (max-width: 699px) { .taste-save-status { bottom: calc(72px + env(safe-area-inset-bottom)); } }

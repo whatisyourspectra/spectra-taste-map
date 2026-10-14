@@ -1232,3 +1232,28 @@
   .llp-sculpture-controls { gap: 16px; left: 22px; justify-content: space-between; }
   .llp-sculpture-controls button { font-size: 14px; letter-spacing: 0; }
 }
+
+/* Legible secondary copy, shared by all landing chapters. */
+.llp-section-eyebrow { font-size: 15px; line-height: 1.7; letter-spacing: .14em; }
+.llp-hero-footnote { font-size: 14px; letter-spacing: .06em; }
+.llp-sculpture-caption span:first-child { font-size: 14px; }
+.llp-sculpture-controls button, .llp-sculpture-controls button span { font-size: 15px; }
+.llp-mobile-entry p, .llp-mobile-actions a, .llp-mobile-actions button { font-size: 16px; }
+@media (max-width: 600px) {
+  .llp-section-eyebrow { font-size: 14px; letter-spacing: .08em; }
+  .llp-hero-footnote { font-size: 13px; letter-spacing: .02em; }
+}
+
+/* Platform selection keeps export and upload in the same flow. */
+.llp-platform-question { margin: 24px 0 12px; color: #dce6f7; font-size: 16px; }
+button.llp-platform-chip { font: inherit; font-size: 14px; cursor: pointer; min-height: 44px; }
+button.llp-platform-chip[aria-pressed='true'] { color: #d9f3ff; border-color: #70d6ff; background: #70d6ff18; }
+.llp-export-start { margin: 20px 0; }
+.llp-export-link { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; min-height: 52px; padding: 14px 18px; border: 1px solid #70d6ff55; border-radius: 12px; background: #70d6ff0d; color: #d9f3ff; font-size: 16px; text-decoration: none; }
+.llp-export-link span { font-size: 13px; color: #a0aec5; }
+.llp-export-start p, .llp-file-location { color: #a0aec5; font-size: 14px; line-height: 1.8; word-break: keep-all; }
+
+/* Match the browser canvas to the landing when scrolling beyond its edges. */
+html:has(.llp-root), body:has(.llp-root) {
+  background-color: #050812;
+}
