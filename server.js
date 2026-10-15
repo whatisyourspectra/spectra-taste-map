@@ -192,6 +192,12 @@ app.get('/api/youtube/search', asyncRoute(async (req, res) => {
 // Returns the same shape the old /api/me/liked-tracks-features did, so the taste
 // map front-end consumes it unchanged.
 
+async function enrichmentDeadline(promise, fallback, ms = 7000) {
+    let timer;
+    try { return await Promise.race([promise, new Promise(resolve => {timer = setTimeout(() => resolve(fallback), ms);})]); }
+    finally {clearTimeout(timer);}
+}
+
 app.post('/api/taste/enrich', asyncRoute(async (req, res) => {
     if (!isSpotifyConfigured()) {
         return res.status(503).json({ error: 'SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET are not configured on the server.' });
@@ -249,7 +255,7 @@ app.post('/api/taste/enrich', asyncRoute(async (req, res) => {
 
     const enriched = await mapLimit(items, 5, async (item) => {
         const [spotifyInfo, lastfmInfo] = await Promise.all([
-            getSpotifyTrackInfo(item.artist, item.title, item.album).catch((error) => {
+            enrichmentDeadline(getSpotifyTrackInfo(item.artist, item.title, item.album), null).catch((error) => {
                 spotifyErrorCount += 1;
                 if (error?.code === 'SPOTIFY_CIRCUIT_OPEN') {
                     if (!spotifyCircuitNoticeShown) {
@@ -263,13 +269,13 @@ app.post('/api/taste/enrich', asyncRoute(async (req, res) => {
                 }
                 return null;
             }),
-            getLastfmTrackInfo(item.artist, item.title),
+            enrichmentDeadline(getLastfmTrackInfo(item.artist, item.title), null),
         ]);
         let lastfmTags = lastfmInfo?.tags || [];
         if (lastfmTags.length === 0) {
             const artistKey = item.artist.toLowerCase();
             if (!artistTagCache.has(artistKey)) {
-                artistTagCache.set(artistKey, await getArtistTopTags(item.artist));
+                artistTagCache.set(artistKey, await enrichmentDeadline(getArtistTopTags(item.artist), [], 3000));
             }
             lastfmTags = artistTagCache.get(artistKey) || [];
         }
@@ -285,6 +291,7 @@ app.post('/api/taste/enrich', asyncRoute(async (req, res) => {
         const displayArtist = spotifyInfo?.artist || lastfmInfo?.artist || item.artist;
         const displayName = spotifyInfo?.name || lastfmInfo?.name || item.title;
         return {
+            importKey: `${item.artist.trim().toLowerCase()}|${item.title.trim().toLowerCase()}`,
             id: spotifyInfo?.id || lastfmInfo?.mbid || slugId(displayArtist, displayName),
             name: displayName,
             artists: displayArtist,

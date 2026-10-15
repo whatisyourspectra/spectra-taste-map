@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import './LaunchLandingPage.css';
 import LaunchTasteMapHero from './LaunchTasteMapHero';
 import { DEMO_UNIVERSES, getCombinedDemoTracks } from '../taste/demoUniverses';
-import { parseTrackList } from '../utils/parseTrackList';
+import { parseTrackList, parseTrackListDetailed, readTrackFile } from '../utils/parseTrackList';
 import { MAX_IMPORT_TRACKS } from '../context/TasteDataContext';
 import AccountButton from '../auth/AccountButton';
 import MobileEntryCard from '../components/MobileEntryCard';
@@ -91,16 +91,15 @@ export default function LaunchLandingPage({
 
   const updateFromText = useCallback((text) => {
     setRawText(text);
-    const parsed = parseTrackList(text);
-    setParseInfo(parsed.length > 0 ? { count: parsed.length, tracks: parsed } : null);
+    const report = parseTrackListDetailed(text);
+    setParseInfo({ ...report, count: report.tracks.length });
   }, []);
 
-  const handleFile = useCallback((file) => {
+  const handleFile = useCallback(async (file) => {
     if (!file) return;
     setFileName(file.name);
-    const reader = new FileReader();
-    reader.onload = () => updateFromText(String(reader.result || ''));
-    reader.readAsText(file);
+    try { updateFromText(await readTrackFile(file)); }
+    catch (error) { setParseInfo({count:0, tracks:[], warnings:[error.message]}); }
   }, [updateFromText]);
 
   const handleDragEnter = useCallback((e) => {
@@ -412,7 +411,7 @@ export default function LaunchLandingPage({
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".csv,.txt,text/csv,text/plain"
+                  accept=".csv,.txt,.tsv,.json,text/csv,text/plain,application/json"
                   style={{ display: 'none' }}
                   onChange={(e) => handleFile(e.target.files?.[0])}
                 />
@@ -459,6 +458,8 @@ export default function LaunchLandingPage({
 
             {activeTab === 'file' && !fileName && <p className="llp-file-location">파일을 찾기 어렵나요? 모바일에서는 파일 선택기의 ‘다운로드’ 폴더를 확인해 주세요. PC에서는 파일을 위 영역에 끌어다 놓아도 됩니다.</p>}
 
+            {parseInfo?.warnings?.map(warning => <p className="llp-import-notice" role="status" key={warning}>{warning}</p>)}
+            {parseInfo?.duplicates > 0 && <p className="llp-file-location">중복된 {parseInfo.duplicates}곡을 하나로 합쳤어요.</p>}
             {parseInfo && parseInfo.count > MAX_IMPORT_TRACKS && (
               <div className="llp-import-notice">
                 한 번에 최대 {MAX_IMPORT_TRACKS.toLocaleString()}곡까지 가져올 수 있습니다. 총 {parseInfo.count.toLocaleString()}곡 중{' '}
@@ -470,11 +471,11 @@ export default function LaunchLandingPage({
               type="button"
               className="llp-submit-btn"
               onClick={handleGenerate}
-              disabled={busy || !parseInfo}
+              disabled={busy || !parseInfo?.count}
             >
               {busy
                 ? `취향 은하수 분석 중… ${pct}%`
-                : parseInfo
+                : parseInfo?.count
                 ? (parseInfo.count > MAX_IMPORT_TRACKS
                   ? `앞의 ${MAX_IMPORT_TRACKS.toLocaleString()}곡으로 나의 taste맵 생성하기`
                   : `${parseInfo.count.toLocaleString()}곡으로 나의 taste맵 생성하기`)

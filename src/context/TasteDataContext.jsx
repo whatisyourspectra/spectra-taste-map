@@ -15,14 +15,16 @@ import {
     shouldRestoreCloudTaste,
     shouldUploadLocalTaste,
 } from '../taste/tasteStorage';
+import { pendingImportTrack, mergeImportedTracks } from '../utils/importTracks';
+import { importTrackKey } from '../utils/parseTrackList';
 import { uniqueTracks } from '../taste/buildTasteState';
 import { appendDecision, reflectionKey } from '../reflection/reflectionStorage';
 import { supabase } from '../auth/supabaseClient';
-const CHUNK_SIZE = 40;
-const PREVIEW_TRACK_COUNT = 32;
-const BACKGROUND_REQUEST_CONCURRENCY = 1;
-const BACKGROUND_PUBLISH_EVERY = 5;
-const REQUEST_RETRY_COUNT = 2;
+const CHUNK_SIZE = 5;
+const PREVIEW_TRACK_COUNT = 5;
+const BACKGROUND_REQUEST_CONCURRENCY = 2;
+const BACKGROUND_PUBLISH_EVERY = 1;
+const REQUEST_RETRY_COUNT = 1;
 const MIN_RECOVERY_CHUNK_SIZE = 10;
 
 import { MAX_IMPORT_TRACKS, limitImportTracks } from '../utils/sampleTracks.js';
@@ -54,6 +56,7 @@ function splitPreviewTracks(list, previewCount = PREVIEW_TRACK_COUNT) {
 async function requestEnrichedTracks(chunk) {
     const res = await fetch(api('/api/taste/enrich'), {
         method: 'POST',
+        signal: AbortSignal.timeout(20000),
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tracks: chunk }),
     });
@@ -85,7 +88,7 @@ async function requestChunkWithRecovery(chunk, mergeResponse, isActive, attempt 
         const data = await requestEnrichedTracks(chunk);
         if (!isActive()) return { failedCount: 0, cancelled: true };
         mergeResponse(data);
-        return { failedCount: 0, cancelled: false };
+        return { failedCount: Math.max(0, chunk.length - (data?.tracks?.length || 0)), cancelled: false };
     } catch (error) {
         if (!isActive()) return { failedCount: 0, cancelled: true };
 
@@ -240,7 +243,7 @@ export function TasteDataProvider({ children, ownerId = null }) {
         importRunRef.current = runId;
         const id = options.mapId || newMapId();
         const collectedById = new Map(
-            seededTracks.filter((track) => track?.id).map((track) => [track.id, track]),
+            list.map(track => [importTrackKey(track), seededTracks.find(seed => (seed.importKey || importTrackKey(seed)) === importTrackKey(track)) || pendingImportTrack(track)]),
         );
         let source = options.featuresSource || 'none';
         let processedCount = 0;
@@ -248,9 +251,7 @@ export function TasteDataProvider({ children, ownerId = null }) {
 
         const mergeResponse = (data) => {
             if (Array.isArray(data?.tracks)) {
-                data.tracks.forEach((track) => {
-                    if (track?.id) collectedById.set(track.id, track);
-                });
+                mergeImportedTracks(collectedById, data.tracks);
             }
             if (data?.featuresSource && data.featuresSource !== 'none') {
                 source = data.featuresSource;
@@ -267,6 +268,7 @@ export function TasteDataProvider({ children, ownerId = null }) {
                 isCapped: capped,
                 processedCount,
                 failedCount,
+                metadataPendingCount: nextTracks.filter(track => track.metadataPending).length,
                 backgroundEnriching: nextStatus === 'enriching',
             };
             setTracks(nextTracks);
@@ -274,7 +276,7 @@ export function TasteDataProvider({ children, ownerId = null }) {
             setStats(nextStats);
             setMapId(id);
             setStatus(nextStatus);
-            const pendingSourceList = nextStatus === 'enriching' ? list : null;
+            const pendingSourceList = nextStatus === 'enriching' || nextStats.metadataPendingCount > 0 ? list : null;
             const payloadToPersist = {
                 tracks: nextTracks,
                 featuresSource: source,
@@ -288,6 +290,9 @@ export function TasteDataProvider({ children, ownerId = null }) {
             return payloadToPersist;
         };
 
+        // Make every imported title available immediately; enrich in the background.
+        publish('enriching');
+        options.onPreviewReady?.();
         try {
             const { preview, remaining } = splitPreviewTracks(list);
             const previewResult = await requestChunkWithRecovery(
@@ -299,33 +304,13 @@ export function TasteDataProvider({ children, ownerId = null }) {
                 return { ok: false, cancelled: true };
             }
             failedCount += previewResult.failedCount;
-            if (collectedById.size === 0) {
-                // If backend is offline or returns nothing, fallback to deterministic synthetic features
-                const syntheticTracks = list.map((track, idx) => {
-                    const hashVal = (str) => {
-                        let h = 0;
-                        for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
-                        return (h % 1000) / 1000;
-                    };
-                    const name = track.name || `Track ${idx + 1}`;
-                    const artists = track.artists || 'Unknown Artist';
-                    return {
-                        id: `track-${idx}-${hashVal(name + artists)}`,
-                        name,
-                        artists,
-                        album: track.album || `${artists} Single`,
-                        valence: 0.25 + 0.55 * hashVal(`${name}:val`),
-                        energy: 0.25 + 0.65 * hashVal(`${name}:eng`),
-                        danceability: 0.3 + 0.55 * hashVal(`${name}:dan`),
-                        acousticness: 0.1 + 0.7 * hashVal(`${name}:aco`),
-                        instrumentalness: hashVal(`${name}:ins`) > 0.7 ? 0.6 : 0.05,
-                        genres: [artists.toLowerCase().replace(/[^a-z0-9]/g, '') || 'music', 'indie', 'pop'],
-                        spotifyGenres: ['indie', 'pop'],
-                        featuresSource: 'synthetic',
-                    };
-                });
-                syntheticTracks.forEach((t) => collectedById.set(t.id, t));
-                source = 'synthetic';
+            if (previewResult.failedCount === preview.length) {
+                failedCount = list.length;
+                processedCount = list.length;
+                setProgress({done: list.length, total: list.length});
+                const retained = publish('ready');
+                await saveToAccount(retained);
+                return {ok: true, count: collectedById.size, failedCount};
             }
             processedCount = preview.length;
             setProgress({ done: processedCount, total: list.length });
@@ -557,7 +542,14 @@ export function TasteDataProvider({ children, ownerId = null }) {
         } finally { setCloudSyncing(false); }
     }, [ownerId, saveToAccount]);
 
+    const retryImportAnalysis = useCallback(() => {
+        const taste = currentTasteRef.current;
+        if (!taste?.pendingSourceList?.length || taste.stats?.backgroundEnriching) return;
+        return importTracks(taste.pendingSourceList, {seedTracks: taste.tracks, mapId: taste.mapId, featuresSource: taste.featuresSource});
+    }, [importTracks]);
+
     const value = {
+        retryImportAnalysis,
         tracks,
         featuresSource,
         stats,

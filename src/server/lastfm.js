@@ -90,7 +90,7 @@ export async function mapLimit(items, limit, fn) {
     return results;
 }
 
-async function lastfmRequest(method, params, { retries = 3, label = method } = {}) {
+async function lastfmRequest(method, params, { retries = 1, label = method } = {}) {
     if (!LASTFM_API_KEY) {
         throw new Error('Missing LASTFM_API_KEY');
     }
@@ -104,7 +104,7 @@ async function lastfmRequest(method, params, { retries = 3, label = method } = {
     let lastError = null;
     for (let attempt = 0; attempt <= retries; attempt += 1) {
         try {
-            const res = await fetch(url);
+            const res = await fetch(url, { signal: AbortSignal.timeout(4000) });
             if (res.status === 429 || res.status >= 500) {
                 lastError = new Error(`${label} failed (${res.status})`);
                 if (attempt >= retries) break;

@@ -5407,6 +5407,7 @@ export default function TasteMapPage() {
                         {copy.mappedSubtitle}
                     </p>
                     <div className="tm-header-live" aria-label="map status">
+                        {Number(importedStats?.metadataPendingCount) > 0 && <span>{importedStats.metadataPendingCount}곡 분석 대기 · 원본 곡 정보 유지</span>}
                         <span className="tm-live-signal"><span aria-hidden />LIVE FIELD</span>
                         <span>{tracks.length} {lang === 'en' ? 'memories' : '개의 기억'}</span>
                         <span>{clusterStats.length} {lang === 'en' ? 'regions' : '개의 영역'}</span>
@@ -5426,8 +5427,8 @@ export default function TasteMapPage() {
                         {importStatus === 'ready' && Number(importedStats?.failedCount) > 0 && (
                             <span>
                                 {lang === 'en'
-                                    ? `${importedStats.failedCount} tracks could not be added`
-                                    : `${importedStats.failedCount}곡 추가 실패`}
+                                    ? `${importedStats.failedCount} tracks awaiting analysis`
+                                    : `${importedStats.failedCount}곡 분석 대기`}
                             </span>
                         )}
                     </div>
