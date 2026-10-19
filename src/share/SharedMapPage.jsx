@@ -1,87 +1,144 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { Link, useParams } from 'react-router-dom';
 import SpectraLogo from '../components/SpectraLogo';
+import SharedMapCanvas from './SharedMapCanvas';
 import { fetchSharedMap } from './sharedMapStorage';
-import './share.css';
-const colors = ['#78d5ff', '#c0a3ff', '#f39acb', '#ffd28f'];
-function position(track, index) {
-    return { x: 80 + track.x * 640 + Math.sin(index * 2.4) * 24, y: 70 + (1 - track.y) * 500 + Math.cos(index * 3.1) * 24 };
+import './SharedMapPage.css';
+
+function Artwork({ track }) {
+    return <span className="public-map-artwork" aria-hidden="true"><span>♪</span>{track.coverUrl && <img src={track.coverUrl} alt="" loading="lazy" onError={event => { event.currentTarget.style.visibility = 'hidden'; }} />}</span>;
 }
-export default function SharedMapPage() {
-    const { id } = useParams();
+
+function SharedMapExplorer({ id }) {
     const [map, setMap] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
     const [selected, setSelected] = useState(null);
+    const [focusRequest, setFocusRequest] = useState(0);
     const [view, setView] = useState('constellation');
     const [search, setSearch] = useState('');
-    const [camera, setCamera] = useState({ x: 0, y: 0, zoom: 1 });
-    const drag = useRef(null);
-    const moved = useRef(false);
+    const [expanded, setExpanded] = useState(false);
+    const [listLimit, setListLimit] = useState(50);
+    const searchRef = useRef(null);
+    const pageRef = useRef(null);
+    const sheetHandle = useRef(null);
+    const sheetGesture = useRef(null);
+    const swiped = useRef(false);
+    useEffect(() => {
+        const viewport = window.visualViewport;
+        if (!viewport) return;
+        const syncViewport = () => {
+            pageRef.current?.style.setProperty('--share-viewport-height', `${viewport.height}px`);
+            pageRef.current?.style.setProperty('--share-viewport-top', `${viewport.offsetTop}px`);
+            if (pageRef.current) pageRef.current.dataset.compactViewport = String(viewport.height <= 500);
+        };
+        syncViewport();
+        viewport.addEventListener('resize', syncViewport);
+        viewport.addEventListener('scroll', syncViewport);
+        return () => { viewport.removeEventListener('resize', syncViewport); viewport.removeEventListener('scroll', syncViewport); };
+    }, []);
     useEffect(() => {
         let disposed = false;
-        fetchSharedMap(id).then(data => { if (!disposed) { setMap(data); setView(data?.style || 'constellation'); } }).catch(() => { if (!disposed) setError(true); }).finally(() => { if (!disposed) setLoading(false); });
+        fetchSharedMap(id).then(data => {
+            if (!disposed) { setMap(data); setView(data?.style === 'bubbles' ? 'bubbles' : 'constellation'); }
+        }).catch(() => { if (!disposed) setError(true); }).finally(() => { if (!disposed) setLoading(false); });
         return () => { disposed = true; };
     }, [id]);
+    useEffect(() => {
+        const escape = event => {
+            if (event.key !== 'Escape') return;
+            const target = sheetHandle.current?.getClientRects().length ? sheetHandle.current : pageRef.current?.querySelector('.public-map-find');
+            if (expanded) { setExpanded(false); searchRef.current?.blur(); target?.focus({ preventScroll: true }); }
+            else if (selected) { setSelected(null); target?.focus({ preventScroll: true }); }
+        };
+        window.addEventListener('keydown', escape);
+        return () => window.removeEventListener('keydown', escape);
+    }, [expanded, selected]);
     const tracks = useMemo(() => Array.isArray(map?.tracks) ? map.tracks : [], [map]);
-    const points = useMemo(() => tracks.map(position), [tracks]);
-    const edges = useMemo(() => {
-        const result = [], seen = new Set();
-        // Short spatial links keep the constellation readable at overview scale.
-        points.forEach((point, index) => {
-            const nearest = points.map((other, j) => ({j, distance: Math.hypot(point.x-other.x,point.y-other.y)}))
-                .filter(item => item.j !== index && item.distance < 125).sort((a,b)=>a.distance-b.distance).slice(0,2);
-            nearest.forEach(({j}) => {const key=[index,j].sort((a,b)=>a-b).join('-');if (!seen.has(key)) {seen.add(key);result.push([index,j]);}});
+    const matches = useMemo(() => {
+        const query = search.trim().toLocaleLowerCase();
+        return query ? tracks.filter(track => `${track.name} ${track.artists}`.toLocaleLowerCase().includes(query)) : tracks;
+    }, [tracks, search]);
+    const selectedIndex = selected ? tracks.findIndex(track => track.id === selected.id) : -1;
+    const selectTrack = track => {
+        const restoreFocus = document.activeElement?.closest('.public-map-library, .public-map-peek-tracks');
+        setSelected(track);
+        setFocusRequest(value => value + 1);
+        setSearch('');
+        setExpanded(false);
+        searchRef.current?.blur();
+        if (restoreFocus && window.matchMedia('(max-width: 900px)').matches) {
+            requestAnimationFrame(() => pageRef.current?.querySelector('.public-map-listen')?.focus({ preventScroll: true }));
+        }
+    };
+    const closeLibrary = () => {
+        setExpanded(false);
+        searchRef.current?.blur();
+        const target = sheetHandle.current?.getClientRects().length ? sheetHandle.current : pageRef.current?.querySelector('.public-map-find');
+        target?.focus({ preventScroll: true });
+    };
+    const closeTrack = () => {
+        setSelected(null);
+        requestAnimationFrame(() => {
+            const target = pageRef.current?.querySelector(`[data-track-index="${selectedIndex}"]`) || pageRef.current?.querySelector('.public-map-find');
+            target?.focus({ preventScroll: true });
         });
-        return result;
-    }, [points]);
-    const matches = search.trim() ? tracks.filter(track => `${track.name} ${track.artists}`.toLowerCase().includes(search.trim().toLowerCase())).slice(0,8) : [];
+    };
+    const openSearch = () => {
+        flushSync(() => setExpanded(true));
+        searchRef.current?.focus();
+        searchRef.current?.scrollIntoView({ block: 'nearest' });
+    };
     const query = selected ? encodeURIComponent(`${selected.artists} ${selected.name}`) : '';
-    const selectTrack = track => { setSelected(track); setSearch(''); };
-    const reset = () => setCamera({x:0,y:0,zoom:1});
-    return <main className="public-map-page">
-        <header className="public-map-header"><Link to="/" aria-label="SPECTRA home"><SpectraLogo decorative /></Link><span className="public-map-shared-badge"><i /> SHARED TASTE</span><Link className="public-map-header-cta" to="/">나의 취향 만들기 ↗</Link></header>
-        {loading ? <div className="public-map-empty" role="status"><div className="public-map-loading-orbit" /><p>친구의 음악 세계를 펼치고 있어요.</p></div> : !map || error ? <div className="public-map-empty"><span>LINK UNAVAILABLE</span><h1>공유 지도를 열 수 없어요</h1><p>공유가 해제되었거나 연결에 문제가 있습니다.</p><Link className="shared-card-cta" to="/">SPECTRA 시작하기</Link></div> : <>
+    const moveTrack = direction => { if (tracks.length) selectTrack(tracks[(selectedIndex + direction + tracks.length) % tracks.length]); };
+    const endSheetGesture = event => {
+        if (sheetGesture.current === null || event.type === 'pointercancel') { sheetGesture.current = null; return; }
+        const dy = event.clientY - sheetGesture.current;
+        if (Math.abs(dy) > 28) { swiped.current = true; setExpanded(dy < 0); searchRef.current?.blur(); }
+        sheetGesture.current = null;
+    };
+    return <main ref={pageRef} className={`public-map-page${expanded ? ' is-library-open' : ''}${selected ? ' has-selection' : ''}`}>
+        <header className="public-map-header">
+            <Link to="/" className="public-map-home" aria-label="SPECTRA 홈"><SpectraLogo decorative /></Link>
+            <span className="public-map-shared-badge"><i /> 친구가 공유한 취향</span>
+            <Link className="public-map-header-cta" to="/">내 취향 만들기 <span aria-hidden="true">↗</span></Link>
+        </header>
+        {loading ? <div className="public-map-empty" role="status"><div className="public-map-loading-orbit" /><p>친구의 음악 세계를 펼치고 있어요.</p></div> : !map || error ? <div className="public-map-empty"><span>LINK UNAVAILABLE</span><h1>공유 지도를 열 수 없어요</h1><p>공유가 해제되었거나 연결에 문제가 있습니다.</p><Link className="public-map-start" to="/">SPECTRA 시작하기 ↗</Link></div> : <>
             <section className="public-map-intro">
-                <div><span className="public-map-eyebrow">A LITTLE UNIVERSE, SHARED WITH YOU</span><h1>{map.title}</h1><p>친구가 좋아하는 음악, 그 안의 연결을 만나보세요.</p></div>
-                <div className="public-map-summary"><strong>{tracks.length.toLocaleString()}<span>TRACKS</span></strong><div>{(map.genres || []).map(genre=><span key={genre}>{genre}</span>)}</div></div>
+                <div className="public-map-heading"><span className="public-map-eyebrow">A TASTE, SHARED WITH YOU</span><h1>{map.title || '친구의 스펙트라'}</h1><p>친구가 좋아하는 음악, 그 안의 연결을 만나보세요.</p></div>
+                <div className="public-map-summary"><strong>{tracks.length.toLocaleString()}<span>곡</span></strong><div aria-label="친구의 음악 장르">{(map.genres || []).slice(0, 5).map(genre => <span key={genre}>{genre}</span>)}</div></div>
             </section>
             <section className="public-map-workspace" aria-label="공유 음악 탐색">
-                <div className="public-map-stage">
-                    <div className="public-map-stage-top">
-                        <div className="public-map-view-tabs" role="group" aria-label="지도 스타일"><button type="button" aria-pressed={view==='constellation'} onClick={()=>setView('constellation')}><span aria-hidden>✦</span> 별자리</button><button type="button" aria-pressed={view==='bubbles'} onClick={()=>setView('bubbles')}><span aria-hidden>◉</span> 앨범 버블</button></div>
-                        <span className="public-map-stage-label">EXPLORE THE CONNECTIONS</span>
-                    </div>
-                    <svg className="public-map-canvas" viewBox="0 0 800 640" aria-label="친구가 공유한 음악 지도" onPointerDown={event=>{moved.current=false;drag.current={x:event.clientX,y:event.clientY,camera};}} onPointerMove={event=>{
-                        if(!drag.current)return;const dx=event.clientX-drag.current.x,dy=event.clientY-drag.current.y;
-                        if(Math.hypot(dx,dy)>8){moved.current=true;event.currentTarget.setPointerCapture(event.pointerId);const ratio=800/event.currentTarget.getBoundingClientRect().width;setCamera({...drag.current.camera,x:drag.current.camera.x+dx*ratio,y:drag.current.camera.y+dy*ratio});}
-                    }} onPointerUp={()=>{drag.current=null;}} onPointerCancel={()=>{drag.current=null;}}>
-                        <defs><filter id="share-star-glow"><feGaussianBlur stdDeviation="4" /></filter><radialGradient id="share-nebula"><stop stopColor="#a399ed" stopOpacity=".15" /><stop offset="1" stopColor="#a399ed" stopOpacity="0" /></radialGradient></defs>
-                        <ellipse cx="400" cy="320" rx="350" ry="280" fill="url(#share-nebula)" />
-                        {Array.from({length:48},(_,i)=><circle key={`dust-${i}`} cx={(i*173)%800} cy={(i*97)%640} r={i%3===0?1.3:.7} fill="#a6bde5" opacity=".25" />)}
-                        <g transform={`translate(${camera.x} ${camera.y}) translate(400 320) scale(${camera.zoom}) translate(-400 -320)`}>
-                            {view==='constellation' && edges.map(([a,b])=><line key={`${a}-${b}`} x1={points[a].x} y1={points[a].y} x2={points[b].x} y2={points[b].y} stroke={selected?.id===tracks[a].id||selected?.id===tracks[b].id?'#bcecff':colors[a%4]} opacity={selected?.id===tracks[a].id||selected?.id===tracks[b].id ? .8 : .28} strokeWidth="1" />)}
-                            {tracks.map((track,index)=>{const point=points[index],picked=selected?.id===track.id;const radius=view==='bubbles'?23+(index%4)*3:4+(index%3);return <g key={track.id} className={`public-map-star${picked?' is-selected':''}`} role="button" tabIndex={0} aria-label={`${track.name} — ${track.artists}`} onClick={()=>{if(!moved.current)selectTrack(track);}} onKeyDown={event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();selectTrack(track);}}}>
-                                <circle cx={point.x} cy={point.y} r={radius+9} fill={colors[index%4]} opacity={picked ? .6 : .22} filter="url(#share-star-glow)" />
-                                {picked && <circle cx={point.x} cy={point.y} r={radius+13} fill="none" stroke="#bdeaff" opacity=".6" />}
-                                <circle cx={point.x} cy={point.y} r={radius} fill={colors[index%4]} stroke={picked?'#fff':'#ffffff88'} strokeWidth="1.5" />
-                                {view==='bubbles'&&track.coverUrl&&<image href={track.coverUrl} x={point.x-radius+2} y={point.y-radius+2} width={(radius-2)*2} height={(radius-2)*2} style={{clipPath:'circle(50%)'}} onError={event=>{event.currentTarget.style.display='none';}} />}
-                                {view==='constellation'&&<circle cx={point.x} cy={point.y} r="1.8" fill="#fff" />}
-                                <circle cx={point.x} cy={point.y} r={Math.max(14,radius)} fill="transparent" />
-                                <title>{track.name} — {track.artists}</title>
-                            </g>;})}
-                        </g>
-                    </svg>
-                    <div className="public-map-stage-bottom"><span>곡을 눌러 친구의 취향을 들어보세요</span><div className="public-map-zoom"><button type="button" aria-label="축소" onClick={()=>setCamera(v=>({...v,zoom:Math.max(.6,v.zoom/1.25)}))}>−</button><button type="button" onClick={reset} aria-label="전체 보기">{Math.round(camera.zoom*100)}%</button><button type="button" aria-label="확대" onClick={()=>setCamera(v=>({...v,zoom:Math.min(4,v.zoom*1.25)}))}>+</button></div></div>
-                </div>
-                <aside className="public-map-inspector">
-                    <div className="public-map-search"><span aria-hidden>⌕</span><input aria-label="공유 지도에서 곡 찾기" placeholder="곡 또는 아티스트 찾기" value={search} onChange={event=>setSearch(event.target.value)} /></div>
-                    {search && <div className="public-map-search-list">{matches.length?matches.map(track=><button type="button" key={track.id} onClick={()=>selectTrack(track)}><strong>{track.name}</strong><span>{track.artists}</span></button>):<p>일치하는 곡이 없어요.</p>}</div>}
-                    {selected ? <section className="public-map-track" aria-label="선택한 곡 정보"><button className="public-map-close" type="button" aria-label="곡 정보 닫기" onClick={()=>setSelected(null)}>×</button><span className="public-map-eyebrow">SELECTED TRACK</span><div className="public-map-album">{selected.coverUrl?<img src={selected.coverUrl} alt="" onError={event=>{event.currentTarget.style.display='none';}} />:<span aria-hidden>♪</span>}</div><h2>{selected.name}</h2><p>{selected.artists}</p><div><a className="public-map-listen" target="_blank" rel="noopener noreferrer" href={`https://www.youtube.com/results?search_query=${query}`}>▶ YouTube로 듣기 ↗</a><a target="_blank" rel="noopener noreferrer" href={`https://open.spotify.com/search/${query}`}>Spotify에서 열기 ↗</a></div></section> : <div className="public-map-welcome"><div className="public-map-welcome-mark" aria-hidden>✦</div><span className="public-map-eyebrow">EVERY SONG HAS A PLACE</span><h2>어떤 곡이<br />마음에 닿나요?</h2><p>반짝이는 별이나 앨범을 눌러<br />친구가 좋아하는 곡을 만나보세요.</p><div className="public-map-suggestions">{tracks.slice(0,3).map((track,index)=><button type="button" key={track.id} onClick={()=>selectTrack(track)}><span style={{color:colors[index%4]}}>0{index+1}</span><div><strong>{track.name}</strong><small>{track.artists}</small></div><span aria-hidden>↗</span></button>)}</div></div>}
-                    <div className="public-map-invite"><span>YOUR TURN</span><p>당신의 음악은<br />어떤 모습을 하고 있나요?</p><Link to="/">나도 내 취향 만들기 <span aria-hidden>↗</span></Link></div>
+                <SharedMapCanvas tracks={tracks} selected={selected} focusRequest={focusRequest} view={view} onViewChange={setView} onSelect={selectTrack} onSearch={openSearch} />
+                <aside className="public-map-inspector" aria-label="친구의 곡 둘러보기">
+                    <button ref={sheetHandle} id="public-map-sheet-toggle" type="button" className="public-map-sheet-handle" aria-label={expanded ? '곡 목록 접기' : '곡 목록 펼치기'} aria-expanded={expanded} aria-controls="public-map-library" onClick={() => { if (!swiped.current) setExpanded(value => !value); swiped.current = false; }} onPointerDown={event => { sheetGesture.current = event.clientY; swiped.current = false; event.currentTarget.setPointerCapture(event.pointerId); }} onPointerUp={endSheetGesture} onPointerCancel={endSheetGesture}><span /><span className="public-map-sr-only">위로 밀어 곡 목록을 펼치세요</span></button>
+                    {selected ? <section className="public-map-track" aria-label="선택한 곡 정보">
+                        <div className="public-map-track-heading"><Artwork key={selected.id} track={selected} /><div className="public-map-track-copy"><span className="public-map-eyebrow">선택한 곡</span><h2>{selected.name}</h2><p>{selected.artists}</p></div><button className="public-map-close" type="button" aria-label="곡 정보 닫기" onClick={closeTrack}>×</button></div>
+                        <div className="public-map-track-actions"><a className="public-map-listen" target="_blank" rel="noopener noreferrer" href={`https://www.youtube.com/results?search_query=${query}`}>▶ YouTube로 듣기 <span aria-hidden="true">↗</span></a><a target="_blank" rel="noopener noreferrer" href={`https://open.spotify.com/search/${query}`}>Spotify <span aria-hidden="true">↗</span></a></div>
+                        <div className="public-map-track-navigation"><button type="button" disabled={tracks.length < 2} onClick={() => moveTrack(-1)} aria-label="이전 곡">←</button><button type="button" onClick={() => setExpanded(value => !value)} aria-expanded={expanded} aria-controls="public-map-library">{selectedIndex + 1} / {tracks.length.toLocaleString()}곡 <span>목록 보기</span></button><button type="button" disabled={tracks.length < 2} onClick={() => moveTrack(1)} aria-label="다음 곡">→</button></div>
+                    </section> : <div className="public-map-welcome">
+                        <div className="public-map-welcome-heading"><div><span className="public-map-eyebrow">FRIEND’S PLAYLIST</span><h2>어떤 곡이 마음에 닿나요?</h2></div><button type="button" className="public-map-browse" aria-expanded={expanded} aria-controls="public-map-library" onClick={() => setExpanded(value => !value)}>{expanded ? '접기' : '모두 보기'} <span aria-hidden="true">{expanded ? '⌄' : '↗'}</span></button></div>
+                        <div className="public-map-peek-tracks">{tracks.slice(0, 4).map(track => <button type="button" key={track.id} onClick={() => selectTrack(track)}><Artwork track={track} /><span><strong>{track.name}</strong><small>{track.artists}</small></span></button>)}</div>
+                    </div>}
+                    <section id="public-map-library" className="public-map-library" aria-label="공유한 곡 목록">
+                        <div className="public-map-library-heading"><h2>친구의 곡 <span>{tracks.length.toLocaleString()}</span></h2><button type="button" className="public-map-library-close" onClick={closeLibrary} aria-label="곡 목록 닫기">×</button></div>
+                        <div className="public-map-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 4.5 4.5" /></svg><input ref={searchRef} type="search" enterKeyHint="search" aria-label="공유 지도에서 곡 찾기" placeholder="곡 또는 아티스트 찾기" value={search} onChange={event => { setSearch(event.target.value); setListLimit(50); }} />{search && <button type="button" aria-label="검색어 지우기" onClick={() => { setSearch(''); searchRef.current?.focus(); }}>×</button>}</div>
+                        <div className="public-map-library-scroll" tabIndex={0} aria-label="곡 목록 스크롤">
+                            {search && <p className="public-map-results-count" role="status">검색 결과 {matches.length.toLocaleString()}곡</p>}
+                            {matches.length ? <><div className="public-map-song-list">{matches.slice(0, listLimit).map(track => <button type="button" key={track.id} className={selected?.id === track.id ? 'is-selected' : ''} aria-pressed={selected?.id === track.id} onClick={() => selectTrack(track)}><Artwork track={track} /><span><strong>{track.name}</strong><small>{track.artists}</small></span><span className="public-map-song-arrow" aria-hidden="true">{selected?.id === track.id ? '✦' : '↗'}</span></button>)}</div>{matches.length > listLimit && <button type="button" className="public-map-load-more" onClick={() => setListLimit(value => value + 50)}>곡 더 보기 <span>{listLimit} / {matches.length.toLocaleString()}</span></button>}</> : <div className="public-map-no-results"><span aria-hidden="true">✦</span><h3>{search ? '찾는 곡이 없어요' : '공유된 곡이 없어요'}</h3><p>{search ? '다른 곡명이나 아티스트로 찾아보세요.' : '친구에게 새로운 지도를 부탁해 보세요.'}</p>{search && <button type="button" onClick={() => { setSearch(''); setListLimit(50); }}>전체 곡 보기</button>}</div>}
+                        </div>
+                    </section>
+                    <Link className="public-map-invite" to="/"><span>내 음악은 어떤 모습일까?</span><strong>내 취향 만들기 <span aria-hidden="true">↗</span></strong></Link>
                 </aside>
             </section>
-            <footer className="public-map-footer"><span>친구가 공유한 곡 목록으로 만든 취향 지도</span><span>이동 · 확대 · 곡 선택</span></footer>
+            <footer className="public-map-footer"><span>친구가 공유한 곡 목록으로 만든 취향 지도</span><span>로그인 없이 자유롭게 둘러보세요</span></footer>
+            <span className="public-map-sr-only" role="status" aria-live="polite">{selected ? `${selected.name}, ${selected.artists} 선택됨` : ''}</span>
         </>}
     </main>;
+}
+
+export default function SharedMapPage() {
+    const { id } = useParams();
+    return <SharedMapExplorer key={id} id={id} />;
 }
