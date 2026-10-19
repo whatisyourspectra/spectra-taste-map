@@ -6,7 +6,7 @@ const initialCamera = { x: 0, y: 0, zoom: 1 };
 const midpoint = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
 const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
-export default function SharedMapCanvas({ tracks, selected, focusRequest, view, onViewChange, onSelect, onSearch }) {
+export default function SharedMapCanvas({ tracks, selected, focusRequest, view, onViewChange, onSelect, onSearch, scope = 'shared', showGroups = false }) {
     const canvasRef = useRef(null);
     const cameraRef = useRef(initialCamera);
     const gesture = useRef({ pointers: new Map(), start: null, moved: false });
@@ -14,6 +14,18 @@ export default function SharedMapCanvas({ tracks, selected, focusRequest, view, 
     const [camera, setCamera] = useState(initialCamera);
     const [gesturing, setGesturing] = useState(false);
     const points = useMemo(() => getMapPoints(tracks, size), [tracks, size]);
+    const groups = useMemo(() => {
+        if (!showGroups) return [];
+        const collected = new Map();
+        tracks.forEach((track, index) => {
+            if (!track.mapGroup) return;
+            const group = collected.get(track.mapGroup) || { label: track.mapGroup, color: track.mapColor, x: 0, y: 0, count: 0 };
+            group.x += points[index].x; group.y += points[index].y; group.count++;
+            collected.set(track.mapGroup, group);
+        });
+        return [...collected.values()].map(group => ({ ...group, x: group.x / group.count, y: group.y / group.count }));
+    }, [tracks, points, showGroups]);
+    const bubbleRadius = index => scope === 'personal' ? (tracks.length > 200 ? 9 : 12) + index % 4 * 1.5 : 19 + index % 4 * 2;
     const selectedIndex = tracks.findIndex(track => track.id === selected?.id);
     // Reveal dense libraries progressively instead of loading 2,000 covers at once.
     const step = Math.max(1, Math.ceil(tracks.length / (240 * camera.zoom ** 2)));
@@ -111,7 +123,7 @@ export default function SharedMapCanvas({ tracks, selected, focusRequest, view, 
             for (const index of visible) {
                 const p = points[index];
                 const screen = { x: size.width / 2 + (p.x - size.width / 2) * current.zoom + current.x, y: size.height / 2 + (p.y - size.height / 2) * current.zoom + current.y };
-                const d = distance(tap, screen), hit = Math.max(22, view === 'bubbles' ? (19 + index % 4 * 2) * current.zoom : 22);
+                const d = distance(tap, screen), hit = Math.max(22, view === 'bubbles' ? bubbleRadius(index) * current.zoom : 22);
                 if (d <= hit && d < best) { best = d; closest = index; }
             }
             if (closest !== null) onSelect(tracks[closest]);
@@ -135,27 +147,28 @@ export default function SharedMapCanvas({ tracks, selected, focusRequest, view, 
                 <button type="button" aria-pressed={view === 'constellation'} onClick={() => onViewChange('constellation')}><span aria-hidden="true">✦</span> 별자리</button>
                 <button type="button" aria-pressed={view === 'bubbles'} onClick={() => onViewChange('bubbles')}><span aria-hidden="true">◉</span> 앨범 버블</button>
             </div>
-            <button type="button" className="public-map-find" onClick={onSearch} aria-label="공유 지도에서 곡 찾기"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 4.5 4.5" /></svg></button>
+            <button type="button" className="public-map-find" onClick={onSearch} aria-label={scope === 'personal' ? '내 음악에서 곡 찾기' : '공유 지도에서 곡 찾기'}><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 4.5 4.5" /></svg></button>
         </div>
-        <svg ref={canvasRef} className="public-map-canvas" viewBox={`0 0 ${size.width} ${size.height}`} role="group" aria-label="친구가 공유한 음악 지도. 드래그로 이동하고 두 손가락으로 확대할 수 있어요." onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerEnd} onPointerCancel={pointerEnd}>
+        <svg ref={canvasRef} className="public-map-canvas" viewBox={`0 0 ${size.width} ${size.height}`} role="group" aria-label={scope === 'personal' ? '내 음악 지도. 드래그로 이동하고 두 손가락으로 확대할 수 있어요.' : '친구가 공유한 음악 지도. 드래그로 이동하고 두 손가락으로 확대할 수 있어요.'} onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerEnd} onPointerCancel={pointerEnd}>
             <defs><filter id="share-star-glow"><feGaussianBlur stdDeviation="4" /></filter><radialGradient id="share-nebula"><stop stopColor="#a399ed" stopOpacity=".18" /><stop offset="1" stopColor="#a399ed" stopOpacity="0" /></radialGradient></defs>
             <ellipse cx={size.width * .5} cy={size.height * .5} rx={size.width * .58} ry={size.height * .52} fill="url(#share-nebula)" />
             {Array.from({ length: 40 }, (_, i) => <circle key={`dust-${i}`} cx={(i * 173) % size.width} cy={(i * 97) % size.height} r={i % 3 === 0 ? 1.2 : .6} fill="#a6bde5" opacity=".25" />)}
             <g className="public-map-world" transform={`translate(${camera.x} ${camera.y}) translate(${size.width / 2} ${size.height / 2}) scale(${camera.zoom}) translate(${-size.width / 2} ${-size.height / 2})`}>
-                {view === 'constellation' && edges.map(([a, b]) => <line key={`${a}-${b}`} x1={points[a].x} y1={points[a].y} x2={points[b].x} y2={points[b].y} stroke={selectedIndex === a || selectedIndex === b ? '#bcecff' : colors[a % 4]} opacity={selectedIndex === a || selectedIndex === b ? .8 : .26} strokeWidth="1" vectorEffect="non-scaling-stroke" />)}
+                {view === 'constellation' && edges.map(([a, b]) => <line key={`${a}-${b}`} x1={points[a].x} y1={points[a].y} x2={points[b].x} y2={points[b].y} stroke={selectedIndex === a || selectedIndex === b ? '#bcecff' : (tracks[a].mapColor || colors[a % 4])} opacity={selectedIndex === a || selectedIndex === b ? .8 : .26} strokeWidth="1" vectorEffect="non-scaling-stroke" />)}
                 {visible.map(index => {
                     const track = tracks[index], point = points[index], picked = selectedIndex === index;
-                    const radius = view === 'bubbles' ? 19 + index % 4 * 2 : 3.2 + index % 3 * .7;
+                    const radius = view === 'bubbles' ? bubbleRadius(index) : 3.2 + index % 3 * .7;
                     return <g key={track.id} data-track-index={index} className={`public-map-star${picked ? ' is-selected' : ''}`} role="button" tabIndex={picked || (selectedIndex < 0 && index === 0) ? 0 : -1} aria-label={`${track.name} — ${track.artists}`} aria-pressed={picked} onClick={event => { if (event.detail === 0) onSelect(track); }} onKeyDown={event => keyboardSelect(event, index)}>
-                        {(tracks.length <= 160 || picked) && <circle cx={point.x} cy={point.y} r={radius + 8} fill={colors[index % 4]} opacity={picked ? .6 : .3} filter="url(#share-star-glow)" />}
+                        {(tracks.length <= 160 || picked) && <circle cx={point.x} cy={point.y} r={radius + 8} fill={track.mapColor || colors[index % 4]} opacity={picked ? .6 : scope === 'personal' ? .13 : .3} filter="url(#share-star-glow)" />}
                         {picked && <circle cx={point.x} cy={point.y} r={radius + 9 / camera.zoom} fill="none" stroke="#bdeaff" opacity=".8" vectorEffect="non-scaling-stroke" />}
-                        <circle cx={point.x} cy={point.y} r={radius} fill={colors[index % 4]} stroke={picked ? '#fff' : '#ffffff66'} strokeWidth="1" vectorEffect="non-scaling-stroke" />
+                        <circle cx={point.x} cy={point.y} r={radius} fill={track.mapColor || colors[index % 4]} stroke={picked ? '#fff' : track.mapRecommended ? '#fff' : '#ffffff66'} strokeDasharray={track.mapRecommended ? '3 3' : undefined} strokeWidth="1" vectorEffect="non-scaling-stroke" />
                         {view === 'bubbles' && track.coverUrl && <image href={track.coverUrl} x={point.x - radius + 1} y={point.y - radius + 1} width={(radius - 1) * 2} height={(radius - 1) * 2} preserveAspectRatio="xMidYMid slice" style={{ clipPath: 'circle(50%)' }} onError={event => { event.currentTarget.style.display = 'none'; }} />}
                         {view === 'constellation' && <circle cx={point.x} cy={point.y} r="1.3" fill="#fff" />}
                         <circle cx={point.x} cy={point.y} r={Math.max(22 / camera.zoom, radius)} fill="transparent" />
                         <title>{track.name} — {track.artists}</title>
                     </g>;
                 })}
+                {camera.zoom < 1.8 && (scope !== 'personal' || (size.width > 360 && size.height > 330)) && groups.map(group => <text key={group.label} x={group.x} y={group.y - 35 / camera.zoom} textAnchor="middle" fontSize={12 / camera.zoom} fill={group.color} stroke="#0a101c" strokeWidth={4 / camera.zoom} paintOrder="stroke" pointerEvents="none" aria-hidden="true">{group.label}</text>)}
             </g>
         </svg>
         <div className="public-map-stage-bottom"><span>{step > 1 ? '확대하면 더 많은 곡이 보여요' : '별을 눌러 곡을 만나보세요'}</span><div className="public-map-zoom"><button type="button" aria-label="축소" disabled={camera.zoom <= .65} onClick={() => zoom(1 / 1.3)}>−</button><button type="button" onClick={() => commitCamera(initialCamera)} aria-label="지도 전체 보기">전체</button><button type="button" aria-label="확대" disabled={camera.zoom >= 4} onClick={() => zoom(1.3)}>+</button></div></div>

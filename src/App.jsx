@@ -1,9 +1,9 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
+import React, { useEffect, useRef, useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, Link } from 'react-router-dom';
 import { TasteDataProvider, useTasteData, MAX_IMPORT_TRACKS } from './context/TasteDataContext';
-import { parseTrackList } from './utils/parseTrackList';
 import TasteMapPage from './pages/TasteMapPage';
 import TasteMapMobilePage from './pages/TasteMapMobilePage';
+import MobileMusicMap from './pages/MobileMusicMap';
 import './LoginOverlay.css';
 import { AuthProvider, useAuth } from './auth/AuthContext';
 import AuthPage, { AuthCallback, AuthLoading } from './auth/AuthPage';
@@ -76,14 +76,12 @@ function MobileStart() {
     importTracks(getCombinedDemoTracks(), { preEnriched: true, demoUniverse: DEMO_UNIVERSES[0].id })
       .then(result => { if (result?.ok === false) setError(true); }).catch(() => setError(true));
   }, [hasTaste, importTracks]);
-  if (hasTaste) return <Navigate to="/taste-map/mobile" replace />;
+  if (hasTaste) return <Navigate to="/taste-map" replace />;
   if (error) return <main className="sa-page"><div className="sa-card"><h1>데모를 열지 못했어요</h1><a href="/">시작 페이지로 돌아가기</a></div></main>;
   return <AuthLoading title="모바일 취향 지도를 준비하고 있어요" message="예시 음악으로 먼저 체험해 보세요." />;
 }
 
 function ResponsiveTasteMapRoute() {
-  const location = useLocation();
-  const openUniverse = new URLSearchParams(location.search).get('view') === 'constellation';
   const [isMobile, setIsMobile] = useState(() => {
     if (typeof window === 'undefined') return false;
     return window.matchMedia('(max-width: 900px)').matches;
@@ -101,8 +99,7 @@ function ResponsiveTasteMapRoute() {
     return () => mq.removeListener(onChange);
   }, []);
 
-  const mobile = isMobile && !openUniverse;
-  return <>{mobile ? <TasteMapMobilePage /> : <TasteMapPage />}{!isMobile && <MapOnboarding />}</>;
+  return <>{isMobile ? <MobileMusicMap /> : <TasteMapPage />}{!isMobile && <MapOnboarding />}</>;
 }
 
 function TasteSession() {
