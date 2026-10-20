@@ -1,13 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
 import { TasteDataProvider, useTasteData, MAX_IMPORT_TRACKS } from './context/TasteDataContext';
 import TasteMapPage from './pages/TasteMapPage';
-import TasteMapMobilePage from './pages/TasteMapMobilePage';
 import MobileMusicMap from './pages/MobileMusicMap';
 import './LoginOverlay.css';
 import { AuthProvider, useAuth } from './auth/AuthContext';
 import AuthPage, { AuthCallback, AuthLoading } from './auth/AuthPage';
 import AccountButton from './auth/AccountButton';
+import FeedbackTab from './feedback/FeedbackTab';
 
 import LaunchLandingPage from './pages/LaunchLandingPage';
 import { DEMO_UNIVERSES, getCombinedDemoTracks } from './taste/demoUniverses';
@@ -47,7 +47,7 @@ function AppInner() {
       />
       <Route
         path="/taste-map/mobile"
-        element={hasTaste ? <TasteMapMobilePage /> : emptyMap}
+        element={hasTaste ? <LegacyMobileTasteRoute /> : emptyMap}
       />
       <Route path="/mobile-start" element={<MobileStart />} />
       <Route path="*" element={<Navigate to="/" replace />} />
@@ -81,7 +81,16 @@ function MobileStart() {
   return <AuthLoading title="모바일 취향 지도를 준비하고 있어요" message="예시 음악으로 먼저 체험해 보세요." />;
 }
 
+function LegacyMobileTasteRoute() {
+  const location = useLocation();
+  const today = new URLSearchParams(location.search).get('oracle') === '1';
+  return <Navigate to={today ? '/taste-map?tab=today' : '/taste-map?view=immersive'} replace />;
+}
+
 function ResponsiveTasteMapRoute() {
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  const mobileDestination = ['map', 'today', 'discover'].includes(params.get('tab')) || params.get('view') === 'immersive';
   const [isMobile, setIsMobile] = useState(() => {
     if (typeof window === 'undefined') return false;
     return window.matchMedia('(max-width: 900px)').matches;
@@ -99,7 +108,7 @@ function ResponsiveTasteMapRoute() {
     return () => mq.removeListener(onChange);
   }, []);
 
-  return <>{isMobile ? <MobileMusicMap /> : <TasteMapPage />}{!isMobile && <MapOnboarding />}</>;
+  return <>{isMobile || mobileDestination ? <MobileMusicMap /> : <TasteMapPage />}{!isMobile && !mobileDestination && <MapOnboarding />}</>;
 }
 
 function TasteSession() {
@@ -117,6 +126,7 @@ function App() {
   return (
     <Router>
       <AuthProvider>
+        <FeedbackTab />
         <Routes>
           <Route path="/share/map/:id" element={<SharedMapPage />} />
           <Route path="/share/card" element={<SharedCardPage />} />

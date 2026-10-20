@@ -93,24 +93,11 @@
 .tmm-oracle-jump:hover, .tmm-oracle-jump:focus-visible { border-color: rgba(183, 200, 255, .6); background: linear-gradient(125deg, rgba(66, 87, 148, .58), rgba(58, 47, 105, .46)); }
 .tmm-progress { text-align: center; font-size: 11px; color: #91a4c0; }
 .tmm-primary-actions { display: grid; justify-items: center; gap: 8px; }
-.tmm-export { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 48px; padding: 12px 28px; border: 1px solid #374357; border-radius: 14px; background: #141e2d; color: #d4e1f3; font-size: 12px; box-shadow: 0 4px 14px -2px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.08); }
-.tmm-export svg { width: 17px; height: 17px; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
-.tmm-export:disabled { opacity: .5; cursor: wait; }
 .tmm-explore-toggle { min-height: 44px; padding: 10px 20px; color: #8396af; background: none; border: 0; font-size: 11px; }
 .tmm-explore-toggle span { margin-left: 8px; }
 #tmm-exploration { margin-top: 24px; }
 #tmm-exploration[hidden] { display: none; }
 .tmm-session-note { text-align: center; color: #78889f; font-size: 10px; margin: 16px 0; }
-.tmm-export-error { color: #e4adad; text-align: center; font-size: 12px; }
-.tmm-export-dialog { width: min(440px, calc(100vw - 32px)); max-height: 90dvh; padding: 16px; border: 1px solid rgba(160, 190, 245, 0.25); border-radius: 14px; background: #101722; color: #d4e1f3; overflow: auto; box-shadow: 0 28px 70px -12px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.12); }
-.tmm-export-dialog::backdrop { background: #02050bd9; backdrop-filter: blur(8px); }
-.tmm-export-dialog header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-.tmm-export-dialog h2 { font-size: 14px; font-weight: 500; }
-.tmm-export-dialog header button { width: 44px; height: 44px; font-size: 24px; background: none; border: 0; color: inherit; }
-.tmm-export-dialog > img { display: block; width: 100%; max-height: 58dvh; object-fit: contain; border-radius: 8px; }
-.tmm-export-options { display: flex; gap: 10px; margin-top: 16px; }
-.tmm-export-options a, .tmm-export-options button { flex: 1; display: grid; place-items: center; min-height: 48px; border: 1px solid #3c4b61; border-radius: 10px; background: #1c2a40; color: #e6edf8; font-size: 13px; text-decoration: none; }
-.tmm-export-dialog > p { margin-top: 14px; color: #91a1b7; font-size: 11px; text-align: center; line-height: 1.6; }
 @media (max-height: 650px) { .tmm-living { height: max(320px, calc(100svh - 210px)); padding-top: 16px; } .tmm-library-count { margin-bottom: 16px; } }
 
 /* My Spectra: an immersive field above a quiet reflection journal. */
@@ -170,17 +157,34 @@
 .tmm-space-world { transform-style: flat; will-change: auto; }
 .lc-spatial .lc-body, .lc-spatial .lc-orbit { animation: none; }
 
-/* Put the music journey within the first mobile viewport. */
-.tmm-living { height: clamp(330px, 49svh, 460px); padding-top: 18px; }
+/* The map leads to sharing, then exploration and daily activities. */
+.tmm-living { height: clamp(300px, 43svh, 420px); padding-top: 18px; }
 .tmm-space { min-height: 220px; }
 .tmm-living h1 { font-size: 26px; }
 .tmm-library-count { margin: 14px 0; }
-.tmm-map-entry { display: flex; justify-content: space-between; align-items: center; gap: 16px; width: 100%; min-height: 76px; padding: 15px 18px; border: 1px solid #a7c7df; border-radius: 16px; background: #bed9ed; color: #142b42; text-align: left; }
+.tmm-share-entry { margin: 20px 0 24px; }
+.tmm-share-primary { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; min-height: 54px; padding: 14px 18px; border: 1px solid #d5eafa; border-radius: 16px; background: #c3def2; color: #142c42; font: inherit; font-size: 14px; font-weight: 650; box-shadow: 0 6px 24px #91bce312; }
+.tmm-share-primary svg { width: 19px; height: 19px; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.tmm-share-primary:disabled { opacity: .5; cursor: default; }
+.tmm-share-entry > p { margin: 10px 0 0; color: #8d9fb8; font-size: 11px; text-align: center; line-height: 1.6; }
+.tmm-map-entry { display: flex; justify-content: space-between; align-items: center; gap: 16px; width: 100%; min-height: 72px; padding: 15px 18px; border: 1px solid #9bb4de33; border-radius: 16px; background: #152033; color: #d9e8fa; text-align: left; }
 .tmm-map-entry strong, .tmm-map-entry small { display: block; }
 .tmm-map-entry strong { font-size: 15px; font-weight: 650; }
-.tmm-map-entry small { margin-top: 6px; font-size: 12px; color: #36536d; }
+.tmm-map-entry small { margin-top: 6px; font-size: 12px; color: #94a8c3; }
 .tmm-map-entry > span:last-child { font-size: 22px; }
-.tmm-oracle-jump { margin-top: 12px; min-height: 60px; padding: 12px 16px; background: #141e304d; border-color: #2a3b54; box-shadow: none; }
+.tmm-oracle-jump { margin-top: 10px; margin-bottom: 20px; min-height: 60px; padding: 12px 16px; background: transparent; border-color: #9bb4de1c; box-shadow: none; }
 .tmm-home-pill { min-height: 44px; }
 .tmm-selected-explore { width: 100%; border-radius: 10px; background: #b9d9ed; color: #152c43 !important; padding: 12px 14px; font-size: 14px; font-weight: 600; }
-@media (max-height: 700px) { .tmm-living { height: 330px; } .tmm-living-heading .tmm-eyebrow { display: none; } .tmm-living h1 { font-size: 23px; margin-top: 0; } }
+@media (max-height: 700px) { .tmm-living { height: 290px; } .tmm-living-heading .tmm-eyebrow { display: none; } .tmm-living h1 { font-size: 23px; margin-top: 0; } .tmm-share-entry { margin-top: 16px; margin-bottom: 20px; } }
+
+.mtm-overview-dialog { width: min(560px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); padding: 0; margin: auto; overflow: hidden; border: 1px solid #9bb4de33; border-radius: 22px; color: #e6edf8; background: #0b111d; color-scheme: dark; font-family: var(--font-main, sans-serif); }
+.mtm-overview-dialog[open] { display: flex; flex-direction: column; }
+.mtm-overview-dialog::backdrop { background: #02050bd9; backdrop-filter: blur(8px); }
+body:has(.mtm-overview-dialog[open]) { overflow: hidden; }
+.mtm-overview-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-shrink: 0; padding: 16px 20px; border-bottom: 1px solid #9bb4de1c; }
+.mtm-overview-header h2 { margin: 4px 0 0; font-size: 19px; font-weight: 550; }
+.mtm-overview-header > button { width: 44px; height: 44px; border: 1px solid #9bb4de33; border-radius: 50%; color: #c9d8ec; background: #ffffff04; font-size: 24px; cursor: pointer; }
+.mtm-overview-dialog .tmm-root { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-top: 12px; padding-bottom: 24px; scrollbar-width: thin; }
+.mtm-overview-dialog .tmm-living { padding-top: 8px; }
+.mtm-overview-dialog button:focus-visible { outline: 2px solid #b8cdf1; outline-offset: -3px; }
+@media (max-width: 599px) { .mtm-overview-dialog { width: 100%; max-width: 100%; max-height: calc(100dvh - env(safe-area-inset-top, 0px) - 12px); margin: auto 0 0; border-radius: 24px 24px 0 0; } }

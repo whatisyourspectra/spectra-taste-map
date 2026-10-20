@@ -8,6 +8,7 @@ import { DEMO_UNIVERSES, getCombinedDemoTracks } from '../taste/demoUniverses';
 import { parseTrackList, parseTrackListDetailed, readTrackFile } from '../utils/parseTrackList';
 import { MAX_IMPORT_TRACKS } from '../context/TasteDataContext';
 import AccountButton from '../auth/AccountButton';
+import SingleLineTitle from '../components/SingleLineTitle';
 import MobileEntryCard from '../components/MobileEntryCard';
 import ImportVideoGuide from '../components/ImportVideoGuide';
 import LaunchTasteJourney, { LaunchDemoPortal, LaunchImportOrbit } from './LaunchTasteJourney';
@@ -296,7 +297,7 @@ export default function LaunchLandingPage({
                   </div>
 
                   <LaunchDemoPortal group={group} />
-                  <h3 className="llp-demo-title">{universe.koreanName}</h3>
+                  <SingleLineTitle className="llp-demo-title">{universe.name}</SingleLineTitle>
                   <p className="llp-demo-desc">{universe.summary}</p>
 
                   <div className="llp-demo-artists">

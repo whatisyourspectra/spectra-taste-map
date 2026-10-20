@@ -38,6 +38,7 @@ try{
   await page.screenshot({path:`${out}/discover-${size.width}.png`});
   await page.locator('.public-map-song-list > button').filter({hasText:'South of the River'}).click();
   await page.getByRole('button',{name:'내 음악에 추가',exact:false}).click();
+  await page.getByRole('button',{name:'내 지도',exact:true}).click();
   await page.waitForFunction(()=>document.querySelector('.mtm-intro h1')?.textContent.includes('70곡'));
   await page.screenshot({path:`${out}/added-${size.width}.png`});
   assert.ok(await page.evaluate(()=>JSON.parse(localStorage.getItem('spectra:taste:v5')).tracks.some(t=>t.id==='new-recommendation')));
@@ -46,8 +47,8 @@ try{
   await page.getByRole('button',{name:'내 음악에서 곡 찾기',exact:true}).click();
   assert.ok((await page.locator('.public-map-library-heading h2').textContent()).includes('Jazz'));
   await page.getByRole('button',{name:'내 곡 목록 닫기',exact:true}).click();
-  await page.getByRole('link',{name:'나의 스펙트라',exact:true}).click();await page.locator('.tmm-root').waitFor();
-  await page.locator('.tmm-map-entry').click();await page.locator('.mobile-taste-map').waitFor();
+  await page.getByRole('button',{name:'내 취향 둘러보기',exact:true}).click();await page.locator('.tmm-root').waitFor();
+  await page.getByRole('button',{name:'취향 둘러보기 닫기',exact:true}).click();await page.locator('.mtm-overview-dialog').waitFor({state:'detached'});
   findings.push({size,search:true,genre:true,discoverUsesSelectedTrack:true,addedTrackSurvivesReload:true,legacyDetailedLinkStaysMobile:true});await page.close();
  }
  if(!process.argv.includes('--capture-only')){
@@ -59,7 +60,7 @@ try{
   await c.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:points(25)});await c.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:points(65)});await c.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
   assert.notEqual(await page.locator('.public-map-world').getAttribute('transform'),before);
   await page.getByRole('button',{name:'내 음악에서 곡 찾기',exact:true}).click();await page.setViewportSize({width:390,height:320});await page.waitForTimeout(350);assert.ok((await page.locator('.public-map-library-scroll').boundingBox()).height>100);await page.screenshot({path:`${out}/keyboard.png`});await page.close();
-  const failed=await open();await failed.page.route('**/api/discover?**',r=>r.fulfill({status:503,json:{error:'quota'}}));await failed.page.getByRole('button',{name:'새로운 발견',exact:true}).click();await failed.page.getByRole('heading',{name:'추천을 잠시 연결하지 못했어요'}).waitFor();await failed.page.screenshot({path:`${out}/unavailable.png`});await failed.page.getByRole('button',{name:'내 음악 보기',exact:true}).click();assert.equal(await failed.page.locator('.public-map-song-list > button').count(),50);await failed.page.close();
+  const failed=await open();await failed.page.route('**/api/discover?**',r=>r.fulfill({status:503,json:{error:'quota'}}));await failed.page.getByRole('button',{name:'발견',exact:true}).click();await failed.page.getByRole('heading',{name:'추천을 잠시 연결하지 못했어요'}).waitFor();await failed.page.screenshot({path:`${out}/unavailable.png`});await failed.page.getByRole('button',{name:'내 음악 보기',exact:true}).click();assert.equal(await failed.page.locator('.public-map-song-list > button').count(),50);await failed.page.close();
   const land=await open({width:844,height:390});const stage=await land.page.locator('.public-map-stage').boundingBox();assert.ok(stage.y>=44 && stage.y+stage.height<=391,JSON.stringify(stage));await land.page.screenshot({path:`${out}/landscape.png`});await land.page.close();
   const desktop=await open({width:1440,height:1000});assert.equal(await desktop.page.locator('.mobile-taste-map').count(),0);await desktop.page.close();
  }

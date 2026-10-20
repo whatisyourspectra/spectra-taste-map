@@ -49,11 +49,37 @@ SPECTRA Taste Map은 **Supabase Auth (Google·카카오 OAuth PKCE 방식)**를 
 
 1. Supabase 대시보드의 **Authentication → URL Configuration**으로 이동합니다.
 2. **Site URL**:
-   - 로컬 개발 시: `http://localhost:5173` (또는 `http://127.0.0.1:5173`)
+   - 운영 프로젝트: `https://www.spectra-music.org`
+   - 로컬 전용 Supabase 프로젝트를 별도로 쓰는 경우에만 `http://localhost:5173` 등을 사용합니다.
+   - 운영 프로젝트의 기본 주소를 Vercel Preview URL로 지정하지 않습니다. 인증 오류·취소 경로에서도 이 기본 주소가 사용될 수 있으며, 배포 보호가 걸린 주소라면 사용자에게 Vercel 로그인 화면이 나타납니다.
 3. **Redirect URLs** 목록에 다음 경로들을 추가합니다:
+   - `https://www.spectra-music.org/auth/callback`
+   - `https://spectra-music.org/auth/callback`
    - `http://localhost:5173/auth/callback`
    - `http://127.0.0.1:5173/auth/callback`
-   - *(배포 시)* `https://<your-production-domain>.vercel.app/auth/callback`
+   - 필요할 때만 실제 로컬 개발 포트의 `/auth/callback`을 추가합니다.
+
+운영 Supabase의 URL Configuration은 Vite 코드나 `.env` 변경으로 수정되지 않습니다. Supabase 관리자 화면에서 위 값을 직접 저장해야 합니다. 앱은 OAuth를 시작한 브라우저의 현재 origin에 `/auth/callback`을 붙여 요청합니다. PKCE 검증값이 시작한 origin의 저장소에 있으므로 로그인 도중 callback만 다른 origin으로 바꾸지 않습니다.
+
+### 로그인 후 Vercel 로그인 화면이 나오는 경우
+
+2026-10-20 운영 주소에서 실제 계정 인증 없이 진입·취소 경로를 확인했습니다.
+
+- `https://www.spectra-music.org/auth/login`과 `/auth/callback`은 공개되어 있습니다.
+- 기본 인증 콜백과 Google 인증 취소 경로는 `https://spectra-taste-map-spectra123.vercel.app/`로 복귀했습니다.
+- 해당 주소는 `vercel.com/sso-api`를 거쳐 Vercel 로그인 화면으로 이동했습니다.
+
+Supabase **Authentication → URL Configuration**에서 Site URL을 운영 도메인으로 변경하고, 위 운영 callback URL들을 Redirect URLs에 등록합니다. Vercel Preview 전체의 보호를 해제할 필요는 없습니다.
+
+저장 후에는 Google 로그인 완료와 취소를 각각 확인합니다. 로그인 완료 시 `/auth/callback?code=…`에서 세션을 교환한 뒤 원래 화면으로 돌아와야 합니다. 기본 복귀 경로의 점검은 아래 명령으로 할 수 있으며, 실제 계정으로 로그인하거나 사용자 정보를 변경하지 않습니다.
+
+```sh
+node scripts/checkAuthRedirects.mjs
+```
+
+이 점검은 기본 콜백의 이동 경로를 확인합니다. 로그인 성공이나 Redirect URLs 전체 목록을 검증하는 도구는 아닙니다.
+
+2026-10-20 배포 전 재점검에서는 기본 콜백이 `https://www.spectra-music.org/`로 복귀하고 HTTP 200을 반환함을 확인했습니다. 기존 Vercel 로그인으로의 이동은 이 기본 복귀 경로에서 재현되지 않았습니다. 실제 계정을 이용한 로그인 완료는 별도로 확인해야 합니다.
 
 ---
 

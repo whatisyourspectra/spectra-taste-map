@@ -120,7 +120,7 @@ export default function ConstellationOracle({
         if (!shareBlob || !result) return;
         const file = new File([shareBlob], `spectra-${today}.png`, { type: 'image/png' });
         const title = en ? result.nameEn : result.name;
-        const url = `${window.location.origin}/taste-map/mobile?oracle=1`;
+        const url = `${window.location.origin}/taste-map?tab=today`;
         if (navigator.share && navigator.canShare?.({ files: [file] })) {
             try {
                 await navigator.share({ files: [file], title, text: en ? 'What does your sky look like today?' : '당신의 오늘은 어떤 별자리인가요?', url });
@@ -142,7 +142,7 @@ export default function ConstellationOracle({
     };
 
     const handleCopyLink = async () => {
-        const url = `${window.location.origin}/taste-map/mobile?oracle=1`;
+        const url = `${window.location.origin}/taste-map?tab=today`;
         if (navigator.share) {
             try {
                 await navigator.share({ title: en ? 'Find your constellation' : '오늘의 별자리 찾기', url });

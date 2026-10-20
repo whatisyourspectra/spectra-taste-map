@@ -12,6 +12,11 @@ test('OAuth returns only to known local routes and removes unsolicited URL data'
     assert.equal(safeReturnTo('/'), '/');
     assert.equal(safeReturnTo('/taste-map/mobile'), '/taste-map/mobile');
     assert.equal(safeReturnTo('/taste-map?view=constellation&access_token=secret#fake'), '/taste-map?view=constellation');
+    assert.equal(safeReturnTo('/taste-map?tab=today&access_token=secret'), '/taste-map?tab=today');
+    assert.equal(safeReturnTo('/taste-map?tab=discover&redirect=https://evil.com'), '/taste-map?tab=discover');
+    assert.equal(safeReturnTo('/taste-map?view=immersive#fake'), '/taste-map?view=immersive');
+    assert.equal(safeReturnTo('/taste-map?tab=unknown'), '/taste-map');
+    assert.equal(safeReturnTo('/taste-map/mobile?oracle=1&access_token=secret'), '/taste-map?tab=today');
 });
 
 test('return destination survives cancellation, then is consumed once on success', () => {

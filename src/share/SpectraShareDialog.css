@@ -1,0 +1,43 @@
+.spectra-share-dialog { width: min(460px, calc(100vw - 32px)); max-height: min(860px, 92dvh); margin: auto; padding: 0; overflow: hidden; border: 1px solid #9bb4de38; border-radius: 24px; background: #101725; color: #e6edf8; color-scheme: dark; font-family: var(--font-main, sans-serif); box-shadow: 0 30px 100px #0009; }
+.spectra-share-dialog[open] { display: flex; flex-direction: column; }
+.spectra-share-dialog::backdrop { background: #02050bd9; backdrop-filter: blur(8px); }
+body:has(.spectra-share-dialog[open]) { overflow: hidden; }
+.spectra-share-dialog *, .spectra-share-dialog *::before, .spectra-share-dialog *::after { box-sizing: border-box; }
+.spectra-share-dialog button, .spectra-share-dialog a { font: inherit; -webkit-tap-highlight-color: transparent; }
+.spectra-share-dialog button { cursor: pointer; }
+.spectra-share-dialog button:focus-visible, .spectra-share-dialog a:focus-visible, .spectra-share-dialog summary:focus-visible { outline: 2px solid #b8dafa; outline-offset: -3px; }
+.spectra-share-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 22px 20px 0; flex-shrink: 0; }
+.spectra-share-heading > div > span { font-size: 9px; color: #a5b4d2; letter-spacing: .16em; }
+.spectra-share-heading h2 { margin: 7px 0 0; font-size: 22px; font-weight: 600; letter-spacing: -.04em; line-height: 1.4; }
+.spectra-share-heading > button { width: 44px; height: 44px; flex-shrink: 0; border: 1px solid #9bb4de24; border-radius: 50%; background: #ffffff05; color: #c4d2e8; font-size: 25px; }
+.spectra-share-description { margin: 8px 20px 18px; color: #9fadc6; font-size: 12px; line-height: 1.6; flex-shrink: 0; }
+.spectra-share-styles { display: flex; gap: 4px; margin: 0 20px 16px; padding: 4px; border: 1px solid #9bb4de1c; border-radius: 14px; background: #080e19; flex-shrink: 0; }
+.spectra-share-styles > button { flex: 1; min-height: 44px; padding: 8px; border: 1px solid transparent; border-radius: 10px; background: none; color: #92a5c2; font-size: 13px; }
+.spectra-share-styles > button[aria-pressed=true] { background: #26364e; border-color: #a4c7f03d; color: #e3efff; }
+.spectra-share-body { flex: 1 1 auto; min-height: 0; padding: 0 20px; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #8198bf55 transparent; }
+.spectra-share-preview { display: grid; place-items: center; min-height: 180px; padding: 14px; border: 1px solid #9bb4de14; border-radius: 16px; background: radial-gradient(ellipse at 50% 40%, #27355266, transparent 75%), #080d17; }
+.spectra-share-preview > img { display: block; width: auto; max-width: 100%; height: min(39dvh, 360px); object-fit: contain; border-radius: 8px; box-shadow: 0 8px 24px #0005; }
+.spectra-share-placeholder { min-height: min(39dvh, 360px); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; color: #acbbd3; font-size: 12px; text-align: center; }
+.spectra-share-placeholder p { margin: 0; line-height: 1.7; }
+.spectra-share-placeholder button { min-height: 44px; padding: 8px 18px; border: 1px solid #9bb4de44; border-radius: 10px; background: #26364e; color: #e3efff; }
+.spectra-share-spinner { width: 26px; height: 26px; border: 2px solid #a1b9ff24; border-top-color: #bbd9f7; border-radius: 50%; animation: spectra-share-spin 1.3s linear infinite; }
+.spectra-share-kakao { margin-top: 12px; border-top: 1px solid #9bb4de24; }
+.spectra-share-kakao > summary { display: flex; align-items: center; justify-content: space-between; min-height: 52px; gap: 12px; list-style: none; color: #b9c9df; font-size: 12px; cursor: pointer; }
+.spectra-share-kakao > summary::-webkit-details-marker { display: none; }
+.spectra-share-kakao > summary > span { font-size: 18px; }
+.spectra-share-kakao[open] > summary > span { transform: rotate(45deg); }
+.spectra-share-kakao .kakao-card-share { margin: 0 0 12px; }
+.spectra-share-footer { padding: 16px 20px max(16px, env(safe-area-inset-bottom, 0px)); border-top: 1px solid #9bb4de1c; background: #101725; flex-shrink: 0; }
+.spectra-share-actions { display: flex; gap: 8px; }
+.spectra-share-primary, .spectra-share-secondary { display: flex; flex: 1; align-items: center; justify-content: center; min-height: 50px; padding: 12px 14px; border: 1px solid transparent; border-radius: 14px; text-align: center; text-decoration: none; font-size: 14px !important; font-weight: 600 !important; }
+.spectra-share-primary { background: #c3def2; color: #142c42; }
+.spectra-share-footer > button { width: 100%; }
+.spectra-share-footer > button:disabled { opacity: .5; cursor: wait; }
+.spectra-share-secondary { background: #172336; border-color: #9bb4de33; color: #d5e3f6; }
+.spectra-share-footer > p { margin: 10px 0 0; text-align: center; color: #91a3bd; font-size: 10px; line-height: 1.6; }
+.spectra-share-footer > p[role=alert] { color: #efb6b6; font-size: 12px; }
+.spectra-share-source { position: absolute; left: -10000px; top: 0; width: 360px; height: 360px; pointer-events: none; }
+@keyframes spectra-share-spin { to { transform: rotate(360deg); } }
+@media (max-width: 599px) { .spectra-share-dialog { width: 100%; max-width: 100%; max-height: calc(100dvh - env(safe-area-inset-top, 0px) - 16px); margin: auto 0 0; border-radius: 24px 24px 0 0; border-bottom: 0; } }
+@media (max-height: 700px) { .spectra-share-heading { padding-top: 16px; } .spectra-share-heading h2 { font-size: 20px; } .spectra-share-description { margin-bottom: 12px; } .spectra-share-styles { margin-bottom: 12px; } .spectra-share-preview > img { height: 29dvh; } .spectra-share-placeholder { min-height: 29dvh; } }
+@media (prefers-reduced-motion: reduce) { .spectra-share-spinner { animation: none; } }

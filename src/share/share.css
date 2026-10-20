@@ -3,17 +3,29 @@
 .spectra-shared-card h1 { font-size: 24px; text-align: center; }
 .shared-card-image { width: min(100%, 440px); border-radius: 20px; }
 .shared-card-cta { padding: 16px 24px; background: #253752; color: #e6edf8; border-radius: 14px; text-decoration: none; }
-.kakao-card-share { margin-top: 16px; }
-.kakao-card-share > button { width: 100%; min-height: 48px; border: 0; border-radius: 12px; background: #fee500; color: #191919; font: inherit; font-weight: 600; }
-.kakao-card-share > button:disabled { opacity: .5; }
-.kakao-card-share > p { font-size: 13px; line-height: 1.7; color: #a9b9d0; }
+.kakao-card-share { display: flex; flex-direction: column; gap: 12px; margin-top: 16px; min-width: 0; }
+.kakao-share-intro h3 { margin: 0; color: #e1eaf8; font-size: 14px; font-weight: 600; line-height: 1.5; }
+.kakao-share-intro p, .kakao-card-share > p { margin: 0; color: #a9b9d0; font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; }
+.kakao-share-intro p { margin-top: 4px; }
+.kakao-card-share .kakao-share-disclosure { padding: 12px; border: 1px solid #9bb4de24; border-radius: 12px; background: #9bb4de06; font-size: 11px; }
+.kakao-card-share .kakao-share-status { display: flex; align-items: baseline; gap: 7px; color: #a6daca; }
+.kakao-share-primary { width: 100%; min-height: 48px; padding: 12px 16px; border: 0; border-radius: 12px; background: #fee500; color: #191919; font: inherit; font-size: 14px; font-weight: 600; }
+.kakao-share-primary:disabled { opacity: .5; cursor: default; }
+.kakao-card-share .kakao-share-hint { color: #8fa2bd; font-size: 11px; }
+.kakao-card-share .kakao-share-error { color: #efb6b6; }
 
 .share-map-option { display: flex; align-items: center; gap: 10px; margin: 12px 0; font-size: 14px; line-height: 1.7; }
 .share-map-option input { width: 20px; height: 20px; }
-.share-map-manager { margin-top: 16px; font-size: 13px; }
-.share-map-manager summary { min-height: 44px; padding: 12px 0; cursor: pointer; }
-.share-map-manager > div { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 0; }
-.share-map-manager button { min-height: 44px; padding: 10px; border: 1px solid #8198bf42; background: none; color: #cfddf0; border-radius: 8px; }
+.share-map-manager, .share-map-settings { margin: 0; border-top: 1px solid #9bb4de24; font-size: 12px; }
+.share-map-manager summary, .share-map-settings summary { min-height: 48px; padding: 14px 0; color: #96a9c4; line-height: 1.6; cursor: pointer; }
+.share-map-record { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; border-top: 1px solid #9bb4de14; }
+.share-map-record > span { display: grid; gap: 4px; min-width: 0; flex: 1; }
+.share-map-record strong { color: #cbd8ec; font-size: 12px; font-weight: 500; line-height: 1.6; overflow-wrap: anywhere; }
+.share-map-record time { color: #8194af; font-size: 11px; }
+.share-map-manager button, .share-map-revoke { flex-shrink: 0; min-height: 44px; padding: 10px 12px; border: 1px solid #e1a7a52e; border-radius: 10px; background: #e1a7a506; color: #ddb3b5; font: inherit; font-size: 12px; }
+.share-map-manager button:disabled, .share-map-revoke:disabled { opacity: .5; }
+.share-map-current { display: flex; align-items: center; gap: 12px; padding: 0 0 12px; }
+.share-map-current > p { flex: 1; min-width: 0; margin: 0; color: #8fa2bd; font-size: 11px; line-height: 1.7; }
 
-.share-map-link-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
-.share-map-link-actions a, .share-map-link-actions button { flex: 1; min-height: 44px; padding: 12px; border: 1px solid #8198bf42; border-radius: 10px; background: #ffffff08; color: #cbeeff; font: inherit; font-size: 14px; text-align: center; text-decoration: none; }
+.share-map-link-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 0; }
+.share-map-link-actions a, .share-map-link-actions button { display: flex; align-items: center; justify-content: center; min-width: 0; min-height: 44px; padding: 10px 8px; border: 1px solid #8198bf42; border-radius: 10px; background: #ffffff04; color: #c2d4eb; font: inherit; font-size: 12px; line-height: 1.6; text-align: center; text-decoration: none; }

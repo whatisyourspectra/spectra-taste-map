@@ -8,7 +8,14 @@ export function safeReturnTo(value) {
     try {
         const url = new URL(value, APP_ORIGIN);
         if (url.origin !== APP_ORIGIN || !['/', '/taste-map', '/taste-map/mobile'].includes(url.pathname)) return '/taste-map';
-        return url.pathname + (url.searchParams.get('view') === 'constellation' ? '?view=constellation' : '');
+        if (url.pathname === '/taste-map') {
+            const tab = url.searchParams.get('tab');
+            if (['discover', 'today'].includes(tab)) return `/taste-map?tab=${tab}`;
+            const view = url.searchParams.get('view');
+            if (['constellation', 'immersive'].includes(view)) return `/taste-map?view=${view}`;
+        }
+        if (url.pathname === '/taste-map/mobile' && url.searchParams.get('oracle') === '1') return '/taste-map?tab=today';
+        return url.pathname;
     } catch { return '/taste-map'; }
 }
 

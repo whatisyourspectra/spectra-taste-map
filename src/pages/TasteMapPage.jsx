@@ -5860,9 +5860,9 @@ export default function TasteMapPage() {
                                 aria-pressed={exploreEnabled}
                                 title={!exploreEnabled && explorePrefetchedCount > 0
                                     ? (lang === 'en' ? `${explorePrefetchedCount} new stars discovered in empty space` : `빈 공간에 ${explorePrefetchedCount}개의 별이 준비되었습니다`)
-                                    : (lang === 'en' ? 'Discover' : '탐색')}
+                                    : (lang === 'en' ? 'Expand' : '확장')}
                             >
-                                <span aria-hidden>✦</span>{lang === 'en' ? 'Discover' : '탐색'}
+                                <span aria-hidden>✦</span>{lang === 'en' ? 'Expand' : '확장'}
                                 {!exploreEnabled && explorePrefetchedCount > 0 && (
                                     <span className="tm-dock-badge" aria-hidden>{explorePrefetchedCount}</span>
                                 )}

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { listOwnSharedMaps, revokeSharedMap } from './sharedMapStorage';
-export default function SharedMapManager({ refreshId, onRevoked }) {
+export default function SharedMapManager({ refreshId, excludeId, onRevoked }) {
     const [shares, setShares] = useState([]);
     const [busy, setBusy] = useState(null);
     const [error, setError] = useState('');
@@ -11,9 +11,10 @@ export default function SharedMapManager({ refreshId, onRevoked }) {
         catch { setError('공유 해제에 실패했어요. 다시 시도해 주세요.'); }
         finally {setBusy(null);}
     };
-    if (!shares.length) return null;
-    return <details className="share-map-manager"><summary>내 공유 지도 관리 ({shares.length})</summary>
-        {shares.map(item => <div key={item.id}><span>{item.title} · {new Date(item.created_at).toLocaleDateString('ko-KR')}</span><button type="button" disabled={Boolean(busy)} onClick={() => revoke(item.id)}>{busy === item.id ? '해제 중…' : '공유 해제'}</button></div>)}
+    const otherShares = shares.filter(item => item.id !== excludeId);
+    if (!otherShares.length) return null;
+    return <details className="share-map-manager"><summary>이전에 공유한 지도 ({otherShares.length})</summary>
+        {otherShares.map(item => <div className="share-map-record" key={item.id}><span><strong>{item.title}</strong><time dateTime={item.created_at}>{new Date(item.created_at).toLocaleDateString('ko-KR')}</time></span><button type="button" disabled={Boolean(busy)} aria-label={`${item.title} 공유 해제`} onClick={() => revoke(item.id)}>{busy === item.id ? '해제 중…' : '공유 해제'}</button></div>)}
         {error && <p role="alert">{error}</p>}
     </details>;
 }
