@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { performance } from 'node:perf_hooks';
-import { getMapPoints, buildMapEdges, zoomCameraAt, focusCameraOn } from '../src/share/sharedMapGeometry.js';
+import { getMapPoints, getMapMarkerRadius, getVisibleMapIndices, buildMapEdges, zoomCameraAt, focusCameraOn } from '../src/share/sharedMapGeometry.js';
 
 function screenPoint(point, camera, size) {
     return {
@@ -10,6 +10,49 @@ function screenPoint(point, camera, size) {
     };
 }
 const near = (actual, expected) => assert.ok(Math.abs(actual - expected) < 1e-8, `${actual} != ${expected}`);
+
+test('dense mobile maps keep real screen clearance at every zoom, including the selected ring', () => {
+    const tracks = Array.from({ length: 2000 }, (_, i) => ({ x: i % 3 ? (i * .6180339) % 1 : .5, y: i % 3 ? (i * .381966 + Math.sin(i) * .2 + 1) % 1 : .5 }));
+    for (const size of [{ width: 320, height: 226 }, { width: 390, height: 440 }, { width: 844, height: 290 }]) {
+        const points = getMapPoints(tracks, size);
+        const before = JSON.stringify(points);
+        for (const view of ['bubbles', 'constellation']) for (const zoom of [.65, 1, 1.35, 2, 4]) {
+            for (const selectedIndex of [-1, 1999]) {
+                const camera = selectedIndex < 0 ? { x: 0, y: 0, zoom } : focusCameraOn(points[selectedIndex], { zoom }, size);
+                const options = { view, selectedIndex };
+                const indices = getVisibleMapIndices(points, size, camera, options);
+                assert.ok(indices.length > 0 && indices.length <= (view === 'bubbles' ? 120 : 220));
+                assert.deepEqual(indices, getVisibleMapIndices(points, size, camera, options));
+                if (selectedIndex >= 0) assert.equal(indices.at(-1), selectedIndex, 'Selected song is retained and painted last');
+                for (let i = 0; i < indices.length; i++) for (let j = i + 1; j < indices.length; j++) {
+                    const a = screenPoint(points[indices[i]], camera, size), b = screenPoint(points[indices[j]], camera, size);
+                    const radii = getMapMarkerRadius(view, size, camera, indices[i] === selectedIndex) + getMapMarkerRadius(view, size, camera, indices[j] === selectedIndex);
+                    assert.ok(Math.hypot(a.x - b.x, a.y - b.y) >= radii + (view === 'bubbles' ? 12 : 15) - 1e-8);
+                }
+            }
+        }
+        assert.equal(JSON.stringify(points), before, 'Decluttering never moves source coordinates');
+    }
+});
+
+test('zoom reveals nearby albums, caps cover size, and leaves controls free', () => {
+    const size = { width: 390, height: 440 };
+    const points = getMapPoints(Array.from({ length: 2000 }, (_, i) => ({ x: (i * .6180339) % 1, y: (i * .381966 + Math.sin(i) * .2 + 1) % 1 })), size);
+    const overview = getVisibleMapIndices(points, size, {}, { view: 'bubbles' });
+    const expanded = getVisibleMapIndices(points, size, { zoom: 2 }, { view: 'bubbles' });
+    assert.ok(expanded.some(index => !overview.includes(index)), 'Zoom makes previously hidden songs discoverable');
+    for (const index of overview) {
+        const radius = getMapMarkerRadius('bubbles', size, {}), point = points[index];
+        assert.ok(point.x - radius >= 12 && point.x + radius <= size.width - 12);
+        assert.ok(point.y - radius >= 76 && point.y + radius <= size.height - 86);
+    }
+    assert.ok(getMapMarkerRadius('bubbles', size, { zoom: 4 }, true) < 29);
+    assert.deepEqual(getVisibleMapIndices([], size, {}), []);
+    assert.deepEqual(getVisibleMapIndices([null], size, {}), []);
+    const begin = performance.now();
+    for (let frame = 0; frame < 100; frame++) getVisibleMapIndices(points, size, { x: frame, zoom: 1 + frame / 100 }, { view: 'bubbles' });
+    assert.ok(performance.now() - begin < 2000, 'Spatial sampling should remain cheap while dragging 2,000 songs');
+});
 
 test('shared map positions preserve feature direction, deterministic jitter, and control margins', () => {
     const tracks = [{ x: 0, y: 1 }, { x: 1, y: 0 }, { x: .5, y: .5 }, { x: -4, y: 9 }, { x: Infinity, y: NaN }, null];

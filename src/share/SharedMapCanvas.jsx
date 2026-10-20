@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { buildMapEdges, focusCameraOn, getMapPoints, zoomCameraAt } from './sharedMapGeometry';
+import { buildMapEdges, focusCameraOn, getMapMarkerRadius, getMapPoints, getVisibleMapIndices, zoomCameraAt } from './sharedMapGeometry';
 
 const colors = ['#78d5ff', '#c0a3ff', '#f39acb', '#ffd28f'];
 const initialCamera = { x: 0, y: 0, zoom: 1 };
@@ -25,18 +25,8 @@ export default function SharedMapCanvas({ tracks, selected, focusRequest, view, 
         });
         return [...collected.values()].map(group => ({ ...group, x: group.x / group.count, y: group.y / group.count }));
     }, [tracks, points, showGroups]);
-    const bubbleRadius = index => scope === 'personal' ? (tracks.length > 200 ? 9 : 12) + index % 4 * 1.5 : 19 + index % 4 * 2;
     const selectedIndex = tracks.findIndex(track => track.id === selected?.id);
-    // Reveal dense libraries progressively instead of loading 2,000 covers at once.
-    const step = Math.max(1, Math.ceil(tracks.length / (240 * camera.zoom ** 2)));
-    const visible = useMemo(() => points.map((_, index) => index).filter(index => {
-        if (index === selectedIndex) return true;
-        if (index % step !== 0) return false;
-        const point = points[index];
-        const x = size.width / 2 + (point.x - size.width / 2) * camera.zoom + camera.x;
-        const y = size.height / 2 + (point.y - size.height / 2) * camera.zoom + camera.y;
-        return x > -100 && x < size.width + 100 && y > -100 && y < size.height + 100;
-    }), [points, step, selectedIndex, camera, size]);
+    const visible = useMemo(() => getVisibleMapIndices(points, size, camera, { view, selectedIndex }), [points, size, camera, view, selectedIndex]);
     const edges = useMemo(() => buildMapEdges(visible.map(index => points[index]), Math.min(125, size.width * .29)).map(([a, b]) => [visible[a], visible[b]]), [points, visible, size.width]);
     const commitCamera = next => { cameraRef.current = next; setCamera(next); };
 
@@ -123,7 +113,7 @@ export default function SharedMapCanvas({ tracks, selected, focusRequest, view, 
             for (const index of visible) {
                 const p = points[index];
                 const screen = { x: size.width / 2 + (p.x - size.width / 2) * current.zoom + current.x, y: size.height / 2 + (p.y - size.height / 2) * current.zoom + current.y };
-                const d = distance(tap, screen), hit = Math.max(22, view === 'bubbles' ? bubbleRadius(index) * current.zoom : 22);
+                const d = distance(tap, screen), hit = Math.max(22, getMapMarkerRadius(view, size, current, index === selectedIndex));
                 if (d <= hit && d < best) { best = d; closest = index; }
             }
             if (closest !== null) onSelect(tracks[closest]);
@@ -141,7 +131,7 @@ export default function SharedMapCanvas({ tracks, selected, focusRequest, view, 
             requestAnimationFrame(() => canvasRef.current?.querySelector(`[data-track-index="${next}"]`)?.focus());
         }
     };
-    return <div className={`public-map-stage${gesturing ? ' is-gesturing' : ''}`}>
+    return <div className={`public-map-stage${view === 'bubbles' ? ' is-album-view' : ''}${gesturing ? ' is-gesturing' : ''}`}>
         <div className="public-map-stage-top">
             <div className="public-map-view-tabs" role="group" aria-label="지도 스타일">
                 <button type="button" aria-pressed={view === 'constellation'} onClick={() => onViewChange('constellation')}><span aria-hidden="true">✦</span> 별자리</button>
@@ -157,20 +147,20 @@ export default function SharedMapCanvas({ tracks, selected, focusRequest, view, 
                 {view === 'constellation' && edges.map(([a, b]) => <line key={`${a}-${b}`} x1={points[a].x} y1={points[a].y} x2={points[b].x} y2={points[b].y} stroke={selectedIndex === a || selectedIndex === b ? '#bcecff' : (tracks[a].mapColor || colors[a % 4])} opacity={selectedIndex === a || selectedIndex === b ? .8 : .26} strokeWidth="1" vectorEffect="non-scaling-stroke" />)}
                 {visible.map(index => {
                     const track = tracks[index], point = points[index], picked = selectedIndex === index;
-                    const radius = view === 'bubbles' ? bubbleRadius(index) : 3.2 + index % 3 * .7;
-                    return <g key={track.id} data-track-index={index} className={`public-map-star${picked ? ' is-selected' : ''}`} role="button" tabIndex={picked || (selectedIndex < 0 && index === 0) ? 0 : -1} aria-label={`${track.name} — ${track.artists}`} aria-pressed={picked} onClick={event => { if (event.detail === 0) onSelect(track); }} onKeyDown={event => keyboardSelect(event, index)}>
-                        {(tracks.length <= 160 || picked) && <circle cx={point.x} cy={point.y} r={radius + 8} fill={track.mapColor || colors[index % 4]} opacity={picked ? .6 : scope === 'personal' ? .13 : .3} filter="url(#share-star-glow)" />}
-                        {picked && <circle cx={point.x} cy={point.y} r={radius + 9 / camera.zoom} fill="none" stroke="#bdeaff" opacity=".8" vectorEffect="non-scaling-stroke" />}
-                        <circle cx={point.x} cy={point.y} r={radius} fill={track.mapColor || colors[index % 4]} stroke={picked ? '#fff' : track.mapRecommended ? '#fff' : '#ffffff66'} strokeDasharray={track.mapRecommended ? '3 3' : undefined} strokeWidth="1" vectorEffect="non-scaling-stroke" />
-                        {view === 'bubbles' && track.coverUrl && <image href={track.coverUrl} x={point.x - radius + 1} y={point.y - radius + 1} width={(radius - 1) * 2} height={(radius - 1) * 2} preserveAspectRatio="xMidYMid slice" style={{ clipPath: 'circle(50%)' }} onError={event => { event.currentTarget.style.display = 'none'; }} />}
+                    const radius = getMapMarkerRadius(view, size, camera, picked) / camera.zoom;
+                    return <g key={track.id} data-track-index={index} className={`public-map-star${picked ? ' is-selected' : ''}`} role="button" tabIndex={picked || (selectedIndex < 0 && index === visible[0]) ? 0 : -1} aria-label={`${track.name} — ${track.artists}`} aria-pressed={picked} onClick={event => { if (event.detail === 0) onSelect(track); }} onKeyDown={event => keyboardSelect(event, index)}>
+                        {(view !== 'bubbles' || picked) && (tracks.length <= 160 || picked) && <circle cx={point.x} cy={point.y} r={radius + 8 / camera.zoom} fill={track.mapColor || colors[index % 4]} opacity={picked ? .35 : .13} filter="url(#share-star-glow)" />}
+                        {picked && <circle cx={point.x} cy={point.y} r={radius + 6 / camera.zoom} fill="none" stroke="#bdeaff" opacity=".8" vectorEffect="non-scaling-stroke" />}
+                        <circle className="public-map-marker" cx={point.x} cy={point.y} r={radius} fill={view === 'bubbles' ? '#172233' : track.mapColor || colors[index % 4]} stroke={picked ? '#fff' : track.mapRecommended ? '#d9eaff' : track.mapColor || '#c5d6f54d'} strokeDasharray={track.mapRecommended ? '3 3' : undefined} strokeWidth={picked ? 2 : 1} vectorEffect="non-scaling-stroke" />
+                        {view === 'bubbles' && <text x={point.x} y={point.y} dy=".35em" textAnchor="middle" fontSize={18 / camera.zoom} fill="#a6b8d3" pointerEvents="none" aria-hidden="true">♪</text>}
+                        {view === 'bubbles' && track.coverUrl && <image href={track.coverUrl} x={point.x - radius + 1 / camera.zoom} y={point.y - radius + 1 / camera.zoom} width={(radius - 1 / camera.zoom) * 2} height={(radius - 1 / camera.zoom) * 2} preserveAspectRatio="xMidYMid slice" style={{ clipPath: 'circle(50%)' }} onError={event => { event.currentTarget.style.display = 'none'; }} />}
                         {view === 'constellation' && <circle cx={point.x} cy={point.y} r="1.3" fill="#fff" />}
                         <circle cx={point.x} cy={point.y} r={Math.max(22 / camera.zoom, radius)} fill="transparent" />
-                        <title>{track.name} — {track.artists}</title>
                     </g>;
                 })}
-                {camera.zoom < 1.8 && (scope !== 'personal' || (size.width > 360 && size.height > 330)) && groups.map(group => <text key={group.label} x={group.x} y={group.y - 35 / camera.zoom} textAnchor="middle" fontSize={12 / camera.zoom} fill={group.color} stroke="#0a101c" strokeWidth={4 / camera.zoom} paintOrder="stroke" pointerEvents="none" aria-hidden="true">{group.label}</text>)}
+                {view === 'constellation' && camera.zoom < 1.8 && (scope !== 'personal' || (size.width > 360 && size.height > 330)) && groups.map(group => <text key={group.label} x={group.x} y={group.y - 35 / camera.zoom} textAnchor="middle" fontSize={12 / camera.zoom} fill={group.color} stroke="#0a101c" strokeWidth={4 / camera.zoom} paintOrder="stroke" pointerEvents="none" aria-hidden="true">{group.label}</text>)}
             </g>
         </svg>
-        <div className="public-map-stage-bottom"><span>{step > 1 ? '확대하면 더 많은 곡이 보여요' : '별을 눌러 곡을 만나보세요'}</span><div className="public-map-zoom"><button type="button" aria-label="축소" disabled={camera.zoom <= .65} onClick={() => zoom(1 / 1.3)}>−</button><button type="button" onClick={() => commitCamera(initialCamera)} aria-label="지도 전체 보기">전체</button><button type="button" aria-label="확대" disabled={camera.zoom >= 4} onClick={() => zoom(1.3)}>+</button></div></div>
+        <div className="public-map-stage-bottom"><span className="public-map-density-hint">{visible.length < tracks.length ? <><strong>{view === 'bubbles' ? '앨범' : '별'} {visible.length}개 표시</strong><span>확대해 더 둘러보세요</span></> : '곡을 눌러 만나보세요'}</span><div className="public-map-zoom"><button type="button" aria-label="축소" disabled={camera.zoom <= .65} onClick={() => zoom(1 / 1.3)}>−</button><button type="button" onClick={() => commitCamera(initialCamera)} aria-label="지도 전체 보기">전체</button><button type="button" aria-label="확대" disabled={camera.zoom >= 4} onClick={() => zoom(1.3)}>+</button></div></div>
     </div>;
 }

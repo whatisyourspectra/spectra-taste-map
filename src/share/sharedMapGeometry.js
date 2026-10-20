@@ -33,6 +33,62 @@ export function getMapPoints(tracks, size) {
     }));
 }
 
+/** Marker sizes are in screen pixels, so zoom reveals detail without giant covers. */
+export function getMapMarkerRadius(view, size, camera, selected = false) {
+    const { width } = mapSize(size);
+    const { zoom } = mapCamera(camera);
+    if (view !== 'bubbles') return 3.6 * Math.min(1.3, Math.sqrt(zoom));
+    return (width <= 600 ? 21 : 25) * Math.min(1.2, zoom ** .18) + (selected ? 3 : 0);
+}
+
+/**
+ * Reveal representatives by actual screen-space clearance, rather than every
+ * nth song. Keep the selected song first in the collision pass and last in the
+ * paint order. Coordinates stay fixed while panning, zooming, or selecting.
+ */
+export function getVisibleMapIndices(points, size, camera, { view = 'constellation', selectedIndex = -1 } = {}) {
+    if (!Array.isArray(points) || !points.length) return [];
+    const { width, height } = mapSize(size);
+    const current = mapCamera(camera);
+    const albums = view === 'bubbles';
+    const radius = getMapMarkerRadius(view, size, current);
+    const gap = albums ? 12 : 15;
+    const top = Math.min(76, height / 2);
+    const bottom = Math.min(86, height / 2);
+    const side = albums ? radius + 12 : 18;
+    const cell = radius * 2 + gap + 12;
+    const buckets = new Map();
+    const visible = [];
+    const hasSelection = Number.isInteger(selectedIndex) && selectedIndex >= 0 && selectedIndex < points.length;
+    const order = hasSelection ? [selectedIndex, ...points.map((_, i) => i).filter(i => i !== selectedIndex)] : points.map((_, i) => i);
+    const limit = albums ? 120 : 220;
+    for (const index of order) {
+        const point = points[index];
+        if (!Number.isFinite(point?.x) || !Number.isFinite(point?.y)) continue;
+        const selected = index === selectedIndex;
+        const x = width / 2 + (point.x - width / 2) * current.zoom + current.x;
+        const y = height / 2 + (point.y - height / 2) * current.zoom + current.y;
+        const r = getMapMarkerRadius(view, size, current, selected);
+        if (!selected && (x < side || x > width - side || y < top + r || y > height - bottom - r)) continue;
+        const bx = Math.floor(x / cell), by = Math.floor(y / cell);
+        let crowded = false;
+        for (let dx = -1; dx <= 1 && !crowded; dx++) for (let dy = -1; dy <= 1 && !crowded; dy++) {
+            for (const other of buckets.get(`${bx + dx},${by + dy}`) || []) {
+                // Leave extra breathing room around the selected song's ring.
+                const clearance = r + other.r + gap + (selected || other.selected ? 6 : 0);
+                if (Math.hypot(x - other.x, y - other.y) < clearance) { crowded = true; break; }
+            }
+        }
+        if (crowded) continue;
+        const key = `${bx},${by}`;
+        if (!buckets.has(key)) buckets.set(key, []);
+        buckets.get(key).push({ x, y, r, selected });
+        visible.push(index);
+        if (visible.length >= limit) break;
+    }
+    return hasSelection && visible[0] === selectedIndex ? [...visible.slice(1), selectedIndex] : visible;
+}
+
 /**
  * Connect each point to at most maxNeighbors nearest points in maxDistance.
  * Edges are undirected, so incoming links can give a point a higher degree.
