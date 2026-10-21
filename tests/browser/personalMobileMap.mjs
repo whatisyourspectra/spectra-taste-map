@@ -21,7 +21,7 @@ try{
   assert.equal(calls.length,0,'No automatic recommendation request on arrival');
   assert.equal(await page.locator('.tm-root').count(),0);
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
-  assert.ok((await page.locator('.public-map-stage').boundingBox()).height>200);
+  const stageBox=await page.locator('.public-map-stage').boundingBox();assert.ok(stageBox.height>200,JSON.stringify({size,stageBox}));
   assert.equal(await page.locator('.mtm-bottom-nav').isVisible(),true);
   await page.screenshot({path:`${out}/map-${size.width}.png`});
   if(process.argv.includes('--capture-only')){await page.close();continue;}

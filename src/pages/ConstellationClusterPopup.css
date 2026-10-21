@@ -368,3 +368,7 @@
  .ccp-action-bar { flex-wrap: wrap; }
  .ccp-action-chip { min-height: 40px; font-size: 13px; }
 }
+.ccp-evidence { margin: 0 18px 12px; border-top: 1px solid #b6c8ed18; padding-top: 10px; }
+.ccp-evidence > summary { cursor: pointer; color: #b5c7e2; font-size: 12px; padding: 6px 0; }
+.ccp-evidence .tm-cluster-evidence { padding-top: 10px; }
+.ccp-constellation-canvas .ccp-display-name { font-size: 12px; color: #9bacc8; }

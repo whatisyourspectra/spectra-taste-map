@@ -1,4 +1,5 @@
 import { normalizeGenre, titleizeGenre } from './genreIdentity.js';
+import { deduplicateTracks } from '../utils/trackIdentity.js';
 
 /**
  * @typedef {{genre: string, strength: number}} GenreSignal
@@ -15,8 +16,7 @@ export function getTasteGenres(track) {
 }
 
 export function uniqueTracks(tracks = []) {
-    return [...new Map(tracks.filter((track) => track?.id && track?.name)
-        .map((track) => [String(track.id), track])).values()];
+    return deduplicateTracks(tracks.filter((track) => track?.id && track?.name));
 }
 
 export function latestDecisions(decisions = []) {

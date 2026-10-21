@@ -173,7 +173,10 @@ export function TasteDataProvider({ children, ownerId = null }) {
             return { ok: false };
         }
 
-        const { items: list, capped, originalTotal } = limitImportTracks(rawList);
+        const limited = limitImportTracks(rawList);
+        const { capped, originalTotal } = limited;
+        const list = options.preEnriched || typeof rawList[0].valence === 'number'
+            ? uniqueTracks(limited.items) : limited.items;
         setCloudSaveStatus('local');
 
         // Instant path for pre-enriched demo tracks or tracks with precomputed features
@@ -260,7 +263,9 @@ export function TasteDataProvider({ children, ownerId = null }) {
 
         const publish = (nextStatus) => {
             if (importRunRef.current !== runId) return;
-            const nextTracks = [...collectedById.values()];
+            // Different source rows/chunks can resolve to the same catalog song.
+            // Keep source slots for retries, but publish each resolved song once.
+            const nextTracks = uniqueTracks([...collectedById.values()]);
             const nextStats = {
                 fetchedCount: nextTracks.length,
                 totalAvailable: list.length,
@@ -310,7 +315,7 @@ export function TasteDataProvider({ children, ownerId = null }) {
                 setProgress({done: list.length, total: list.length});
                 const retained = publish('ready');
                 await saveToAccount(retained);
-                return {ok: true, count: collectedById.size, failedCount};
+                return {ok: true, count: retained.tracks.length, failedCount};
             }
             processedCount = preview.length;
             setProgress({ done: processedCount, total: list.length });
@@ -378,7 +383,7 @@ export function TasteDataProvider({ children, ownerId = null }) {
         if (importRunRef.current !== runId) return { ok: false, cancelled: true };
         const completedTaste = publish('ready');
         await saveToAccount(completedTaste);
-        return { ok: true, count: collectedById.size, failedCount, isCapped: capped, originalImportCount: originalTotal };
+        return { ok: true, count: completedTaste.tracks.length, failedCount, isCapped: capped, originalImportCount: originalTotal };
     }, [ownerId, saveToAccount]);
 
     useEffect(() => {

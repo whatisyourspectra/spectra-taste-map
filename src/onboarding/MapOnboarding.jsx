@@ -7,7 +7,7 @@ const DESKTOP = [
   { target: '.tm-canvas-wrap', label: '별자리 항해', title: '좋아하는 곡에서 항해를 시작해요', action: '앨범이나 별을 누른 뒤', text: ' 곡 정보에서 ‘별자리 항해’를 선택해 보세요.', hint: '연결된 곡을 따라가며 새로운 음악을 발견할 수 있어요.' },
   { target: '.ccp-card', openTrack: true, label: '곡 정보와 듣기', title: '선택한 곡에서 다음 탐험으로', action: '우하단 곡 정보 패널에서', text: ' 곡과 별자리를 확인하고, YouTube로 듣거나 ‘별자리 항해’를 시작할 수 있어요.', hint: 'Spotify로 열기, 내 지도에 추가, 닮은 곡으로 확장도 이곳에서 할 수 있어요.' },
   { target: '.tm-view-switcher', label: '지도 바꾸기', title: '취향을 다른 시선으로 봐요', action: 'Taste Field와 Spectra', text: '를 바꿔 보며 닮은 곡과 연결을 살펴보세요.' },
-  { target: '.tm-dock-actions .tm-dock-action:first-child', label: '새 음악 찾기', title: '내 취향에서 한 걸음 더', action: '탐색을 켜면', text: ' 지도에 새로운 추천 곡이 나타나요.', hint: '마음에 드는 곡은 추가 버튼으로 내 지도에 담아요.' },
+  { target: '.tm-dock-actions .tm-dock-action:first-child', label: '새 음악 찾기', title: '내 취향에서 한 걸음 더', action: '새 음악 찾기를 누르면', text: ' 추천 목록에서 곡을 골라 들을 수 있어요.', hint: '한 번에 최대 8곡을 찾아요. 마음에 드는 곡만 추가 버튼으로 내 지도에 담아요.' },
   { target: '.tm-dock-actions .tm-dock-action:last-child', label: '곡 모으기', title: '좋아하는 곡끼리 모아봐요', action: '선택을 켠 뒤', text: ' 곡들을 드래그해 골라보세요.', hint: '이름을 붙여 나만의 그룹으로 저장할 수 있어요.' },
   { target: '.tm-dock-zoom', label: '확대·축소하기', title: '가까이 보고, 넓게 살펴봐요', action: '−와 +로', text: ' 지도를 축소하거나 확대해 보세요.', hint: '가운데 퍼센트를 누르면 전체 곡을 다시 볼 수 있어요.' },
 ];

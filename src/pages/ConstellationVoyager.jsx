@@ -27,6 +27,7 @@ export default function ConstellationVoyagerHUD({
     const [selectedId, setSelectedId] = useState(currentTrack?.id);
     const [explorationSeedId, setExplorationSeedId] = useState(null);
     const [exploring, setExploring] = useState(false);
+    const [queueOpen, setQueueOpen] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
     const [playbackIssue, setPlaybackIssue] = useState(null);
     const [showVideoPip, setShowVideoPip] = useState(false);
@@ -51,6 +52,7 @@ export default function ConstellationVoyagerHUD({
         if (!track) return;
         setExplorationSeedId(track.id);
         setExploring(true);
+        setQueueOpen(false);
         setMenuOpen(false);
         setShowVideoPip(false);
     };
@@ -94,8 +96,8 @@ export default function ConstellationVoyagerHUD({
         };
     }, []);
     useEffect(() => {
-        if (mapRef.current) mapRef.current.inert = exploring;
-    }, [exploring]);
+        if (mapRef.current) mapRef.current.inert = exploring || queueOpen;
+    }, [exploring, queueOpen]);
     useEffect(() => {
         const handleKeyDown = (event) => {
             if (event.defaultPrevented || event.target.isContentEditable || event.target.closest('input, textarea, select')) return;
@@ -104,6 +106,7 @@ export default function ConstellationVoyagerHUD({
                 if (showVideoPip) setShowVideoPip(false);
                 else if (menuOpen) setMenuOpen(false);
                 else if (exploring) closeExploration();
+                else if (queueOpen) setQueueOpen(false);
                 else onClose?.();
             } else if (event.code === 'Space' && !event.target.closest('button, a')) {
                 event.preventDefault(); onTogglePlay?.();
@@ -115,7 +118,7 @@ export default function ConstellationVoyagerHUD({
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [exploring, menuOpen, showVideoPip, closeExploration, onClose, onTogglePlay, onNextStar, onPrevStar]);
+    }, [exploring, queueOpen, menuOpen, showVideoPip, closeExploration, onClose, onTogglePlay, onNextStar, onPrevStar]);
 
     return <div ref={dialogRef} className={`cv-hud-root${exploring ? ' is-exploring' : ''}`} role="dialog" aria-modal="true" aria-label={en ? 'Constellation' : '별자리 탐색'}>
         <header className="cv-topbar">
@@ -138,7 +141,7 @@ export default function ConstellationVoyagerHUD({
             <div><button type="button" onClick={undoAddition}>{en ? 'Undo' : '추가 취소'}</button><button type="button" onClick={() => exploreFrom(tracks.find((track) => track.id === addition.anchorId))}>{en ? 'Keep exploring' : '탐색 계속'}</button></div>
         </div>}
 
-        <section className="cv-selection" hidden={exploring} aria-label={en ? 'Selected star' : '선택한 별'}>
+        <section className="cv-selection" hidden={exploring || queueOpen} aria-label={en ? 'Selected star' : '선택한 별'}>
             <TrackCover track={selectedTrack} />
             <div className="cv-selection-copy"><small>{en ? 'SELECTED STAR' : '선택한 별'}</small><strong>{selectedTrack?.name}</strong><span>{selectedTrack?.artists}</span></div>
             <button type="button" className="cv-selected-play" aria-label={en ? 'Play selected star' : '선택한 별 재생'} onClick={() => { if (selectedTrack?.id === currentTrack?.id) onTogglePlay?.(); else if (selectedTrack) onPlayTrack(selectedTrack); }}><VoyageIcon name={selectedTrack?.id === currentTrack?.id && isPlaying ? 'pause' : 'play'} /></button>
@@ -150,6 +153,19 @@ export default function ConstellationVoyagerHUD({
             <ConstellationExplorer cache={discoveryCache} seed={explorationSeed} tracks={tracks} context={discoveryContext} onAdd={addStar} onClose={closeExploration} lang={lang} />
         </>}
 
+        {queueOpen && <>
+            <button type="button" className="cv-sheet-backdrop" onClick={() => setQueueOpen(false)} aria-label={en ? 'Close play queue' : '재생 목록 닫기'} tabIndex={-1} />
+            <aside className="cv-play-queue" aria-label={en ? 'Play queue' : '별자리 재생 목록'}>
+                <header><div><small>{en ? 'PLAY ORDER' : '재생 순서'}</small><h2>{en ? 'Constellation songs' : '별자리의 음악'}</h2></div><button type="button" className="cv-sheet-close" onClick={() => setQueueOpen(false)} aria-label={en ? 'Close queue' : '목록 닫기'}>×</button></header>
+                <p>{en ? 'Songs play in this order. Select any song to listen.' : '이 순서대로 재생해요. 원하는 곡을 눌러 바로 들을 수 있어요.'}</p>
+                <ol>{sequence.map((id, index) => {
+                    const track = tracks.find(item => item.id === id);
+                    if (!track) return null;
+                    return <li key={id}><button type="button" aria-current={currentTrack?.id === id ? 'true' : undefined} onClick={() => { setSelectedId(id); onPlayTrack(track); }} aria-label={`${en ? 'Play' : '재생'}: ${track.name}`}><span>{currentTrack?.id === id && isPlaying ? '▶' : index + 1}</span><TrackCover track={track} /><span><strong>{track.name}</strong><small>{track.artists}</small></span></button></li>;
+                })}</ol>
+            </aside>
+        </>}
+
         <footer className="cv-dock" aria-label={en ? 'Now playing' : '음악 재생'}>
             <TrackCover track={currentTrack} />
             <div className="cv-track-texts"><span className="cv-track-title">{currentTrack?.name || (en ? 'Choose a song' : '곡을 선택하세요')}</span><span className="cv-track-artist">{isPlaying ? (en ? 'Playing' : '재생 중') : (en ? 'Paused' : '일시정지')} · {currentIndex + 1}/{sequence.length}</span></div>
@@ -158,6 +174,7 @@ export default function ConstellationVoyagerHUD({
                 <button type="button" className="cv-cruise-toggle-btn" onClick={onTogglePlay} aria-label={isPlaying ? (en ? 'Pause' : '일시정지') : (en ? 'Play' : '재생')}><VoyageIcon name={isPlaying ? 'pause' : 'play'} /></button>
                 <button type="button" className="cv-ctrl-btn cv-next" onClick={onNextStar} disabled={!hasNext} aria-label={en ? 'Next song' : '다음 곡'}><VoyageIcon name="next" /></button>
             </div>
+            <button type="button" className="cv-queue-toggle" aria-expanded={queueOpen} onClick={() => { setExploring(false); setQueueOpen(value => !value); }} aria-label={en ? 'Open play queue' : '재생 목록 열기'}><span aria-hidden="true">☷</span><span>{en ? 'Queue' : '목록'}</span></button>
             {playbackIssue === currentTrack?.id && <button type="button" className="cv-playback-issue" onClick={() => setShowVideoPip(true)} aria-label={en ? 'Playback needs attention. Open player' : '재생 상태 확인, 플레이어 열기'}>!</button>}
         </footer>
 

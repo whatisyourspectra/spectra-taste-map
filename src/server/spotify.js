@@ -297,12 +297,33 @@ function tokenSimilarity(left, right) {
     const b = normalizeText(right);
     if (!a || !b) return 0;
     if (a === b) return 1;
-    if (a.includes(b) || b.includes(a)) return 0.82;
     const aa = new Set(a.split(/\s+/));
     const bb = new Set(b.split(/\s+/));
     let overlap = 0;
     for (const token of aa) if (bb.has(token)) overlap += 1;
+    // Extra version/collaborator words are common; partial words are not a
+    // match (e.g. KAI must not match Kaiit, or Love match Lovely).
+    if (overlap === Math.min(aa.size, bb.size)) return 0.82;
     return (2 * overlap) / (aa.size + bb.size);
+}
+
+export function rankTrackCandidates(candidates, artist, title, album = '') {
+    return candidates.map((track, index) => {
+        const titleSimilarity = tokenSimilarity(title, track.name);
+        const artistSimilarity = tokenSimilarity(artist, track.artist);
+        return {
+            track,
+            titleSimilarity,
+            artistSimilarity,
+            score: titleSimilarity * 0.58 + artistSimilarity * 0.37
+                + (album ? tokenSimilarity(album, track.album) * 0.05 : 0)
+                - index * 0.002,
+        };
+    })
+        // A matching title alone used to clear the combined 0.48 threshold,
+        // repeatedly replacing unrelated imports with a popular namesake.
+        .filter(candidate => candidate.titleSimilarity >= 0.8 && candidate.artistSimilarity >= 0.6)
+        .sort((a, b) => b.score - a.score);
 }
 
 function pickCover(images) {
@@ -413,16 +434,6 @@ export async function getTrackInfo(artist, title, album = '') {
     if (cached !== undefined) return cached;
 
     return sharePending(key, async () => {
-        const rankCandidates = (candidates) => candidates
-            .map((track, index) => ({
-                track,
-                score: (tokenSimilarity(title, track.name) * 0.58)
-                    + (tokenSimilarity(artist, track.artist) * 0.37)
-                    + (album ? tokenSimilarity(album, track.album) * 0.05 : 0)
-                    - (index * 0.002),
-            }))
-            .sort((a, b) => b.score - a.score);
-
         const queries = [];
         if (album) queries.push(`track:${title} artist:${artist} album:${album}`);
         queries.push(`track:${title} artist:${artist}`);
@@ -430,7 +441,7 @@ export async function getTrackInfo(artist, title, album = '') {
 
         let best = null;
         for (const query of [...new Set(queries)]) {
-            const ranked = rankCandidates(await searchTracks(query, 10));
+            const ranked = rankTrackCandidates(await searchTracks(query, 10), artist, title, album);
             if (ranked[0]?.score >= 0.48) {
                 best = ranked[0].track;
                 break;

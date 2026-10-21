@@ -62,6 +62,10 @@ try {
         await nav.getByRole('button', { name: '내 지도', exact: true }).click();
         assert.ok((await page.locator('.mtm-intro h1').textContent()).includes('70곡'));
         assert.equal(await page.locator('.mtm-map-content .public-map-track h2').textContent(), 'Movie');
+        // Compact screens give the selected song more room by hiding shortcuts.
+        if (!await page.getByRole('button', { name: '내 취향 둘러보기', exact: true }).isVisible()) {
+            await page.getByRole('button', { name: '내 곡 정보 닫기', exact: true }).click();
+        }
         await page.getByRole('button', { name: '내 취향 둘러보기', exact: true }).click();
         const overview = page.getByRole('dialog', { name: '내 취향 둘러보기', exact: true });
         await overview.waitFor();

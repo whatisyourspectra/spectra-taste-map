@@ -1,0 +1,21 @@
+.tm-cluster-evidence { color: #dce6f6; font-size: 13px; line-height: 1.6; }
+.tm-cluster-evidence header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.tm-cluster-evidence header > div { min-width: 0; }
+.tm-cluster-evidence header span { color: #a8b9d5; font-size: 10px; letter-spacing: .07em; }
+.tm-cluster-evidence h3 { margin: 4px 0 10px; font-size: 18px; font-weight: 600; }
+.tm-cluster-evidence header button { width: 36px; height: 36px; flex-shrink: 0; border: 0; border-radius: 50%; background: #ffffff08; color: inherit; font-size: 20px; cursor: pointer; }
+.tm-cluster-evidence > p { margin: 6px 0; color: #a9b9d0; }
+.tm-cluster-evidence > small { color: #9e9dc0; font-size: 11px; }
+.tm-cluster-evidence-tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; }
+.tm-cluster-evidence-tags > span { display: inline-flex; gap: 8px; padding: 4px 8px; border: 1px solid #b6c8ed20; border-radius: 8px; color: #c5d6ee; font-size: 12px; }
+.tm-cluster-evidence-tags b { color: #8fa3c0; font-weight: 400; font-variant-numeric: tabular-nums; }
+.tm-cluster-evidence-examples { display: grid; gap: 5px; margin: 14px 0; }
+.tm-cluster-evidence-examples > strong { color: #aebdd4; font-size: 11px; font-weight: 500; }
+.tm-cluster-evidence-examples > button, .tm-cluster-evidence-examples > p { display: grid; gap: 2px; min-width: 0; padding: 7px 0; text-align: left; color: #dce6f6; background: none; border: 0; font: inherit; }
+.tm-cluster-evidence-examples > button { cursor: pointer; }
+.tm-cluster-evidence-examples span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tm-cluster-evidence-examples small { display: block; color: #8fa3c0; font-size: 11px; }
+.tm-cluster-evidence details { border-top: 1px solid #b6c8ed16; padding-top: 10px; }
+.tm-cluster-evidence summary { min-height: 30px; cursor: pointer; color: #b7cce7; font-size: 12px; }
+.tm-cluster-evidence details p { margin: 8px 0; color: #a9b9d0; font-size: 12px; }
+.tm-cluster-evidence :is(button, summary):focus-visible { outline: 2px solid #a9d7f5; outline-offset: 3px; }

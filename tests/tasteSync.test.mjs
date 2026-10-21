@@ -1,10 +1,34 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { fetchCloudTaste, saveCloudTaste, deleteCloudTaste, shouldRestoreCloudTaste, shouldUploadLocalTaste } from '../src/taste/tasteStorage.js';
+import { fetchCloudTaste, saveCloudTaste, deleteCloudTaste, shouldRestoreCloudTaste, shouldUploadLocalTaste, loadLocalTaste, persistLocalTaste, tasteStorageKey } from '../src/taste/tasteStorage.js';
 
 const taste = (updatedAt, mapId = 'same-map') => ({ tracks: [{ id: 'track' }], mapId, updatedAt });
 const earlier = '2026-09-08T00:00:00.000Z';
 const later = '2026-09-09T00:00:00.000Z';
+
+test('legacy local and cloud maps lose duplicate nodes while retaining revision and import progress', async () => {
+    const duplicate = { id: 'song', name: 'Song', artists: 'Artist' };
+    const legacy = { tracks: [duplicate, { ...duplicate }, { ...duplicate, id: 'other-provider' }],
+        updatedAt: earlier, mapId: 'legacy', stats: { fetchedCount: 3, totalAvailable: 3, processedCount: 3 } };
+    const values = new Map([[tasteStorageKey('user'), JSON.stringify(legacy)]]);
+    const storage = { getItem: key => values.get(key), setItem: (key, value) => values.set(key, value), removeItem: key => values.delete(key) };
+    const local = loadLocalTaste(storage, 'user');
+    assert.deepEqual(local.tracks, [duplicate]);
+    assert.equal(local.updatedAt, earlier);
+    assert.equal(local.stats.fetchedCount, 1);
+    assert.equal(local.stats.totalAvailable, 3);
+    assert.equal(local.stats.processedCount, 3);
+    persistLocalTaste(storage, 'user', legacy);
+    assert.deepEqual(JSON.parse(values.get(tasteStorageKey('user'))).tracks, [duplicate]);
+    const client = fakeClient({
+        read: async () => ({ data: { tracks: legacy.tracks, stats: legacy.stats, updated_at: earlier, map_id: 'legacy' } }),
+        save: async payload => { assert.deepEqual(payload.tracks, [duplicate]); return { data: { updated_at: earlier } }; },
+    });
+    const cloud = await fetchCloudTaste(client, 'user');
+    assert.deepEqual(cloud.tracks, [duplicate]);
+    assert.equal(cloud.updatedAt, earlier);
+    await saveCloudTaste(client, 'user', legacy);
+});
 
 test('personal uploads replace legacy demo rows even without a revision timestamp', () => {
     const demo = { ...taste(later), tracks: [{ id: 'demo-cosmic-0' }] };

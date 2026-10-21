@@ -1,3 +1,5 @@
+import { deduplicateTracks } from '../utils/trackIdentity.js';
+
 export const GUEST_TASTE_STORAGE_KEY = 'spectra:taste:v5';
 export function tasteStorageKey(ownerId) {
     return ownerId ? `${GUEST_TASTE_STORAGE_KEY}:user:${ownerId}` : GUEST_TASTE_STORAGE_KEY;
@@ -18,8 +20,23 @@ export function clearDemoTaste(storage, ownerId = null) {
 function parseTaste(raw) {
     try {
         const data = JSON.parse(raw || 'null');
-        return data && Array.isArray(data.tracks) ? data : null;
+        return data && Array.isArray(data.tracks) ? normalizeTaste(data) : null;
     } catch { return null; }
+}
+
+// Repair legacy maps on read without changing their revision or import history.
+function normalizeTaste(data) {
+    const tracks = deduplicateTracks(data.tracks);
+    if (tracks.length === data.tracks.length) return data;
+    return {
+        ...data,
+        tracks,
+        ...(data.stats ? { stats: {
+            ...data.stats,
+            fetchedCount: tracks.length,
+            metadataPendingCount: tracks.filter(track => track.metadataPending).length,
+        } } : {}),
+    };
 }
 
 function getSafeLocalStorage() {
@@ -70,6 +87,7 @@ export function loadLocalTaste(storage, ownerId = null) {
 
 export function persistLocalTaste(storage, ownerId, data) {
     if (!data) return;
+    if (Array.isArray(data.tracks)) data = normalizeTaste(data);
     // Previews never replace a personal map or become a permanent account cache.
     if (isDemoTaste(data)) {
         try { storage.setItem(demoTasteStorageKey(ownerId), JSON.stringify(data)); } catch { /* unavailable storage */ }
@@ -156,18 +174,19 @@ export async function fetchCloudTaste(supabase, ownerId) {
         if (!Array.isArray(data.tracks) || data.tracks.length === 0) {
             throw new Error('Invalid cloud taste map');
         }
-        return {
+        return normalizeTaste({
             tracks: data.tracks,
             featuresSource: data.features_source || 'none',
             stats: data.stats || null,
             mapId: data.map_id,
             updatedAt: data.updated_at,
-        };
+        });
     });
 }
 
 export async function saveCloudTaste(supabase, ownerId, tasteData) {
     if (!supabase || !ownerId || !Array.isArray(tasteData?.tracks) || !tasteData.tracks.length || isDemoTaste(tasteData)) return null;
+    tasteData = normalizeTaste(tasteData);
     const payload = {
         user_id: ownerId,
         map_id: tasteData.mapId || 'default-map',

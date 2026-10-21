@@ -66,7 +66,7 @@ export default function ConstellationExplorer({ seed, tracks, context, onAdd, on
             {ready && result.tracks.map((track) => {
                 const added = existing.has(track.id) || existing.has(voyageTrackKey(track));
                 return <article className="cv-recommendation" key={track.id}>
-                    <TrackCover track={track} /><div><strong title={track.name}>{track.name}</strong><span title={track.artists}>{track.artists}</span><button type="button" disabled={added} onClick={() => onAdd(track, seed.id)}>{added ? (en ? '✓ Added' : '✓ 추가됨') : (en ? '+ Add star' : '+ 별자리에 추가')}</button></div>
+                    <TrackCover track={track} /><div><strong title={track.name}>{track.name}</strong><span title={track.artists}>{track.artists}</span><a className="cv-recommendation-listen" href={`https://www.youtube.com/results?search_query=${encodeURIComponent(`${track.artists} ${track.name}`)}`} target="_blank" rel="noopener noreferrer">{en ? 'Listen on YouTube ↗' : 'YouTube로 듣기 ↗'}</a><button type="button" disabled={added} onClick={() => onAdd(track, seed.id)}>{added ? (en ? '✓ Added' : '✓ 추가됨') : (en ? '+ Add star' : '+ 별자리에 추가')}</button></div>
                 </article>;
             })}
         </div>

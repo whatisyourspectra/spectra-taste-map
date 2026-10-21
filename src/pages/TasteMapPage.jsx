@@ -7,6 +7,10 @@ import { buildConstellationTopology, buildSeedConstellation, buildVoyageSequence
 import { createVoyageGraph, extendVoyage, undoVoyageExpansion } from '../taste/voyageExpansion';
 import { getGenreIdentity } from '../taste/genreIdentity';
 import { useTasteData } from '../context/TasteDataContext';
+import { uniqueTracks } from '../taste/buildTasteState';
+import { clusterGenreName } from '../taste/clusterEvidence';
+import { fetchDesktopRecommendations } from '../taste/desktopDiscovery';
+import DesktopDiscoveryPanel from './DesktopDiscoveryPanel';
 import TasteMapMetroStudio from './TasteMapMetroStudio';
 import MetroYouTubePlayer from './MetroYouTubePlayer';
 import ConstellationVoyagerHUD from './ConstellationVoyager';
@@ -128,13 +132,13 @@ const TM_I18N = {
         audioBasis: 'Audio features 5차원 기준',
         exploreCount: '빈영역 추천',
         inViewCount: '화면 내',
-        exploreLoading: '빈영역 추천 계산 중…',
+        exploreLoading: '새 곡 찾는 중…',
         exploreFailed: '추천 실패',
         clearFilter: '필터 해제',
         mapZoomOut: '축소',
         mapZoomIn: '확대',
-        recOn: '추천 ON',
-        recOff: '추천 OFF',
+        recOn: '추천 목록 닫기',
+        recOff: '새 음악 찾기',
         recFocus: '추천 위치 보기',
         spectraExit: 'spectra 모드 종료',
         recListen: '외부에서 찾기',
@@ -143,7 +147,7 @@ const TM_I18N = {
         recSaving: '저장 중…',
         recAddSuccess: '나의 스펙트라에 추가했어요.',
         recAddFail: '저장 실패',
-        contextMenuExpand: '이 곡을 중심으로 spectra 확장',
+        contextMenuExpand: '이 곡에서 새 음악 찾기',
         contextMenuFocus: '이 곡으로 이동',
         contextMenuPlay: 'YouTube 재생',
         contextMenuSaved: '필드에 있음',
@@ -223,8 +227,8 @@ const TM_I18N = {
         clearFilter: 'Clear filter',
         mapZoomOut: 'Shrink',
         mapZoomIn: 'Expand',
-        recOn: 'Rec ON',
-        recOff: 'Rec OFF',
+        recOn: 'Close recommendations',
+        recOff: 'Find new music',
         recFocus: 'Focus rec area',
         spectraExit: 'Exit spectra mode',
         recListen: 'Open externally',
@@ -406,22 +410,11 @@ function deduplicateClusterLabels(clusters) {
     return clusters.map((cluster) => {
         if (nameCounts.get(cluster.label.name) <= 1) return cluster;
 
-        // Distinguish duplicates by the feature that most characterises each cluster
-        const [valence, energy, danceability, acousticness] = cluster.centroid;
         const idx = (nameSeenIdx.get(cluster.label.name) || 0) + 1;
         nameSeenIdx.set(cluster.label.name, idx);
-
-        const qualifiers = [
-            energy > 0.7 ? 'Intense' : energy < 0.45 ? 'Mellow' : null,
-            valence > 0.65 ? 'Bright' : valence < 0.38 ? 'Dark' : null,
-            danceability > 0.75 ? 'Groovier' : null,
-            acousticness > 0.55 ? 'Acoustic' : null,
-        ].filter(Boolean);
-
-        const qualifier = qualifiers[idx - 1] || qualifiers[0] || `${idx}`;
         return {
             ...cluster,
-            label: { ...cluster.label, name: `${qualifier} ${cluster.label.name}` },
+            label: { ...cluster.label, name: `${cluster.label.name} · ${idx}` },
         };
     });
 }
@@ -481,36 +474,6 @@ function sampleTracksForBubbleView(list, maxCount) {
 function normalizeGenre(genre) {
     return String(genre || '').trim().toLowerCase();
 }
-
-function normalizeTrackTitle(title) {
-    return String(title || '')
-        .toLowerCase()
-        .replace(/\[[^\]]*]/g, ' ')
-        .replace(/\([^)]*\)/g, ' ')
-        .replace(/\b(feat|ft)\.?\b.*$/g, ' ')
-        .replace(/[^a-z0-9가-힣]+/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
-}
-
-function getRecommendationDedupKey(track) {
-    if (!track) return '';
-    const title = normalizeTrackTitle(track.name);
-    const artists = String(track.artists || '')
-        .toLowerCase()
-        .split(',')
-        .map((part) => part.trim())
-        .filter(Boolean)
-        .slice(0, 2)
-        .join('|');
-    const durationMs = Number(track.durationMs);
-    const durationBucket = Number.isFinite(durationMs) && durationMs > 0
-        ? Math.round(durationMs / 4000)
-        : 0;
-    if (!title && !artists) return `id:${track.id || ''}`;
-    return `${title}::${artists}::${durationBucket}`;
-}
-
 
 function getGenreSymbol(genre) {
     const identity = getGenreIdentity(genre);
@@ -581,9 +544,8 @@ function getTrackTimeMs(track) {
 }
 
 function getGenreClusterLabel(topGenres) {
-    if (!topGenres?.length) return { name: 'Mixed Genre', symbol: 'headset' };
-    if (topGenres.length === 1) return { name: getGenreIdentity(topGenres[0]).short, symbol: 'headset' };
-    return { name: `${getGenreIdentity(topGenres[0]).short} + ${getGenreIdentity(topGenres[1]).short}`, symbol: 'headset' };
+    return { name: clusterGenreName(topGenres), symbol: 'headset',
+        nickname: [...new Set((topGenres || []).slice(0, 2).map(genre => getGenreIdentity(genre).short))].join(' + ') };
 }
 
 function compactCompareTracks(tracks, limit = 24) {
@@ -1668,6 +1630,8 @@ export default function TasteMapPage() {
     const [hoveredBubbleId, setHoveredBubbleId] = useState(null);
     const [nowPlayingTrackId, setNowPlayingTrackId] = useState(null);
     const [bubblePlaybackTrack, setBubblePlaybackTrack] = useState(null);
+    const [bubblePlaybackQueue, setBubblePlaybackQueue] = useState([]);
+    const bubblePlaybackIndex = bubblePlaybackQueue.findIndex(track => track.id === bubblePlaybackTrack?.id);
     const [scrollHint, setScrollHint] = useState(false);
     const [clusterLoading, setClusterLoading] = useState(false);
     const [bubbleNodesResult, setBubbleNodesResult] = useState([]);
@@ -1683,8 +1647,8 @@ export default function TasteMapPage() {
     const [exploreLoading, setExploreLoading] = useState(false);
     const [exploreError, setExploreError] = useState(null);
     const [exploreRecs, setExploreRecs] = useState([]);
-    const [explorePrefetchedCount, setExplorePrefetchedCount] = useState(0);
-    const prefetchedRecsRef = useRef({ key: '', recs: [] });
+    const [exploreRequest, setExploreRequest] = useState(null);
+    const [exploreLastBatchCount, setExploreLastBatchCount] = useState(null);
     const [hoveredExploreId, setHoveredExploreId] = useState(null);
     const [savingLibraryTrackIds] = useState({}); // no async library save anymore; stays empty.
     const [savedFromRecIds, setSavedFromRecIds] = useState({});
@@ -1809,6 +1773,10 @@ export default function TasteMapPage() {
         setActiveEmotionRegion('');
         setExploreEnabled(false);
         setExploreRecs([]);
+        setExploreRequest(null);
+        setExploreLastBatchCount(null);
+        setExploreLoading(false);
+        setExploreError(null);
         setActiveMapView(nextView);
     }, [activeMapView]);
 
@@ -1876,7 +1844,7 @@ export default function TasteMapPage() {
 
     // ── Taste data (Last.fm field + Spotify field, from TasteDataContext) ──
     const fetchTracks = useCallback(async () => {
-        const mapped = (importedTracks || []).map((track) => {
+        const mapped = uniqueTracks(importedTracks || []).map((track) => {
             if (activeMapView !== 'spotify') return track;
             const spotifyFeatures = track?.spotifyFeatures || {};
             return {
@@ -2308,7 +2276,7 @@ export default function TasteMapPage() {
             .slice(0, 3)
             .map(([genre]) => genre);
         if (ranked.length > 0) return ranked;
-        return ['electronic', 'indie', 'pop'];
+        return [];
     }, [bubbleCandidateTracks, spectraExpandTrack]);
 
     const bubbleWorldScale = useMemo(() => {
@@ -3046,7 +3014,8 @@ export default function TasteMapPage() {
         const el = bubbleFieldRef.current;
         if (!el || viewMode !== 'bubble') return;
         const onWheel = (e) => {
-            if (e.target?.closest?.('.tm-group-panel')) return;
+            // Let overlay lists scroll natively before consuming map zoom gestures.
+            if (e.target?.closest?.('.tm-group-panel, .tm-discovery-panel')) return;
             e.preventDefault();
             clearTimeout(scrollHintTimerRef.current);
             setScrollHint(false);
@@ -3714,223 +3683,36 @@ export default function TasteMapPage() {
         return labels;
     }, [viewMode, visibleBubbleRenderItems, clusterStats]);
 
-    const fetchDiscoveryForAnchors = useCallback(async (anchors, currentSpectraExpandTrackId = null, signal) => {
-        if (!anchors || anchors.length === 0) return [];
-        const requests = anchors.map(async (anchor) => {
-            const seedTrackId = anchor.seedTrackId || '';
-            const params = new URLSearchParams({
-                xAxis,
-                yAxis,
-                targetX: String(clamp01(anchor.x)),
-                targetY: String(clamp01(anchor.y)),
-                limit: seedTrackId ? '14' : '8',
-                seedGenres: exploreSeedGenres.join(','),
-                source,
-            });
-            if (seedTrackId) {
-                const seedTrack = tracks.find((t) => t.id === seedTrackId);
-                if (seedTrack?.artists && seedTrack?.name) {
-                    const seedArtist = String(seedTrack.artists).split(',')[0].trim();
-                    params.set('seedTracks', `${seedArtist}|${seedTrack.name}`);
-                }
-            }
-            const res = await fetch(api(`/api/discover?${params.toString()}`), { signal });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const data = await res.json();
-            const tracksOut = Array.isArray(data?.tracks) ? data.tracks : [];
-            return tracksOut.map((track, sourceRank) => ({
-                track,
-                anchorId: anchor.id,
-                targetX: anchor.x,
-                targetY: anchor.y,
-                seedTrackId: seedTrackId || null,
-                sourceRank,
-            }));
-        });
-
-        const byAnchor = await Promise.all(requests);
-        const dedupAll = new Map();
-        const dedupNovel = new Map();
-        const upsertCandidate = (bucket, item) => {
-            const key = getRecommendationDedupKey(item?.track);
-            if (!key) return;
-            const existing = bucket.get(key);
-            if (!existing) {
-                bucket.set(key, item);
-                return;
-            }
-            const rankA = Number.isFinite(item?.sourceRank) ? item.sourceRank : Number.POSITIVE_INFINITY;
-            const rankB = Number.isFinite(existing?.sourceRank) ? existing.sourceRank : Number.POSITIVE_INFINITY;
-            if (rankA < rankB) {
-                bucket.set(key, item);
-                return;
-            }
-            if (rankA > rankB) return;
-            const scoreA = Number.isFinite(Number(item?.track?.popularity)) ? Number(item.track.popularity) : -1;
-            const scoreB = Number.isFinite(Number(existing?.track?.popularity)) ? Number(existing.track.popularity) : -1;
-            if (scoreA > scoreB) {
-                bucket.set(key, item);
-                return;
-            }
-            if (scoreA === scoreB && hash01(item?.track?.id || '') < hash01(existing?.track?.id || '')) {
-                bucket.set(key, item);
-            }
-        };
-        byAnchor.flat().forEach((item) => {
-            if (!item?.track?.id) return;
-            if (currentSpectraExpandTrackId && item.track.id === currentSpectraExpandTrackId) return;
-            upsertCandidate(dedupAll, item);
-            if (knownTrackIds.has(item.track.id)) return;
-            upsertCandidate(dedupNovel, item);
-        });
-        const ranked = [...(dedupNovel.size > 0 ? dedupNovel.values() : dedupAll.values())]
-            .sort((a, b) => {
-                const ra = Number.isFinite(a?.sourceRank) ? a.sourceRank : Number.POSITIVE_INFINITY;
-                const rb = Number.isFinite(b?.sourceRank) ? b.sourceRank : Number.POSITIVE_INFINITY;
-                if (ra !== rb) return ra - rb;
-                const pa = Number.isFinite(Number(a?.track?.popularity)) ? Number(a.track.popularity) : -1;
-                const pb = Number.isFinite(Number(b?.track?.popularity)) ? Number(b.track.popularity) : -1;
-                if (pa !== pb) return pb - pa;
-                return hash01(a?.track?.id || '') - hash01(b?.track?.id || '');
-            });
-        return ranked.slice(0, currentSpectraExpandTrackId ? 14 : 18);
-    }, [
-        xAxis,
-        yAxis,
-        exploreSeedGenres,
-        source,
-        tracks,
-        knownTrackIds,
-    ]);
-
-    // Background prefetch key based on current axes and map density
-    const prefetchKey = useMemo(() => {
-        if (viewMode !== 'bubble' || loading || tracks.length < 12 || exploreSparseAnchors.length === 0) return '';
-        const anchorIds = exploreSparseAnchors.map((a) => a.id).join(',');
-        return `${xAxis}:${yAxis}:${source}:${tracks.length}:${anchorIds}`;
-    }, [viewMode, loading, tracks.length, exploreSparseAnchors, xAxis, yAxis, source]);
-
-    // Background pre-fetch effect: quietly pull sparse anchor recs when idle
-    useEffect(() => {
-        if (voyageState.active || !prefetchKey) return undefined;
-        if (prefetchedRecsRef.current.key === prefetchKey && prefetchedRecsRef.current.recs.length > 0) return undefined;
-
-        let cancelled = false;
-        const controller = new AbortController();
-        const timer = setTimeout(() => {
-            fetchDiscoveryForAnchors(exploreSparseAnchors, null, controller.signal)
-                .then((recs) => {
-                    if (cancelled) return;
-                    prefetchedRecsRef.current = { key: prefetchKey, recs };
-                    setExplorePrefetchedCount(recs.length);
-                    // If user toggled explore while prefetch was in flight, show immediately
-                    if (exploreEnabled && !spectraExpandTrackId) {
-                        setExploreRecs(recs);
-                        setExploreLoading(false);
-                    }
-                })
-                .catch(() => {
-                    /* Silent prefetch failure — user-driven explore will retry if needed */
-                });
-        }, 400);
-
-        return () => {
-            cancelled = true;
-            controller.abort();
-            clearTimeout(timer);
-        };
-    }, [voyageState.active, prefetchKey, fetchDiscoveryForAnchors, exploreSparseAnchors, exploreEnabled, spectraExpandTrackId]);
-
-    // Main Explore Activation Effect: zero-latency from cache or on-demand fetch
-    useEffect(() => {
-        if (voyageState.active) return;
-        if (!exploreEnabled) {
-            setExploreLoading(false);
-            setExploreError(null);
-            setExploreRecs((previous) => previous.length === 0 ? previous : []);
-            return;
-        }
-        if (viewMode !== 'bubble' || loading || tracks.length === 0) {
-            if (loading) setExploreRecs([]);
-            return;
-        }
-
-        // 1. If spectraExpand is active (focusing on a specific bubble), fetch on demand
-        if (spectraExpandTrackId) {
-            if (exploreSparseAnchors.length === 0) {
-                setExploreRecs([]);
-                return;
-            }
-            let cancelled = false;
-            const controller = new AbortController();
-            setExploreLoading(true);
-            setExploreError(null);
-            fetchDiscoveryForAnchors(exploreSparseAnchors, spectraExpandTrackId, controller.signal)
-                .then((merged) => {
-                    if (!cancelled) setExploreRecs(merged);
-                })
-                .catch((e) => {
-                    if (!cancelled) {
-                        setExploreRecs([]);
-                        setExploreError(e?.message || '추천곡을 불러오지 못했습니다.');
-                    }
-                })
-                .finally(() => {
-                    if (!cancelled) setExploreLoading(false);
-                });
-            return () => { cancelled = true; controller.abort(); };
-        }
-
-        // 2. Normal explore: if prefetch cache is ready, activate immediately with ZERO delay
-        if (prefetchedRecsRef.current.key === prefetchKey && prefetchedRecsRef.current.recs.length > 0) {
-            setExploreRecs(prefetchedRecsRef.current.recs);
-            setExploreLoading(false);
-            setExploreError(null);
-            return;
-        }
-
-        // 3. Fallback: fetch on demand if prefetch hasn't settled yet
-        if (exploreSparseAnchors.length === 0) {
-            setExploreRecs([]);
-            return;
-        }
-        let cancelled = false;
-        const controller = new AbortController();
-        setExploreLoading(true);
+    const requestDiscovery = useCallback((seedId = null, replace = false) => {
+        const seed = seedId ? tracks.find(track => track.id === seedId) : null;
+        const anchors = seed ? [{ id: `focus-${seed.id}`, x: getTrackFeature(seed, xAxis), y: getTrackFeature(seed, yAxis) }]
+            : (exploreSparseAnchors.length ? exploreSparseAnchors : [{ id: 'library', x: .5, y: .5 }]);
+        setExploreEnabled(true);
         setExploreError(null);
-        fetchDiscoveryForAnchors(exploreSparseAnchors, null, controller.signal)
-            .then((merged) => {
-                if (!cancelled) {
-                    prefetchedRecsRef.current = { key: prefetchKey, recs: merged };
-                    setExplorePrefetchedCount(merged.length);
-                    setExploreRecs(merged);
-                }
-            })
-            .catch((e) => {
-                if (!cancelled) {
-                    setExploreRecs([]);
-                    setExploreError(e?.message || '추천곡을 불러오지 못했습니다.');
-                }
-            })
-            .finally(() => {
-                if (!cancelled) setExploreLoading(false);
-            });
+        setExploreLoading(true);
+        setExploreLastBatchCount(null);
+        setExploreRequest({ seed, anchors, xAxis, yAxis, source,
+            genres: seed ? getTrackGenres(seed).slice(0, 3) : exploreSeedGenres,
+            exclude: [...tracks, ...(replace ? [] : exploreRecs.map(item => item.track))],
+            replace,
+        });
+    }, [tracks, exploreRecs, exploreSparseAnchors, exploreSeedGenres, xAxis, yAxis, source]);
 
-        return () => {
-            cancelled = true;
-            controller.abort();
-        };
-    }, [
-        voyageState.active,
-        exploreEnabled,
-        viewMode,
-        loading,
-        tracks,
-        exploreSparseAnchors,
-        spectraExpandTrackId,
-        prefetchKey,
-        fetchDiscoveryForAnchors,
-    ]);
+    useEffect(() => {
+        if (!exploreRequest) return undefined;
+        let cancelled = false;
+        const controller = new AbortController();
+        const timeout = window.setTimeout(() => controller.abort(), 20000);
+        fetchDesktopRecommendations(exploreRequest, { signal: controller.signal, base: API_BASE })
+            .then(items => {
+                if (cancelled) return;
+                setExploreRecs(previous => exploreRequest.replace ? items : [...previous, ...items]);
+                setExploreLastBatchCount(items.length);
+            })
+            .catch(error => { if (!cancelled) setExploreError(error.message || 'Could not load recommendations'); })
+            .finally(() => { if (!cancelled) setExploreLoading(false); window.clearTimeout(timeout); });
+        return () => { cancelled = true; controller.abort(); window.clearTimeout(timeout); };
+    }, [exploreRequest]);
 
     const exploreRenderItems = useMemo(() => {
         if (visibleGroup || voyageState.active || !exploreEnabled || viewMode !== 'bubble') return [];
@@ -4111,10 +3893,6 @@ export default function TasteMapPage() {
         yAxis,
         spectraExpandTrackId,
     ]);
-    const exploreVisibleCount = useMemo(
-        () => exploreRenderItems.filter((item) => item.inView).length,
-        [exploreRenderItems],
-    );
     const handleZoomButton = useCallback((factor) => {
         const rect = bubbleFieldRef.current?.getBoundingClientRect();
         const cx = rect ? rect.left + rect.width / 2 : 0;
@@ -4122,14 +3900,10 @@ export default function TasteMapPage() {
         zoomAroundPointByFactor(factor, cx, cy);
     }, [zoomAroundPointByFactor]);
     const toggleExplore = useCallback(() => {
-        const next = !exploreEnabled;
-        setExploreEnabled(next);
-        if (next) return;
-        setSpectraExpandTrackId(null);
-        if (selectedTrackCard?.source === 'recommendation') {
-            setSelectedTrackCard(null);
-        }
-    }, [exploreEnabled, selectedTrackCard]);
+        if (exploreEnabled) { setExploreEnabled(false); return; }
+        setExploreEnabled(true);
+        if (!exploreRecs.length && !exploreLoading) requestDiscovery(spectraExpandTrackId);
+    }, [exploreEnabled, exploreRecs.length, exploreLoading, spectraExpandTrackId, requestDiscovery]);
     const focusCurrentBubbles = useCallback((options = {}) => {
         if (!bubbleRenderItems.length || !bubbleFieldSize.w || !bubbleFieldSize.h) return;
         const activeItems = bubbleRenderItems.filter((item) => item.active);
@@ -4454,6 +4228,7 @@ export default function TasteMapPage() {
             || tracks.find((x) => x.id === trackId)
             || exploreRecs.find((r) => r.track?.id === trackId)?.track;
         if (service === 'youtube' && t) {
+            setBubblePlaybackQueue(exploreRecs.some(item => item.track.id === trackId) ? exploreRecs.map(item => item.track) : [t]);
             setBubblePlaybackTrack(t);
             setNowPlayingTrackId(trackId);
             setSelectedTrackCard(null);
@@ -4467,6 +4242,14 @@ export default function TasteMapPage() {
             window.open(url, '_blank', 'noopener,noreferrer');
         }
     }, [tracks, exploreRecs]);
+
+    const moveBubblePlayback = useCallback(direction => {
+        const index = bubblePlaybackQueue.findIndex(track => track.id === bubblePlaybackTrack?.id);
+        const next = bubblePlaybackQueue[index + direction];
+        if (!next) return;
+        setBubblePlaybackTrack(next);
+        setNowPlayingTrackId(next.id);
+    }, [bubblePlaybackQueue, bubblePlaybackTrack]);
 
     const openTrackCard = useCallback((track, source = 'library') => {
         if (!track?.id) return;
@@ -4489,11 +4272,7 @@ export default function TasteMapPage() {
 
         const enrichedTrack = { ...track, addedAt: new Date().toISOString() };
         setSavedFromRecIds((prev) => ({ ...prev, [trackId]: true }));
-        setTracks((prev) => (
-            prev.some((t) => t.id === trackId)
-                ? prev
-                : [...prev, enrichedTrack]
-        ));
+        setTracks((prev) => uniqueTracks([...prev, enrichedTrack]));
 
         if (recordDecision) {
             recordDecision(action, enrichedTrack, 'web');
@@ -4603,7 +4382,6 @@ export default function TasteMapPage() {
         if (isSpectraExpandMode && track.id === spectraExpandTrackId) {
             setExploreEnabled(false);
             setSpectraExpandTrackId(null);
-            setExploreRecs([]);
             setHoveredExploreId(null);
             setSelectedTrackCard(null);
             setHoveredBubbleId(null);
@@ -4746,11 +4524,12 @@ export default function TasteMapPage() {
 
         setExploreEnabled(true);
         setSpectraExpandTrackId(trackId);
+        requestDiscovery(trackId, true);
         setHoveredBubbleId(trackId);
         triggerExpandedClusterHighlight(clusterId);
         focusBubbleTrack(trackId, { ensureZoom: 0.9, duration: 620 });
         return true;
-    }, [assignmentByTrackId, focusBubbleTrack, triggerExpandedClusterHighlight]);
+    }, [assignmentByTrackId, focusBubbleTrack, triggerExpandedClusterHighlight, requestDiscovery]);
 
     const toggleExpandPinTrack = useCallback((track) => {
         if (!track?.id) return;
@@ -5195,8 +4974,9 @@ export default function TasteMapPage() {
             yLabel: yMeta.short,
             yValue: Math.round(clamp01(getTrackFeature(track, yAxis)) * 100),
             alreadyInField: knownTrackIds.has(track.id) || Boolean(savedFromRecIds[track.id]),
+            classificationSource: source,
         };
-    }, [selectedTrackCard, assignmentByTrackId, clusterById, xAxis, xMeta.short, yAxis, yMeta.short, knownTrackIds, savedFromRecIds]);
+    }, [selectedTrackCard, assignmentByTrackId, clusterById, xAxis, xMeta.short, yAxis, yMeta.short, knownTrackIds, savedFromRecIds, source]);
     const selectedSeedConstellation = useMemo(() => {
         const track = selectedTrackDetails?.track;
         if (!track?.id || !bubbleNodesResult.length) return null;
@@ -5858,14 +5638,10 @@ export default function TasteMapPage() {
                                 className={`tm-dock-action${exploreEnabled ? ' active' : ''}`}
                                 onClick={toggleExplore}
                                 aria-pressed={exploreEnabled}
-                                title={!exploreEnabled && explorePrefetchedCount > 0
-                                    ? (lang === 'en' ? `${explorePrefetchedCount} new stars discovered in empty space` : `빈 공간에 ${explorePrefetchedCount}개의 별이 준비되었습니다`)
-                                    : (lang === 'en' ? 'Expand' : '확장')}
+                                title={lang === 'en' ? 'Open new music recommendations' : '새 음악 추천 목록 열기'}
                             >
-                                <span aria-hidden>✦</span>{lang === 'en' ? 'Expand' : '확장'}
-                                {!exploreEnabled && explorePrefetchedCount > 0 && (
-                                    <span className="tm-dock-badge" aria-hidden>{explorePrefetchedCount}</span>
-                                )}
+                                <span aria-hidden>✦</span>{lang === 'en' ? 'New music' : '새 음악 찾기'}
+                                {exploreRecs.length > 0 && <span className="tm-dock-badge">{exploreRecs.length}</span>}
                             </button>
                             <button
                                 type="button"
@@ -5921,7 +5697,7 @@ export default function TasteMapPage() {
                                             ? `Genre · ${genreVocab.length}${lang === 'en' ? ` ${copy.genreBasis}` : copy.genreBasis}`
                                             : copy.audioBasis}
                                         {exploreEnabled && !exploreLoading && !exploreError && (
-                                            <> · {copy.inViewCount} {exploreVisibleCount}{lang === 'en' ? '' : '곡'}</>
+                                            <> · {(lang === 'en' ? 'Recommendations' : '추천')} {exploreRecs.length}{lang === 'en' ? '' : '곡'}</>
                                         )}
                                         {exploreLoading && <> · {copy.exploreLoading}</>}
                                         {exploreError && <> · {copy.exploreFailed}</>}
@@ -5953,11 +5729,11 @@ export default function TasteMapPage() {
                                     <button
                                         className={`tm-explore-toggle tm-explore-toggle--overlay${exploreEnabled ? ' active' : ''}`}
                                         onClick={toggleExplore}
-                                        title={!exploreEnabled && explorePrefetchedCount > 0
-                                            ? `빈 영역 탐색 추천곡 (${explorePrefetchedCount}곡 준비됨)`
+                                        title={!exploreEnabled && exploreRecs.length > 0
+                                            ? `빈 영역 탐색 추천곡 (${exploreRecs.length}곡 준비됨)`
                                             : '빈 영역 탐색 추천곡 표시'}
                                     >
-                                        {exploreEnabled ? copy.recOn : (!exploreEnabled && explorePrefetchedCount > 0 ? `${copy.recOff} (${explorePrefetchedCount})` : copy.recOff)}
+                                        {exploreEnabled ? copy.recOn : (!exploreEnabled && exploreRecs.length > 0 ? `${copy.recOff} (${exploreRecs.length})` : copy.recOff)}
                                     </button>
                                     {exploreEnabled && exploreRecs.length > 0 && (
                                         <button
@@ -6079,43 +5855,17 @@ export default function TasteMapPage() {
                                         className={`tm-magnetic-cursor${magneticPullEnabled ? ' enabled' : ''}`}
                                         aria-hidden
                                     />
-                                    {exploreEnabled && (
-                                        <aside className={`tm-discovery-lens${isSpectraExpandMode ? ' track-seeded' : ''}`}>
-                                            <div className="tm-discovery-lens-eyebrow">
-                                                <span className="tm-discovery-lens-signal" aria-hidden />
-                                                {copy.discoveryLens}
-                                            </div>
-                                            <div className="tm-discovery-lens-title-row">
-                                                {spectraExpandTrack?.coverUrl && (
-                                                    <img src={spectraExpandTrack.coverUrl} alt="" className="tm-discovery-seed-cover" />
-                                                )}
-                                                <div>
-                                                    <strong>
-                                                        {isSpectraExpandMode
-                                                            ? copy.discoveryTrackBasis
-                                                            : copy.discoveryGapBasis}
-                                                    </strong>
-                                                    {isSpectraExpandMode && <span>{spectraExpandTrack.name} · {spectraExpandTrack.artists}</span>}
-                                                </div>
-                                            </div>
-                                            <p>{lang === 'en'
-                                                ? 'Select a recommended song to learn more. Tap + to add it to your map.'
-                                                : '추천 곡을 눌러 살펴보세요. 마음에 들면 +로 내 지도에 담아요.'}</p>
-                                            <div className="tm-discovery-legend">
-                                                <span><i className="tm-discovery-legend-dot rec" />{copy.discoveryRecommendation}</span>
-                                                <b>{exploreLoading ? (lang === 'en' ? 'Finding…' : '찾는 중…') : `${exploreVisibleCount}${lang === 'en' ? ' songs' : '곡'}`}</b>
-                                            </div>
-                                            {isSpectraExpandMode && (
-                                                <button
-                                                    type="button"
-                                                    className="tm-discovery-focus-btn"
-                                                    onClick={() => focusBubbleTrack(spectraExpandTrackId, { ensureZoom: 1.15 })}
-                                                >
-                                                    {copy.discoveryFocusAnchor} <span aria-hidden>↗</span>
-                                                </button>
-                                            )}
-                                        </aside>
-                                    )}
+                                    {exploreEnabled && <DesktopDiscoveryPanel
+                                        items={exploreRecs} loading={exploreLoading} error={exploreError}
+                                        lastBatchCount={exploreLastBatchCount} seed={exploreRequest?.seed}
+                                        onMore={() => requestDiscovery(exploreRequest?.seed?.id || null)}
+                                        onClose={() => setExploreEnabled(false)} lang={lang}
+                                        onInspect={track => openTrackCard(track, 'recommendation')}
+                                        onPlay={track => openTrackExternal(track, 'youtube')}
+                                        onAdd={saveTrackToMyBubble} selectedId={selectedTrackCard?.track?.id}
+                                        playingId={nowPlayingTrackId}
+                                        savedIds={new Set([...knownTrackIds, ...Object.keys(savedFromRecIds)])}
+                                    />}
                                     <div className="tm-zoom-hud">
                                         <button className="tm-zoom-btn" onClick={() => handleZoomButton(1.2)} aria-label="zoom in">+</button>
                                         <span className="tm-zoom-value">{Math.round(bubbleZoom * 100)}%</span>
@@ -6773,10 +6523,14 @@ export default function TasteMapPage() {
                             lang={lang}
                             autoplayRequested
                             embedded
-                            queuePosition={1}
-                            queueLength={1}
+                            queuePosition={Math.max(0, bubblePlaybackIndex) + 1}
+                            queueLength={bubblePlaybackQueue.length || 1}
+                            onNext={bubblePlaybackIndex < bubblePlaybackQueue.length - 1 ? () => moveBubblePlayback(1) : undefined}
+                            onPrevious={bubblePlaybackIndex > 0 ? () => moveBubblePlayback(-1) : undefined}
+                            onEnded={() => { if (bubblePlaybackIndex < bubblePlaybackQueue.length - 1) moveBubblePlayback(1); else setNowPlayingTrackId(null); }}
                             onClose={() => {
                                 setBubblePlaybackTrack(null);
+                                setBubblePlaybackQueue([]);
                                 setNowPlayingTrackId(null);
                             }}
                         />

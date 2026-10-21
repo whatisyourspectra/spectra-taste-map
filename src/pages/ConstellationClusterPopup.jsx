@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import './ConstellationClusterPopup.css';
 import SpectraSymbol from '../components/SpectraSymbol';
+import ClusterEvidence from '../components/ClusterEvidence';
 import { getConstellationInfo, hash01 } from '../taste/constellationTopology.js';
 import { buildConstellationPreviewGeometry } from './constellationPreviewGeometry.js';
 
@@ -181,8 +182,10 @@ export default function ConstellationClusterPopup({
                     })}
                 </svg>
 
-                <p className="ccp-display-name">{constellationName}</p>
+                <p className="ccp-display-name">{lang === 'en' ? 'Constellation nickname' : '별자리 별칭'} · {constellationName}</p>
             </div>
+
+            {cluster && <details className="ccp-evidence"><summary>{lang === 'en' ? 'Grouping basis & representative songs' : '분류 근거·대표곡 보기'}</summary><ClusterEvidence compact cluster={cluster} source={trackContext.classificationSource} lang={lang} /></details>}
 
             {/* Bottom: Prescribed Track Box & Voyage Launch Action */}
             <div className="ccp-track-box">
@@ -252,7 +255,7 @@ export default function ConstellationClusterPopup({
                             onClick={onExploreTrack}
                             title={lang === 'en' ? 'Explore around track' : '이 곡 기준으로 탐색'}
                         >
-                            <span>◎</span> {lang === 'en' ? 'Explore' : '확장'}
+                            <span>◎</span> {lang === 'en' ? 'Find similar songs' : '비슷한 곡 찾기'}
                         </button>
                     )}
                 </div>
