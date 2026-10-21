@@ -1,3 +1,6 @@
+import { useLocale } from '../i18n/useLocale.js';
+import { getLanguage } from '../i18n/locale.js';
+import { translate } from '../i18n/translate.js';
 import SpectraLogo from '../components/SpectraLogo';
 import React, { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -37,7 +40,7 @@ const TM_LIBRARY_CACHE_TTL_MS = 10 * 60 * 1000;
 const TM_FETCH_CACHE_PREFIX = 'taste-map-fetch-v7';
 const TM_CLUSTER_CACHE_PREFIX = 'taste-map-cluster-v3';
 const TM_LIBRARY_CACHE_PREFIX = 'taste-map-library-v1';
-const TM_LOCALE_STORAGE_KEY = 'spectra-tastemap-lang-v1';
+
 const TM_THEME_STORAGE_KEY = 'spectra-tastemap-theme-v1';
 const TM_CUSTOM_GROUP_STORAGE_PREFIX = 'spectra-custom-groups-v1';
 const TM_CUSTOM_GROUP_STORAGE_VERSION = 1;
@@ -595,7 +598,7 @@ function buildTopGenresFromTracks(tracks, limit = 12) {
         .map(([genre]) => genre);
 }
 
-function buildCurrentPersonaFromTracks(tracks, profileName) {
+function buildCurrentPersonaFromTracks(tracks, profileName, lang) {
     const source = Array.isArray(tracks) ? tracks.filter((track) => track?.id && track?.name) : [];
     if (!source.length) return null;
     const sortedByTime = [...source].sort((a, b) => (getTrackTimeMs(b) || 0) - (getTrackTimeMs(a) || 0));
@@ -603,7 +606,7 @@ function buildCurrentPersonaFromTracks(tracks, profileName) {
     return {
         id: 'self-current',
         year: null,
-        displayName: `${String(profileName || '나').split(/\s+/)[0] || '나'} (현재)`,
+        displayName: translate("{0} (현재)", [String(profileName || translate("나", [], lang)).split(/\s+/)[0]], lang),
         topGenres: buildTopGenresFromTracks(source, 12),
         bubbleTracks: {
             recent: compactCompareTracks(sortedByTime, 24),
@@ -613,7 +616,7 @@ function buildCurrentPersonaFromTracks(tracks, profileName) {
     };
 }
 
-function buildYearlyPersonasFromFeatureTracks(tracks) {
+function buildYearlyPersonasFromFeatureTracks(tracks, lang) {
     if (!Array.isArray(tracks) || tracks.length === 0) return [];
     const byYear = new Map();
     tracks.forEach((track) => {
@@ -648,7 +651,7 @@ function buildYearlyPersonasFromFeatureTracks(tracks) {
         personas.push({
             id: `self-year-${yearKey}`,
             year: Number(yearKey) || null,
-            displayName: `나 (${yearKey})`,
+            displayName: translate("나 ({0})", [yearKey], lang),
             topGenres,
             bubbleTracks,
         });
@@ -997,8 +1000,8 @@ function TasteYearComparePanel({ tracks, profileName, lang = 'ko' }) {
     const [selectedGenreKey, setSelectedGenreKey] = useState(null);
 
     const currentYear = new Date().getFullYear();
-    const currentPersona = useMemo(() => buildCurrentPersonaFromTracks(tracks, profileName), [tracks, profileName]);
-    const yearlyPersonas = useMemo(() => buildYearlyPersonasFromFeatureTracks(tracks), [tracks]);
+    const currentPersona = useMemo(() => buildCurrentPersonaFromTracks(tracks, profileName, lang), [tracks, profileName, lang]);
+    const yearlyPersonas = useMemo(() => buildYearlyPersonasFromFeatureTracks(tracks, lang), [tracks, lang]);
 
     const compareCandidates = useMemo(() => {
         const byYear = new Map(yearlyPersonas.map((persona) => [Number(persona.year), persona]));
@@ -1232,8 +1235,8 @@ function TasteYearComparePanel({ tracks, profileName, lang = 'ko' }) {
                 </div>
                 <div className="tm-yearcmp-seg">
                     {[
-                        { id: 'recent', label: '최근' },
-                        { id: 'liked', label: '좋아요' },
+                        { id: 'recent', label: translate("최근") },
+                        { id: 'liked', label: translate("좋아요") },
                         { id: 'top', label: 'TOP' },
                     ].map((item) => (
                         <button
@@ -1668,7 +1671,7 @@ export default function TasteMapPage() {
     const visibleGroup = customGroups.find((group) => group.id === visibleGroupId) || null;
     const [groupName, setGroupName] = useState(() => getNextCustomGroupName(
         customGroups,
-        typeof window !== 'undefined' && window.localStorage.getItem(TM_LOCALE_STORAGE_KEY) === 'en' ? 'en' : 'ko',
+        getLanguage(),
     ));
     const [expandPinMap, setExpandPinMap] = useState({});
     const [shareMessage, setShareMessage] = useState(null);
@@ -1694,11 +1697,7 @@ export default function TasteMapPage() {
         if (typeof window === 'undefined') return true;
         return !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     });
-    const [lang, setLang] = useState(() => {
-        if (typeof window === 'undefined') return 'ko';
-        const saved = window.localStorage.getItem(TM_LOCALE_STORAGE_KEY);
-        return saved === 'en' ? 'en' : 'ko';
-    });
+    const { lang, setLang } = useLocale();
     const [mapTheme, setMapTheme] = useState(() => {
         if (typeof window === 'undefined') return 'dark';
         const saved = window.localStorage.getItem(TM_THEME_STORAGE_KEY);
@@ -1803,14 +1802,6 @@ export default function TasteMapPage() {
         bubbleSpringTimersRef.current.clear();
     }, []);
 
-    useEffect(() => {
-        if (typeof window !== 'undefined') {
-            window.localStorage.setItem(TM_LOCALE_STORAGE_KEY, lang);
-        }
-        if (typeof document !== 'undefined') {
-            document.documentElement.lang = lang === 'en' ? 'en' : 'ko';
-        }
-    }, [lang]);
 
     useEffect(() => {
         if (typeof window === 'undefined') return;
@@ -2023,7 +2014,7 @@ export default function TasteMapPage() {
                     && j === noiseClusterId;
                 const demoUniverse = members.every(track => getDemoUniverseIndex(track) === j) ? DEMO_UNIVERSES[j] : null;
                 const label = demoUniverse
-                    ? { name: demoUniverse.koreanName, symbol: demoUniverse.symbol }
+                    ? { name: translate(demoUniverse.koreanName, [], lang), symbol: demoUniverse.symbol }
                     : isNoiseCluster
                     ? { name: 'Mixed / Other', symbol: 'matrix' }
                     : effectiveClusterBasis === 'genre'
@@ -2043,7 +2034,7 @@ export default function TasteMapPage() {
             .sort((a, b) => b.count - a.count);
 
         return deduplicateClusterLabels(sorted);
-    }, [tracks, assignments, centroids, clusterVectors, effectiveClusterBasis, noiseClusterId]);
+    }, [tracks, assignments, centroids, clusterVectors, effectiveClusterBasis, noiseClusterId, lang]);
 
     useEffect(() => {
         if (selectedCluster !== null && !clusterStats.some((cluster) => cluster.j === selectedCluster)) {
@@ -2582,20 +2573,20 @@ export default function TasteMapPage() {
         const dropped = Math.max(fetched - analyzed, 0);
         return {
             partial: missing > 0,
-            text: `가져온 곡 ${fetched}/${total}곡 반영`,
+            text: translate("가져온 곡 {0}/{1}곡 반영", [fetched, total], lang),
             detail: missing > 0
-                ? `아직 ${missing}곡 미반영`
-                : (dropped > 0 ? `분석 제외 ${dropped}곡` : '전량 분석 반영'),
+                ? translate("아직 {0}곡 미반영", [missing], lang)
+                : (dropped > 0 ? translate("분석 제외 {0}곡", [dropped], lang) : translate("전량 분석 반영", [], lang)),
         };
-    }, [dataStats, tracks.length]);
+    }, [dataStats, tracks.length, lang]);
 
     const bubbleCoverage = useMemo(() => {
         if (bubbleCandidateTracks.length === 0) return null;
         if (bubbleCandidateTracks.length <= bubbleTracks.length) {
-            return `${bubbleTracks.length}곡 버블 탐색`;
+            return translate("{0}곡 버블 탐색", [bubbleTracks.length], lang);
         }
-        return `${bubbleTracks.length}/${bubbleCandidateTracks.length}곡 버블 샘플`;
-    }, [bubbleCandidateTracks.length, bubbleTracks.length]);
+        return translate("{0}/{1}곡 버블 샘플", [bubbleTracks.length, bubbleCandidateTracks.length], lang);
+    }, [bubbleCandidateTracks.length, bubbleTracks.length, lang]);
 
     // ── Canvas size responsive ──────────────────────────────────────────────
     useEffect(() => {
@@ -5138,18 +5129,18 @@ export default function TasteMapPage() {
         <div className={`tm-root tm-lang-${lang}${mapFullscreen ? ' tm-root-fullscreen' : ''}${voyageState.active ? ' is-voyage-mode' : ''}`} ref={containerRef}>
             <div className="tm-mobile-map-toolbar">
                 <div className="tm-mobile-searchbar">
-                    <button type="button" aria-label="모바일 홈으로" onClick={() => navigate('/taste-map/mobile')}>←</button>
-                    <input aria-label="곡 또는 아티스트 찾기" placeholder={lang === 'en' ? 'Find a song or artist' : '곡 또는 아티스트 찾기'} value={mobileMapSearch} onChange={event => setMobileMapSearch(event.target.value)} />
-                    <button type="button" aria-label="지도 메뉴" aria-expanded={mobileMapMenu} onClick={() => setMobileMapMenu(value => !value)}>⋯</button>
+                    <button type="button" aria-label={translate("모바일 홈으로")} onClick={() => navigate('/taste-map/mobile')}>←</button>
+                    <input aria-label={translate("곡 또는 아티스트 찾기")} placeholder={lang === 'en' ? 'Find a song or artist' : translate("곡 또는 아티스트 찾기")} value={mobileMapSearch} onChange={event => setMobileMapSearch(event.target.value)} />
+                    <button type="button" aria-label={translate("지도 메뉴")} aria-expanded={mobileMapMenu} onClick={() => setMobileMapMenu(value => !value)}>⋯</button>
                 </div>
                 {mobileMapSearch && <div className="tm-mobile-search-results">
-                    {mobileSearchResults.length ? mobileSearchResults.map(track => <button type="button" key={track.id} onClick={() => { openTrackCard(track, knownTrackIds.has(track.id) ? 'library' : 'recommendation'); focusBubbleTrack(track.id, { ensureZoom: 0.85 }); setMobileMapSearch(''); }}><strong>{track.name}</strong><span>{track.artists}</span></button>) : <p>일치하는 곡이 없어요.</p>}
+                    {mobileSearchResults.length ? mobileSearchResults.map(track => <button type="button" key={track.id} onClick={() => { openTrackCard(track, knownTrackIds.has(track.id) ? 'library' : 'recommendation'); focusBubbleTrack(track.id, { ensureZoom: 0.85 }); setMobileMapSearch(''); }}><strong>{track.name}</strong><span>{track.artists}</span></button>) : <p>{translate("일치하는 곡이 없어요.")}</p>}
                 </div>}
                 {mobileMapMenu && <div className="tm-mobile-map-menu">
                     <AccountButton lang={lang} />
                     <button type="button" onClick={() => setLang(lang === 'ko' ? 'en' : 'ko')}>{lang === 'ko' ? 'English' : '한국어'}</button>
                     <button type="button" onClick={handleGoHome}>{lang === 'ko' ? '런칭 홈' : 'Launch home'}</button>
-                    <span>{tracks.length}곡 · {clusterStats.length}개 영역</span>
+                    <span>{tracks.length}{translate("곡 ·")} {clusterStats.length}{translate("개 영역")}</span>
                 </div>}
             </div>
             {/* Header */}
@@ -5176,7 +5167,7 @@ export default function TasteMapPage() {
                             <SpectraLogo />
                         </span>
                         {isDemoUniverse && (
-                            <span className="tm-demo-badge" title="체험용 데모 은하입니다">DEMO FIELD</span>
+                            <span className="tm-demo-badge" title={translate("체험용 데모 은하입니다")}>DEMO FIELD</span>
                         )}
                     </div>
                     <h1 className="tm-title">
@@ -5187,7 +5178,7 @@ export default function TasteMapPage() {
                         {copy.mappedSubtitle}
                     </p>
                     <div className="tm-header-live" aria-label="map status">
-                        {Number(importedStats?.metadataPendingCount) > 0 && <span>{importedStats.metadataPendingCount}곡 분석 대기 · 원본 곡 정보 유지</span>}
+                        {Number(importedStats?.metadataPendingCount) > 0 && <span>{importedStats.metadataPendingCount}{translate("곡 분석 대기 · 원본 곡 정보 유지")}</span>}
                         <span className="tm-live-signal"><span aria-hidden />LIVE FIELD</span>
                         <span>{tracks.length} {lang === 'en' ? 'memories' : '개의 기억'}</span>
                         <span>{clusterStats.length} {lang === 'en' ? 'regions' : '개의 영역'}</span>
@@ -5312,7 +5303,7 @@ export default function TasteMapPage() {
                             </button>
                         </>
                     ) : (
-                        `⚠️ ${error}`
+                        `⚠️ ${translate(error)}`
                     )}
                 </div>
             )}
@@ -5349,7 +5340,7 @@ export default function TasteMapPage() {
                         >
                             <TasteYearComparePanel
                                 tracks={tracks}
-                                profileName={user?.displayName || '나'}
+                                profileName={user?.displayName || translate("나")}
                                 lang={lang}
                             />
                             {staticOverviewMap && (
@@ -5468,18 +5459,16 @@ export default function TasteMapPage() {
                         <div className="tm-library-head">
                             <h3 className="tm-library-title">Memory Shelf</h3>
                             {librarySummary?.stats?.partial && (
-                                <span className="tm-library-meta">일부만 불러옴</span>
+                                <span className="tm-library-meta">{translate("일부만 불러옴")}</span>
                             )}
                         </div>
 
                         {libraryLoading && (
-                            <div className="tm-library-empty">팔로우 아티스트와 저장 앨범을 정리 중입니다.</div>
+                            <div className="tm-library-empty">{translate("팔로우 아티스트와 저장 앨범을 정리 중입니다.")}</div>
                         )}
 
                         {!libraryLoading && libraryError && (
-                            <div className="tm-library-empty">
-                                팔로우/앨범 정보를 가져오지 못했어요. Spotify 재로그인 후 다시 시도해 주세요.
-                            </div>
+                            <div className="tm-library-empty"> {translate("팔로우/앨범 정보를 가져오지 못했어요. Spotify 재로그인 후 다시 시도해 주세요.")} </div>
                         )}
 
                         {!libraryLoading && !libraryError && librarySummary && (
@@ -5487,7 +5476,7 @@ export default function TasteMapPage() {
                                 <article className="tm-library-card" onWheel={(event) => handleLibraryCardWheel(event, followedListRef)}>
                                     <div className="tm-library-card-head">
                                         <div>
-                                            <span className="tm-library-card-label">팔로우 아티스트</span>
+                                            <span className="tm-library-card-label">{translate("팔로우 아티스트")}</span>
                                             <strong className="tm-library-card-value">
                                                 {librarySummary.stats?.followedArtistsFetched ?? followedArtistPreview.length}
                                                 {' / '}
@@ -5524,7 +5513,7 @@ export default function TasteMapPage() {
                                                 );
                                             })
                                         ) : (
-                                            <span className="tm-library-hint">장르 정보가 아직 없어요.</span>
+                                            <span className="tm-library-hint">{translate("장르 정보가 아직 없어요.")}</span>
                                         )}
                                     </div>
                                     <div className="tm-library-list" ref={followedListRef}>
@@ -5544,13 +5533,13 @@ export default function TasteMapPage() {
                                                 <div className="tm-library-info">
                                                     <div className="tm-library-name">{artist.name}</div>
                                                     <div className="tm-library-sub">
-                                                        {artist.genres?.[0] ? getGenreIdentity(artist.genres[0]).short : '장르 정보 없음'}
+                                                        {artist.genres?.[0] ? getGenreIdentity(artist.genres[0]).short : translate("장르 정보 없음")}
                                                     </div>
                                                 </div>
                                             </a>
                                         ))}
                                         {followedArtistPreview.length === 0 && (
-                                            <div className="tm-library-hint">팔로우 아티스트가 없어요.</div>
+                                            <div className="tm-library-hint">{translate("팔로우 아티스트가 없어요.")}</div>
                                         )}
                                     </div>
                                 </article>
@@ -5558,7 +5547,7 @@ export default function TasteMapPage() {
                                 <article className="tm-library-card" onWheel={(event) => handleLibraryCardWheel(event, savedAlbumListRef)}>
                                     <div className="tm-library-card-head">
                                         <div>
-                                            <span className="tm-library-card-label">저장한 앨범</span>
+                                            <span className="tm-library-card-label">{translate("저장한 앨범")}</span>
                                             <strong className="tm-library-card-value">
                                                 {librarySummary.stats?.savedAlbumsFetched ?? savedAlbumPreview.length}
                                                 {' / '}
@@ -5582,13 +5571,13 @@ export default function TasteMapPage() {
                                                 )}
                                                 <div className="tm-library-info">
                                                     <div className="tm-library-name">{album.name}</div>
-                                                    <div className="tm-library-sub">{album.artists || '아티스트 정보 없음'}</div>
+                                                    <div className="tm-library-sub">{album.artists || translate("아티스트 정보 없음")}</div>
                                                 </div>
                                                 <span className="tm-library-date">{formatDateLabel(album.addedAt)}</span>
                                             </a>
                                         ))}
                                         {savedAlbumPreview.length === 0 && (
-                                            <div className="tm-library-hint">저장된 앨범이 없어요.</div>
+                                            <div className="tm-library-hint">{translate("저장된 앨범이 없어요.")}</div>
                                         )}
                                     </div>
                                 </article>
@@ -5610,11 +5599,11 @@ export default function TasteMapPage() {
                                     aria-selected={activeMapView === definition.id}
                                     disabled={!definition.available}
                                     onClick={() => handleMapViewChange(definition.id)}
-                                    aria-label={definition.label}
-                                    title={definition.available ? definition.label : (lang === 'en' ? 'Coming in a future map' : '추후 추가될 맵입니다')}
+                                    aria-label={translate(definition.label)}
+                                    title={definition.available ? translate(definition.label) : (lang === 'en' ? 'Coming in a future map' : '추후 추가될 맵입니다')}
                                 >
                                     <span className="tm-view-option-mark" aria-hidden />
-                                    <span>{definition.navLabel || definition.label}</span>
+                                    <span>{translate(definition.navLabel || definition.label)}</span>
                                     {!definition.available && <span className="tm-view-soon">SOON</span>}
                                 </button>
                             ))}
@@ -5730,8 +5719,8 @@ export default function TasteMapPage() {
                                         className={`tm-explore-toggle tm-explore-toggle--overlay${exploreEnabled ? ' active' : ''}`}
                                         onClick={toggleExplore}
                                         title={!exploreEnabled && exploreRecs.length > 0
-                                            ? `빈 영역 탐색 추천곡 (${exploreRecs.length}곡 준비됨)`
-                                            : '빈 영역 탐색 추천곡 표시'}
+                                            ? translate("빈 영역 탐색 추천곡 ({0}곡 준비됨)", [exploreRecs.length])
+                                            : translate("빈 영역 탐색 추천곡 표시")}
                                     >
                                         {exploreEnabled ? copy.recOn : (!exploreEnabled && exploreRecs.length > 0 ? `${copy.recOff} (${exploreRecs.length})` : copy.recOff)}
                                     </button>
@@ -5739,7 +5728,7 @@ export default function TasteMapPage() {
                                         <button
                                             className="tm-rec-focus-btn"
                                             onClick={focusExploreRecs}
-                                            title="추천 위치로 이동"
+                                            title={translate("추천 위치로 이동")}
                                         >
                                             {copy.recFocus}
                                         </button>
@@ -5747,7 +5736,7 @@ export default function TasteMapPage() {
                                     <button
                                         className={`tm-share-mode-toggle${shareMode ? ' active' : ''}`}
                                         onClick={toggleShareMode}
-                                        title={shareMode ? '선택 모드 종료' : '드래그로 곡 선택'}
+                                        title={shareMode ? translate("선택 모드 종료") : translate("드래그로 곡 선택")}
                                     >
                                         {shareMode ? copy.shareOn : copy.share}
                                     </button>
@@ -5755,15 +5744,15 @@ export default function TasteMapPage() {
                                 <button
                                     className={`tm-dashboard-toggle${dashboardOpen ? ' active' : ''}`}
                                     onClick={() => setDashboardOpen((prev) => !prev)}
-                                    title={dashboardOpen ? '히스토리/태그 패널 숨기기' : '히스토리/태그 패널 보기'}
+                                    title={dashboardOpen ? translate("히스토리/태그 패널 숨기기") : translate("히스토리/태그 패널 보기")}
                                 >
                                     {dashboardToggleLabel}
                                 </button>
                                 <button
                                     className={`tm-fullscreen-btn${mapFullscreen ? ' active' : ''}`}
                                     onClick={() => setMapFullscreen((prev) => !prev)}
-                                    aria-label={mapFullscreen ? '취향 맵 축소' : '취향 맵 전체화면'}
-                                    title={mapFullscreen ? '전체화면 종료 (Esc)' : '전체화면 보기'}
+                                    aria-label={mapFullscreen ? translate("취향 맵 축소") : translate("취향 맵 전체화면")}
+                                    title={mapFullscreen ? translate("전체화면 종료 (Esc)") : translate("전체화면 보기")}
                                 >
                                     <span>{mapFullscreen ? '⤡' : '⤢'}</span>
                                     <span>{mapFullscreen ? copy.mapZoomOut : copy.mapZoomIn}</span>
@@ -5873,7 +5862,7 @@ export default function TasteMapPage() {
                                         <button
                                             className="tm-zoom-reset"
                                             onClick={focusCurrentBubbles}
-                                            title="현재 버블 위치로 이동"
+                                            title={translate("현재 버블 위치로 이동")}
                                         >
                                             {copy.currentBubble}
                                         </button>
@@ -5909,7 +5898,7 @@ export default function TasteMapPage() {
                                                     e.stopPropagation();
                                                     handleOverviewNavigate(e);
                                                 }}
-                                                title="클릭/드래그로 탐색 위치 이동"
+                                                title={translate("클릭/드래그로 탐색 위치 이동")}
                                                 aria-label="overview map navigator"
                                             >
                                                 {overviewMap.dots.map((dot) => (
@@ -5933,7 +5922,7 @@ export default function TasteMapPage() {
                                                     }}
                                                 />
                                             </button>
-                                            <div className="tm-overview-note">지금 탐색 중인 영역</div>
+                                            <div className="tm-overview-note">{translate("지금 탐색 중인 영역")}</div>
                                         </div>
                                     )}
                                     {discoveryAnchorPosition && (
@@ -6089,8 +6078,8 @@ export default function TasteMapPage() {
                                                                     e.stopPropagation();
                                                                     toggleShareTrack(node.track);
                                                                 }}
-                                                                title={picked ? '선택에서 제거' : '선택에 추가'}
-                                                                aria-label={picked ? '선택에서 제거' : '선택에 추가'}
+                                                                title={picked ? translate("선택에서 제거") : translate("선택에 추가")}
+                                                                aria-label={picked ? translate("선택에서 제거") : translate("선택에 추가")}
                                                             >
                                                                 {picked ? '✓' : '+'}
                                                             </button>
@@ -6158,7 +6147,7 @@ export default function TasteMapPage() {
                                                             }}
                                                             title={`${rec.track.name} — ${rec.track.artists}`}
                                                         >
-                                                            <span className="tm-rec-badge">추천 {rec.rank}</span>
+                                                            <span className="tm-rec-badge">{translate("추천")} {rec.rank}</span>
                                                         </button>
                                                         <div className="tm-rec-label">
                                                             <div className="tm-rec-name">{rec.track.name}</div>
@@ -6196,7 +6185,7 @@ export default function TasteMapPage() {
                                                 className="tm-bubble-context-action"
                                                 onClick={handleContextToggleExpandPin}
                                             >
-                                                {expandPinMap[bubbleContextMenu.track.id] ? '📌 확장 핀 해제' : '📌 확장 핀 추가'}
+                                                {expandPinMap[bubbleContextMenu.track.id] ? translate("📌 확장 핀 해제") : translate("📌 확장 핀 추가")}
                                             </button>
                                             <button type="button" className="tm-bubble-context-action" onClick={handleContextExpandCluster}>
                                                 {copy.contextMenuExpand}
@@ -6230,7 +6219,7 @@ export default function TasteMapPage() {
                                                     <span>{lang === 'en' ? 'SELECTION' : '곡 선택'}</span>
                                                     <h2>{lang === 'en' ? 'My groups' : '나만의 그룹'}</h2>
                                                 </div>
-                                                <button type="button" onClick={toggleShareMode} aria-label={copy.close || '닫기'}>×</button>
+                                                <button type="button" onClick={toggleShareMode} aria-label={copy.close || translate("닫기")}>×</button>
                                             </header>
 
                                             <div className="tm-group-selection-guide">
@@ -6285,7 +6274,7 @@ export default function TasteMapPage() {
                                                                     <strong>{track.name}</strong>
                                                                     <small>{track.artists || '-'}</small>
                                                                 </div>
-                                                                <button type="button" onClick={() => removeTrackFromGroupDraft(track.id)} aria-label={`${track.name} 제거`}>×</button>
+                                                                <button type="button" onClick={() => removeTrackFromGroupDraft(track.id)} aria-label={translate("{0} 제거", [track.name])}>×</button>
                                                             </div>
                                                         ))}
                                                     </div>
@@ -6295,7 +6284,7 @@ export default function TasteMapPage() {
                                                     </p>
                                                 )}
 
-                                                {shareMessage && <p className="tm-group-message">{shareMessage}</p>}
+                                                {shareMessage && <p className="tm-group-message">{translate(shareMessage)}</p>}
                                                 <div className="tm-group-primary-actions">
                                                     <button
                                                         type="button"
@@ -6334,7 +6323,7 @@ export default function TasteMapPage() {
                                                                 <button type="button" className="tm-saved-group-edit" onClick={() => editCustomGroup(group)}>
                                                                     {lang === 'en' ? 'Edit' : '수정'}
                                                                 </button>
-                                                                <button type="button" className="tm-saved-group-delete" onClick={() => deleteCustomGroup(group.id)} aria-label={`${group.name} 삭제`}>×</button>
+                                                                <button type="button" className="tm-saved-group-delete" onClick={() => deleteCustomGroup(group.id)} aria-label={translate("{0} 삭제", [group.name])}>×</button>
                                                             </article>
                                                         ))}
                                                     </div>
@@ -6355,11 +6344,11 @@ export default function TasteMapPage() {
                                     </span>
                                 )}
                                 {isConstellationView
-                                    ? `${bubbleTracks.length}개의 별 · connect / drag / zoom`
-                                    : `${bubbleCoverage || `${bubbleTracks.length}곡 버블 탐색`} · drag / zoom`}
+                                    ? translate("{0}개의 별 · connect / drag / zoom", [bubbleTracks.length])
+                                    : `${bubbleCoverage || translate("{0}곡 버블 탐색", [bubbleTracks.length], lang)} · drag / zoom`}
                             </div>
                             {recActionMessage && (
-                                <div className="tm-rec-action-msg">{recActionMessage}</div>
+                                <div className="tm-rec-action-msg">{translate(recActionMessage)}</div>
                             )}
                         </div>
 
@@ -6400,14 +6389,14 @@ export default function TasteMapPage() {
                                     <div className="tm-cluster-header">
                                         <SpectraSymbol symbol={selectedClusterData.label.symbol || 'headset'} className="tm-cluster-icon" />
                                         <span className="tm-cluster-name">{selectedClusterData.label.name}</span>
-                                        <span className="tm-cluster-count">{selectedClusterData.count}곡</span>
+                                        <span className="tm-cluster-count">{selectedClusterData.count}{translate("곡")}</span>
                                     </div>
                                     {effectiveClusterBasis === 'genre' ? (
                                         <div
                                             className="tm-genre-list tm-region-cloud tm-region-cloud-genre"
                                             data-active-family={activeGenreFamily || undefined}
                                         >
-                                            {selectedClusterData.topGenres.length === 0 && <span className="tm-genre-empty">장르 데이터 없음</span>}
+                                            {selectedClusterData.topGenres.length === 0 && <span className="tm-genre-empty">{translate("장르 데이터 없음")}</span>}
                                             {selectedClusterData.topGenres.slice(0, 6).map((genre) => {
                                                 const identity = getGenreIdentity(genre);
                                                 return (
@@ -6480,7 +6469,7 @@ export default function TasteMapPage() {
                                             type="button"
                                             className="tm-mobile-sync-pin-bubble"
                                             onClick={() => toggleExpandPinTrack(track)}
-                                            title="핀 해제"
+                                            title={translate("핀 해제")}
                                         >
                                             {track.coverUrl ? (
                                                 <img
@@ -6503,8 +6492,8 @@ export default function TasteMapPage() {
                             )}
                             <div className="tm-mobile-sync-note">
                                 {expandPinTracks.length > 0
-                                    ? '핀 목록을 현재 브라우저의 확장 기준으로 유지합니다.'
-                                    : '버블에서 📌를 눌러 Spectra starting point를 추가하세요.'}
+                                    ? translate("핀 목록을 현재 브라우저의 확장 기준으로 유지합니다.")
+                                    : translate("버블에서 📌를 눌러 Spectra starting point를 추가하세요.")}
                             </div>
                         </div>
                     </section>

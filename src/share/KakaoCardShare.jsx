@@ -1,3 +1,4 @@
+import { translate } from '../i18n/translate.js';
 import { useEffect, useRef, useState } from 'react';
 import SharedMapManager from './SharedMapManager';
 import { publishSharedMap, revokeSharedMap } from './sharedMapStorage';
@@ -45,17 +46,17 @@ export default function KakaoCardShare({ file, title, tracks = [], style = 'cons
         finally { setBusy(false); lock.current = false; }
     };
     return <div className="kakao-card-share">
-        <div className="kakao-share-intro"><h3>{shareMap ? '친구에게 내 지도 보내기' : '카카오톡으로 카드 보내기'}</h3><p>{cardReady ? '준비됐어요. 카카오톡에서 보낼 대화방을 선택하세요.' : '카드를 먼저 준비한 뒤 카카오톡을 열어주세요.'}</p></div>
-        {shareMap && !shareId && <p className="kakao-share-disclosure">공유 준비 시 최대 2,000곡의 제목·아티스트·이미지·좌표가 담긴 지도 링크가 만들어져요. 링크를 받은 누구나 볼 수 있어요.</p>}
-        {shareId && <p className="kakao-share-status" role="status"><span aria-hidden="true">✓</span> 친구가 둘러볼 지도 링크가 만들어졌어요.</p>}
-        <button className="kakao-share-primary" type="button" disabled={busy || !kakaoShareConfigured} onClick={share}>{busy ? stage || '처리 중…' : cardReady ? '카카오톡 열기' : '카카오톡 공유 준비'}</button>
+        <div className="kakao-share-intro"><h3>{shareMap ? translate("친구에게 내 지도 보내기") : translate("카카오톡으로 카드 보내기")}</h3><p>{cardReady ? translate("준비됐어요. 카카오톡에서 보낼 대화방을 선택하세요.") : translate("카드를 먼저 준비한 뒤 카카오톡을 열어주세요.")}</p></div>
+        {shareMap && !shareId && <p className="kakao-share-disclosure">{translate("공유 준비 시 최대 2,000곡의 제목·아티스트·이미지·좌표가 담긴 지도 링크가 만들어져요. 링크를 받은 누구나 볼 수 있어요.")}</p>}
+        {shareId && <p className="kakao-share-status" role="status"><span aria-hidden="true">✓</span> {translate("친구가 둘러볼 지도 링크가 만들어졌어요.")}</p>}
+        <button className="kakao-share-primary" type="button" disabled={busy || !kakaoShareConfigured} onClick={share}>{busy ? translate(stage) || translate("처리 중…") : cardReady ? translate("카카오톡 열기") : translate("카카오톡 공유 준비")}</button>
         {sharedUrl && shareMap && <div className="share-map-link-actions">
-            <a href={sharedUrl} target="_blank" rel="noopener noreferrer">지도 직접 보기 ↗</a>
-            <button type="button" onClick={copyLink}>{copied ? '링크 복사됨' : '지도 링크 복사'}</button>
+            <a href={sharedUrl} target="_blank" rel="noopener noreferrer">{translate("지도 직접 보기 ↗")}</a>
+            <button type="button" onClick={copyLink}>{copied ? translate("링크 복사됨") : translate("지도 링크 복사")}</button>
         </div>}
-        <p className="kakao-share-hint">{!kakaoShareConfigured ? '카카오톡 연결을 준비 중이에요. 이미지 저장과 기기 공유는 이용할 수 있어요.' : cardReady ? '카드와 ‘친구의 취향 구경하기’ 버튼에서 내 지도가 열려요.' : '공유 준비 시 카드 이미지가 카카오에 업로드돼요.'}</p>
-        {error && <p className="kakao-share-error" role="alert">{error}</p>}
-        {shareId && <details className="share-map-settings"><summary>이 지도의 공유 설정</summary><div className="share-map-current"><p>공유를 해제하면 기존 링크로 지도를 볼 수 없어요.</p><button className="share-map-revoke" type="button" disabled={busy} onClick={revoke}>지도 공유 해제</button></div></details>}
+        <p className="kakao-share-hint">{!kakaoShareConfigured ? translate("카카오톡 연결을 준비 중이에요. 이미지 저장과 기기 공유는 이용할 수 있어요.") : cardReady ? translate("카드와 ‘친구의 취향 구경하기’ 버튼에서 내 지도가 열려요.") : translate("공유 준비 시 카드 이미지가 카카오에 업로드돼요.")}</p>
+        {error && <p className="kakao-share-error" role="alert">{translate(error)}</p>}
+        {shareId && <details className="share-map-settings"><summary>{translate("이 지도의 공유 설정")}</summary><div className="share-map-current"><p>{translate("공유를 해제하면 기존 링크로 지도를 볼 수 없어요.")}</p><button className="share-map-revoke" type="button" disabled={busy} onClick={revoke}>{translate("지도 공유 해제")}</button></div></details>}
         <SharedMapManager refreshId={shareId} excludeId={shareId} onRevoked={id => { if (id === shareId) {setShareId(null); setPrepared(null); setCopied(false);} }} />
     </div>;
 }

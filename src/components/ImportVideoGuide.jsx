@@ -1,3 +1,4 @@
+import { translate } from '../i18n/translate.js';
 import { useRef, useState } from 'react';
 import './ImportVideoGuide.css';
 
@@ -25,27 +26,25 @@ export default function ImportVideoGuide({ onChooseFile, platform = 'spotify' })
         videoRef.current.currentTime = 0;
         videoRef.current.play().catch(() => {});
     };
-    return <section className={`import-video-guide${expanded ? ' is-expanded' : ''}`} aria-label={`${isSpotify ? 'Spotify' : 'YouTube Music'} 곡 목록 가져오기 안내`}>
+    return <section className={`import-video-guide${expanded ? ' is-expanded' : ''}`} aria-label={translate("{0} 곡 목록 가져오기 안내", [isSpotify ? 'Spotify' : 'YouTube Music'])}>
         <ol className="ivg-steps">
-            {steps.map((item, index) => <li key={item.id}><button type="button" aria-current={step === index ? 'step' : undefined} onClick={() => setStep(index)}><span>0{index + 1}</span>{item.title}</button></li>)}
+            {steps.map((item, index) => <li key={item.id}><button type="button" aria-current={step === index ? 'step' : undefined} onClick={() => setStep(index)}><span>0{index + 1}</span>{translate(item.title)}</button></li>)}
         </ol>
         <div className="ivg-copy" aria-live="polite">
-            <h3>{current.title}</h3>
-            <p className="ivg-desktop-copy">{current.description}</p>
-            <p className="ivg-mobile-copy">{current.mobile}</p>
+            <h3>{translate(current.title)}</h3>
+            <p className="ivg-desktop-copy">{translate(current.description)}</p>
+            <p className="ivg-mobile-copy">{translate(current.mobile)}</p>
         </div>
-        {isSpotify && <button type="button" className="ivg-expand" aria-expanded={expanded} onClick={() => setExpanded(value => !value)}>{expanded ? '영상 접기' : '영상으로 보기'}</button>}
+        {isSpotify && <button type="button" className="ivg-expand" aria-expanded={expanded} onClick={() => setExpanded(value => !value)}>{expanded ? translate("영상 접기") : translate("영상으로 보기")}</button>}
         {isSpotify && <div className="ivg-media">
-            <video key={current.id} ref={videoRef} controls playsInline preload="none" aria-label={`${current.title} 영상 안내`}>
-                <source src={`/guides/spotify-${current.id}.mp4`} type="video/mp4" />
-                동영상을 지원하지 않는 브라우저입니다. 위의 문장 안내를 따라 진행해 주세요.
-            </video>
-            <p className="ivg-note">TuneMyMusic 화면 예시입니다. 목록과 버튼 위치는 이용 환경에 따라 달라질 수 있어요.</p>
+            <video key={current.id} ref={videoRef} controls playsInline preload="none" aria-label={translate("{0} 영상 안내", [translate(current.title)])}>
+                <source src={`/guides/spotify-${current.id}.mp4`} type="video/mp4" /> {translate("동영상을 지원하지 않는 브라우저입니다. 위의 문장 안내를 따라 진행해 주세요.")} </video>
+            <p className="ivg-note">{translate("TuneMyMusic 화면 예시입니다. 목록과 버튼 위치는 이용 환경에 따라 달라질 수 있어요.")}</p>
         </div>}
         <div className="ivg-actions">
-            <button type="button" disabled={step === 0} onClick={() => setStep(value => value - 1)}>이전</button>
-            {isSpotify && <button type="button" className="ivg-replay" onClick={replay}>다시 보기</button>}
-            {step < steps.length - 1 ? <button type="button" onClick={() => setStep(value => value + 1)}>다음 단계 →</button> : <button type="button" onClick={onChooseFile}>다운로드한 파일 선택</button>}
+            <button type="button" disabled={step === 0} onClick={() => setStep(value => value - 1)}>{translate("이전")}</button>
+            {isSpotify && <button type="button" className="ivg-replay" onClick={replay}>{translate("다시 보기")}</button>}
+            {step < steps.length - 1 ? <button type="button" onClick={() => setStep(value => value + 1)}>{translate("다음 단계 →")}</button> : <button type="button" onClick={onChooseFile}>{translate("다운로드한 파일 선택")}</button>}
         </div>
     </section>;
 }

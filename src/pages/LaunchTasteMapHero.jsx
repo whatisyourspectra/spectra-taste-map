@@ -1,3 +1,4 @@
+import { translate } from '../i18n/translate.js';
 import React, { useEffect, useRef } from 'react';
 
 const TAU = Math.PI * 2;
@@ -208,7 +209,7 @@ export default function LaunchTasteMapHero({ onPulse }) {
 
   return (
     <div className="llp-sculpture">
-      <div className="llp-sculpture-backdrop"><canvas ref={canvasRef} tabIndex={0} role="button" aria-label="음악 조형물: 드래그로 회전, 클릭으로 파동, 더블클릭 또는 Enter로 펼치기·모아보기 전환" /></div>
+      <div className="llp-sculpture-backdrop"><canvas ref={canvasRef} tabIndex={0} role="button" aria-label={translate("음악 조형물: 드래그로 회전, 클릭으로 파동, 더블클릭 또는 Enter로 펼치기·모아보기 전환")} /></div>
     </div>
   );
 }

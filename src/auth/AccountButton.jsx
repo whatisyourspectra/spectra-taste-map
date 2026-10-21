@@ -1,9 +1,11 @@
+import { useLocale } from '../i18n/useLocale.js';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import { safeReturnTo } from './authRouting';
 import './AuthPage.css';
 
-export default function AccountButton({ lang = 'ko' }) {
+export default function AccountButton() {
+    const { lang } = useLocale();
     const { user, ready } = useAuth();
     const location = useLocation();
     const returnTo = safeReturnTo(location.pathname + location.search);

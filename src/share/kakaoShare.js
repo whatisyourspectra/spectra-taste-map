@@ -1,3 +1,4 @@
+import { translate } from '../i18n/translate.js';
 const KEY = String(import.meta.env.VITE_KAKAO_JAVASCRIPT_KEY || '').trim();
 let sdkPromise;
 function withTimeout(promise, milliseconds, code) {
@@ -7,11 +8,11 @@ function withTimeout(promise, milliseconds, code) {
     })]).finally(() => window.clearTimeout(timer));
 }
 export function kakaoShareError(error) {
-    if (error?.code === -401 && /domain/i.test(error.msg || '')) return `현재 주소(${window.location.origin})가 카카오 공유 도메인에 등록되지 않았어요. 카카오 개발자 콘솔의 JavaScript 키 → SDK 도메인에 이 주소를 등록해 주세요.`;
-    if (error?.code === -401) return '카카오 JavaScript 키 또는 앱 설정을 확인해 주세요.';
-    if (/TIMEOUT|UNAVAILABLE/.test(error?.message || '')) return '카카오 연결이 지연되고 있어요. 네트워크를 확인하고 다시 시도해 주세요.';
-    if (error?.message === 'KAKAO_IMAGE_FAILED') return '카카오에서 카드 이미지 주소를 받지 못했어요. 다시 시도해 주세요.';
-    return '공유 카드를 준비하지 못했어요. 이미지 저장은 이용할 수 있어요.';
+    if (error?.code === -401 && /domain/i.test(error.msg || '')) return translate("현재 주소({0})가 카카오 공유 도메인에 등록되지 않았어요. 카카오 개발자 콘솔의 JavaScript 키 → SDK 도메인에 이 주소를 등록해 주세요.", [window.location.origin]);
+    if (error?.code === -401) return translate("카카오 JavaScript 키 또는 앱 설정을 확인해 주세요.");
+    if (/TIMEOUT|UNAVAILABLE/.test(error?.message || '')) return translate("카카오 연결이 지연되고 있어요. 네트워크를 확인하고 다시 시도해 주세요.");
+    if (error?.message === 'KAKAO_IMAGE_FAILED') return translate("카카오에서 카드 이미지 주소를 받지 못했어요. 다시 시도해 주세요.");
+    return translate("공유 카드를 준비하지 못했어요. 이미지 저장은 이용할 수 있어요.");
 }
 export const kakaoShareConfigured = Boolean(KEY);
 export function loadKakaoShare() {
@@ -54,5 +55,5 @@ export async function prepareKakaoCard(file, title, shareId = null) {
     const origin = import.meta.env.PROD ? 'https://www.spectra-music.org' : (import.meta.env.VITE_PUBLIC_APP_URL || window.location.origin);
     const url = new URL(shareId ? `/share/map/${shareId}` : '/share/card', origin);
     if (!shareId) { url.searchParams.set('image', image); url.searchParams.set('title', title.slice(0, 80)); }
-    return { kakao, settings: { objectType: 'feed', content: { title, description: '음악으로 만든 나의 취향 공간 · SPECTRA', imageUrl: image, link: { mobileWebUrl: url.href, webUrl: url.href } }, buttons: [{ title: shareId ? '친구의 취향 구경하기' : '취향 카드 보기', link: { mobileWebUrl: url.href, webUrl: url.href } }] } };
+    return { kakao, settings: { objectType: 'feed', content: { title, description: translate("음악으로 만든 나의 취향 공간 · SPECTRA"), imageUrl: image, link: { mobileWebUrl: url.href, webUrl: url.href } }, buttons: [{ title: shareId ? translate("친구의 취향 구경하기") : translate("취향 카드 보기"), link: { mobileWebUrl: url.href, webUrl: url.href } }] } };
 }

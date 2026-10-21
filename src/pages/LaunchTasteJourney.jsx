@@ -1,3 +1,4 @@
+import { translate } from '../i18n/translate.js';
 import SpectraLogo from '../components/SpectraLogo';
 import React, { useEffect, useRef, useState } from 'react';
 import { DEMO_UNIVERSES } from '../taste/demoUniverses';
@@ -49,10 +50,10 @@ function BubbleAtlas({ stage, onOpen, busy }) {
   return (
     <div className={`lj-atlas lj-atlas--${stage}`}>
       <div className="lj-atlas-heading"><span className="spectra-logo-caption"><SpectraLogo />LIVE DEMO</span><span>18 SONGS</span></div>
-      <div className="lj-regions" role="group" aria-label="데모 장르 영역 선택">
-        {DEMO_UNIVERSES.map((universe, group) => <button type="button" key={universe.id} style={{ '--region': universe.color }} aria-pressed={region === group} onClick={() => selectRegion(group)}><SpectraSymbol symbol={universe.symbol} />{REGIONS[group]}</button>)}
+      <div className="lj-regions" role="group" aria-label={translate("데모 장르 영역 선택")}>
+        {DEMO_UNIVERSES.map((universe, group) => <button type="button" key={universe.id} style={{ '--region': universe.color }} aria-pressed={region === group} onClick={() => selectRegion(group)}><SpectraSymbol symbol={universe.symbol} />{translate(REGIONS[group])}</button>)}
       </div>
-      <div className="lj-map" aria-label="18곡의 인터랙티브 데모 지도">
+      <div className="lj-map" aria-label={translate("18곡의 인터랙티브 데모 지도")}>
         <div className="lj-map-grid" aria-hidden="true" />
         {stage > 0 && DEMO_UNIVERSES.map((universe, group) => <div key={universe.id} className={`lj-region-cloud lj-region-cloud--${group}`} style={{ '--region': universe.color }} aria-hidden="true" />)}
         <svg className="lj-connections" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
@@ -77,9 +78,9 @@ function BubbleAtlas({ stage, onOpen, busy }) {
       <div className="lj-track-detail" style={{ '--region': selected.color }}>
         <img src={selected.coverUrl} alt="" decoding="async" />
         <div aria-live="polite"><span>SELECTED TRACK</span><strong>{selected.name}</strong><small>{selected.artists}</small></div>
-        <button type="button" onClick={() => onOpen(DEMO_UNIVERSES[selected.group])} disabled={busy} aria-label={`${selected.name}의 데모 taste맵 열기`}>탐험 ↗</button>
+        <button type="button" onClick={() => onOpen(DEMO_UNIVERSES[selected.group])} disabled={busy} aria-label={translate("{0}의 데모 taste맵 열기", [selected.name])}>{translate("탐험 ↗")}</button>
       </div>
-      <p className="lj-preview-note">데모 곡으로 구성한 인터랙티브 프리뷰</p>
+      <p className="lj-preview-note">{translate("데모 곡으로 구성한 인터랙티브 프리뷰")}</p>
     </div>
   );
 }
@@ -110,18 +111,18 @@ export default function LaunchTasteJourney({ onOpen, busy }) {
   };
   return (
     <section className="lj-journey llp-section" id="features" ref={sectionRef}>
-      <header className="lj-intro llp-section-header"><span className="llp-section-eyebrow">01 / FROM SOUND TO SHAPE</span><h2 className="llp-section-title">당신이 좋아하는 음악을<br /><span>지도로 펼쳐보아요.</span></h2><p className="llp-section-sub">이해 → 분류 → 확장. 아래 지도에서 직접 체험해 보세요.</p></header>
+      <header className="lj-intro llp-section-header"><span className="llp-section-eyebrow">01 / FROM SOUND TO SHAPE</span><h2 className="llp-section-title">{translate("당신이 좋아하는 음악을")}<br /><span>{translate("지도로 펼쳐보아요.")}</span></h2><p className="llp-section-sub">{translate("이해 → 분류 → 확장. 아래 지도에서 직접 체험해 보세요.")}</p></header>
       <div className="lj-story-grid">
         <div className="lj-story-copy">
-          {CHAPTERS.map((chapter, i) => <article key={chapter.label} className={`lj-step${stage === i ? ' is-current' : ''}`}>
-            <span className="lj-step-number">0{i + 1}</span><span className="lj-kicker"><SpectraSymbol symbol={chapter.symbol} /> {chapter.label}</span>
-            <h3>{chapter.title}</h3><p>{chapter.text}</p><small>{chapter.hint}</small>
+          {CHAPTERS.map((chapter, i) => <article key={translate(chapter.label)} className={`lj-step${stage === i ? ' is-current' : ''}`}>
+            <span className="lj-step-number">0{i + 1}</span><span className="lj-kicker"><SpectraSymbol symbol={chapter.symbol} /> {translate(chapter.label)}</span>
+            <h3>{translate(chapter.title)}</h3><p>{translate(chapter.text)}</p><small>{translate(chapter.hint)}</small>
           </article>)}
         </div>
         <div className="lj-stage">
-          <div className="lj-stage-tabs" role="group" aria-label="지도 변화 단계">{CHAPTERS.map((chapter, i) => <button key={chapter.label} type="button" aria-pressed={stage === i} onClick={() => chooseStage(i)}><span>0{i + 1}</span>{chapter.label}</button>)}</div>
+          <div className="lj-stage-tabs" role="group" aria-label={translate("지도 변화 단계")}>{CHAPTERS.map((chapter, i) => <button key={translate(chapter.label)} type="button" aria-pressed={stage === i} onClick={() => chooseStage(i)}><span>0{i + 1}</span>{translate(chapter.label)}</button>)}</div>
           <BubbleAtlas stage={stage} onOpen={onOpen} busy={busy} />
-          <p className="lj-mobile-hint">{CHAPTERS[stage].hint}</p>
+          <p className="lj-mobile-hint">{translate(CHAPTERS[stage].hint)}</p>
         </div>
       </div>
     </section>
@@ -136,7 +137,7 @@ export function LaunchDemoPortal({ group, onSelect }) {
     <div className="lj-demo-orbit" aria-hidden="true" />
     {tracks.map((track, i) => {
       const angle = (i - 1) * Math.PI / 3;
-      return <button type="button" key={track.id} className={`lj-demo-bubble${selected === i ? ' is-picked' : ''}`} style={{ left: `${50 + Math.cos(angle) * 32}%`, top: `${47 + Math.sin(angle) * 30}%`, '--region': track.color }} aria-label={`${track.name} 보기`} aria-pressed={selected === i} onClick={() => { setSelected(i); onSelect?.(); }}><img src={track.coverUrl} alt="" loading="lazy" decoding="async" /></button>;
+      return <button type="button" key={track.id} className={`lj-demo-bubble${selected === i ? ' is-picked' : ''}`} style={{ left: `${50 + Math.cos(angle) * 32}%`, top: `${47 + Math.sin(angle) * 30}%`, '--region': track.color }} aria-label={translate("{0} 보기", [track.name])} aria-pressed={selected === i} onClick={() => { setSelected(i); onSelect?.(); }}><img src={track.coverUrl} alt="" loading="lazy" decoding="async" /></button>;
     })}
     <span className="lj-demo-center" aria-hidden="true"><SpectraSymbol symbol={DEMO_UNIVERSES[group].symbol} /></span>
     <div className="lj-demo-track" aria-live="polite"><strong>{tracks[selected].name}</strong><span>{tracks[selected].artists}</span></div>
@@ -144,7 +145,7 @@ export function LaunchDemoPortal({ group, onSelect }) {
 }
 
 export function LaunchImportOrbit({ count, active, onChoose }) {
-  return <button type="button" className={`lj-import-orbit${active ? ' is-active' : ''}`} onClick={onChoose} aria-label="내 음악 목록 선택하기">
+  return <button type="button" className={`lj-import-orbit${active ? ' is-active' : ''}`} onClick={onChoose} aria-label={translate("내 음악 목록 선택하기")}>
     <span className="lj-import-ring" aria-hidden="true" /><span className="lj-import-ring lj-import-ring--two" aria-hidden="true" />
     {Array.from({ length: 8 }, (_, i) => <i key={i} style={{ '--angle': `${i * 45}deg`, '--dot-size': `${7 + i % 3 * 4}px` }} aria-hidden="true" />)}
     <span className="lj-import-core"><strong>{count ? count.toLocaleString() : '＋'}</strong><small>{count ? 'SONGS FOUND' : 'YOUR MUSIC'}</small></span>

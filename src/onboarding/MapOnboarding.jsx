@@ -1,3 +1,4 @@
+import { translate } from '../i18n/translate.js';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import './MapOnboarding.css';
@@ -79,7 +80,7 @@ export default function MapOnboarding({ mobile = false }) {
     window.addEventListener('keydown', escape, true);
     return () => { host?.remove(); if (mobile) setMobileHost(null); if (openedTrack) document.querySelector('.ccp-close-btn')?.click(); window.clearInterval(timer); observer.disconnect(); window.removeEventListener('scroll', update, true); window.removeEventListener('resize', update); window.removeEventListener('keydown', escape, true); };
   }, [step, mobile]);
-  if (step === null) return <button type="button" className="map-guide-reopen" onClick={() => setStep(0)} aria-label="취향 지도 사용 안내 다시 보기">? <span>사용 안내</span></button>;
+  if (step === null) return <button type="button" className="map-guide-reopen" onClick={() => setStep(0)} aria-label={translate("취향 지도 사용 안내 다시 보기")}>? <span>{translate("사용 안내")}</span></button>;
   const panel = (
     <section ref={panelRef} tabIndex={-1} role="dialog" aria-labelledby="map-guide-title" aria-describedby="map-guide-description"
       className={`map-guide-panel${mobile ? ' is-mobile' : ''}`}
@@ -87,15 +88,15 @@ export default function MapOnboarding({ mobile = false }) {
       style={mobile ? undefined : { left: placement?.left ?? 16, top: placement?.top ?? 16, visibility: placement ? 'visible' : 'hidden', '--guide-arrow': `${placement?.arrow || 24}px` }}>
       {!mobile && placement?.side && <span className="map-guide-arrow" aria-hidden="true" />}
       <div className="map-guide-meta">
-        <span>{steps[step].label}<span className="map-guide-count" aria-live="polite">{step + 1}/{steps.length}</span></span>
-        <button type="button" className="map-guide-dismiss" onClick={close}>나중에 보기</button>
+        <span>{translate(steps[step].label)}<span className="map-guide-count" aria-live="polite">{step + 1}/{steps.length}</span></span>
+        <button type="button" className="map-guide-dismiss" onClick={close}>{translate("나중에 보기")}</button>
       </div>
-      <h2 id="map-guide-title">{steps[step].title}</h2>
-      <p id="map-guide-description"><strong>{steps[step].action}</strong>{steps[step].text}</p>
-      {steps[step].hint && <p className="map-guide-hint">{steps[step].hint}</p>}
+      <h2 id="map-guide-title">{translate(steps[step].title)}</h2>
+      <p id="map-guide-description"><strong>{translate(steps[step].action)}</strong>{translate(steps[step].text)}</p>
+      {steps[step].hint && <p className="map-guide-hint">{translate(steps[step].hint)}</p>}
       <div className="map-guide-footer">
-        {step > 0 && <button type="button" className="map-guide-prev" onClick={() => setStep(step - 1)}>이전</button>}
-        <button type="button" className="map-guide-next" onClick={() => step === steps.length - 1 ? close() : setStep(step + 1)}>{step === steps.length - 1 ? '시작하기' : '다음'}</button>
+        {step > 0 && <button type="button" className="map-guide-prev" onClick={() => setStep(step - 1)}>{translate("이전")}</button>}
+        <button type="button" className="map-guide-next" onClick={() => step === steps.length - 1 ? close() : setStep(step + 1)}>{step === steps.length - 1 ? translate("시작하기") : translate("다음")}</button>
       </div>
     </section>
   );

@@ -1,3 +1,4 @@
+import { translate } from '../i18n/translate.js';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { buildMapEdges, focusCameraOn, getMapMarkerRadius, getMapPoints, getVisibleMapIndices, zoomCameraAt } from './sharedMapGeometry';
 
@@ -133,13 +134,13 @@ export default function SharedMapCanvas({ tracks, selected, focusRequest, view, 
     };
     return <div className={`public-map-stage${view === 'bubbles' ? ' is-album-view' : ''}${gesturing ? ' is-gesturing' : ''}`}>
         <div className="public-map-stage-top">
-            <div className="public-map-view-tabs" role="group" aria-label="지도 스타일">
-                <button type="button" aria-pressed={view === 'constellation'} onClick={() => onViewChange('constellation')}><span aria-hidden="true">✦</span> 별자리</button>
-                <button type="button" aria-pressed={view === 'bubbles'} onClick={() => onViewChange('bubbles')}><span aria-hidden="true">◉</span> 앨범 버블</button>
+            <div className="public-map-view-tabs" role="group" aria-label={translate("지도 스타일")}>
+                <button type="button" aria-pressed={view === 'constellation'} onClick={() => onViewChange('constellation')}><span aria-hidden="true">✦</span> {translate("별자리")}</button>
+                <button type="button" aria-pressed={view === 'bubbles'} onClick={() => onViewChange('bubbles')}><span aria-hidden="true">◉</span> {translate("앨범 버블")}</button>
             </div>
-            <button type="button" className="public-map-find" onClick={onSearch} aria-label={scope === 'personal' ? '내 음악에서 곡 찾기' : '공유 지도에서 곡 찾기'}><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 4.5 4.5" /></svg></button>
+            <button type="button" className="public-map-find" onClick={onSearch} aria-label={scope === 'personal' ? translate("내 음악에서 곡 찾기") : translate("공유 지도에서 곡 찾기")}><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 4.5 4.5" /></svg></button>
         </div>
-        <svg ref={canvasRef} className="public-map-canvas" viewBox={`0 0 ${size.width} ${size.height}`} role="group" aria-label={scope === 'personal' ? '내 음악 지도. 드래그로 이동하고 두 손가락으로 확대할 수 있어요.' : '친구가 공유한 음악 지도. 드래그로 이동하고 두 손가락으로 확대할 수 있어요.'} onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerEnd} onPointerCancel={pointerEnd}>
+        <svg ref={canvasRef} className="public-map-canvas" viewBox={`0 0 ${size.width} ${size.height}`} role="group" aria-label={scope === 'personal' ? translate("내 음악 지도. 드래그로 이동하고 두 손가락으로 확대할 수 있어요.") : translate("친구가 공유한 음악 지도. 드래그로 이동하고 두 손가락으로 확대할 수 있어요.")} onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerEnd} onPointerCancel={pointerEnd}>
             <defs><filter id="share-star-glow"><feGaussianBlur stdDeviation="4" /></filter><radialGradient id="share-nebula"><stop stopColor="#a399ed" stopOpacity=".18" /><stop offset="1" stopColor="#a399ed" stopOpacity="0" /></radialGradient></defs>
             <ellipse cx={size.width * .5} cy={size.height * .5} rx={size.width * .58} ry={size.height * .52} fill="url(#share-nebula)" />
             {Array.from({ length: 40 }, (_, i) => <circle key={`dust-${i}`} cx={(i * 173) % size.width} cy={(i * 97) % size.height} r={i % 3 === 0 ? 1.2 : .6} fill="#a6bde5" opacity=".25" />)}
@@ -158,9 +159,9 @@ export default function SharedMapCanvas({ tracks, selected, focusRequest, view, 
                         <circle cx={point.x} cy={point.y} r={Math.max(22 / camera.zoom, radius)} fill="transparent" />
                     </g>;
                 })}
-                {view === 'constellation' && camera.zoom < 1.8 && (scope !== 'personal' || (size.width > 360 && size.height > 330)) && groups.map(group => <text key={group.label} x={group.x} y={group.y - 35 / camera.zoom} textAnchor="middle" fontSize={12 / camera.zoom} fill={group.color} stroke="#0a101c" strokeWidth={4 / camera.zoom} paintOrder="stroke" pointerEvents="none" aria-hidden="true">{group.label}</text>)}
+                {view === 'constellation' && camera.zoom < 1.8 && (scope !== 'personal' || (size.width > 360 && size.height > 330)) && groups.map(group => <text key={group.label} x={group.x} y={group.y - 35 / camera.zoom} textAnchor="middle" fontSize={12 / camera.zoom} fill={group.color} stroke="#0a101c" strokeWidth={4 / camera.zoom} paintOrder="stroke" pointerEvents="none" aria-hidden="true">{translate(group.label)}</text>)}
             </g>
         </svg>
-        <div className="public-map-stage-bottom"><span className="public-map-density-hint">{visible.length < tracks.length ? <><strong>{view === 'bubbles' ? '앨범' : '별'} {visible.length}개 표시</strong><span>확대해 더 둘러보세요</span></> : '곡을 눌러 만나보세요'}</span><div className="public-map-zoom"><button type="button" aria-label="축소" disabled={camera.zoom <= .65} onClick={() => zoom(1 / 1.3)}>−</button><button type="button" onClick={() => commitCamera(initialCamera)} aria-label="지도 전체 보기">전체</button><button type="button" aria-label="확대" disabled={camera.zoom >= 4} onClick={() => zoom(1.3)}>+</button></div></div>
+        <div className="public-map-stage-bottom"><span className="public-map-density-hint">{visible.length < tracks.length ? <><strong>{translate(view === 'bubbles' ? '앨범 {0}개 표시' : '별 {0}개 표시', [visible.length])}</strong><span>{translate("확대해 더 둘러보세요")}</span></> : translate("곡을 눌러 만나보세요")}</span><div className="public-map-zoom"><button type="button" aria-label={translate("축소")} disabled={camera.zoom <= .65} onClick={() => zoom(1 / 1.3)}>−</button><button type="button" onClick={() => commitCamera(initialCamera)} aria-label={translate("지도 전체 보기")}>{translate("전체")}</button><button type="button" aria-label={translate("확대")} disabled={camera.zoom >= 4} onClick={() => zoom(1.3)}>+</button></div></div>
     </div>;
 }

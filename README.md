@@ -37,6 +37,19 @@ Development Mode app.
   play/pause/progress from the actual video state.
 - Track clicks open the song on an external service (Spotify/YouTube search).
 
+## Languages
+
+SPECTRA supports Korean and English across the landing page, import guides,
+desktop and mobile maps, account screens, shared maps, and feedback form.
+The first visit follows the browser language (Korean for `ko`, English otherwise).
+Visitors can switch languages, and their choice is saved in this browser.
+An explicit `?lang=en` or `?lang=ko` entry link takes priority over the saved choice.
+Mobile QR links include the selected language.
+
+Run `npm test` for locale selection and message tests. The browser regression
+suite is `tests/browser/localization.mjs`; like the other browser suites, it accepts
+`PLAYWRIGHT_MODULE`, `CHROMIUM_EXECUTABLE`, and `BASE_URL` environment variables.
+
 ## Tech stack
 
 - **Client:** React 19, React Router, Vite, Three.js (import scene), Web Workers

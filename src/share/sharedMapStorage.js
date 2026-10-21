@@ -1,3 +1,4 @@
+import { translate } from '../i18n/translate.js';
 import { supabase } from '../auth/supabaseClient';
 async function authWithinDeadline() {
     let timer;
@@ -18,7 +19,7 @@ async function databaseWithinDeadline(request) {
 }
 const trim = (value, max = 200) => String(value || '').slice(0, max);
 export function publicMapSnapshot(tracks, { title, style = 'constellation', genres = [] } = {}) {
-    return { version: 1, title: trim(title || '친구의 스펙트라', 80), style: style === 'bubbles' ? 'bubbles' : 'constellation',
+    return { version: 1, title: trim(title || translate("친구의 스펙트라"), 80), style: style === 'bubbles' ? 'bubbles' : 'constellation',
         genres: genres.slice(0, 5).map(value => trim(value, 60)),
         tracks: tracks.slice(0, 2000).map((track, index) => ({ id: `star-${index}`, name: trim(track.name || track.title), artists: trim(track.artists || track.artist),
             coverUrl: /^https:\/\//.test(track.coverUrl || '') ? trim(track.coverUrl, 1000) : '',

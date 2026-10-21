@@ -223,3 +223,17 @@ html:has(.public-map-page), body:has(.public-map-page) { background: #070b13; }
     .public-map-search input { min-height: 42px; }
     .public-map-stage-bottom { bottom: 12px; }
 }
+
+.public-map-header .language-switcher button { font-size: 12px; }
+@media (max-width: 900px) {
+    .public-map-header:has(.language-switcher) { gap: 10px; }
+    .public-map-header:has(.language-switcher) .public-map-shared-badge { min-width: 0; flex: 1; line-height: 1.35; }
+}
+@media (max-width: 360px) {
+    .public-map-header:has(.language-switcher) { flex-wrap: wrap; row-gap: 0; }
+    .public-map-header .language-switcher { margin-left: auto; }
+    .public-map-header:has(.language-switcher) .public-map-shared-badge { order: 3; flex-basis: 100%; margin: 0 0 6px; font-size: 11px; }
+    .public-map-stage-top { gap: 6px; }
+    .public-map-view-tabs button { padding-inline: 6px; font-size: 12px; }
+    .public-map-view-tabs button > span { margin-right: 3px; }
+}
