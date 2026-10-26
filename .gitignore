@@ -21,6 +21,20 @@ dist-ssr
 # Local runtime data
 .party-taste-snapshots.json
 
+# Generated media and review captures; retain generators, notes, and tracked audio.
+output/**/render-env/
+output/**/.venv/
+output/**/__pycache__/
+output/**/*.pyc
+output/**/*.png
+output/**/*.jpg
+output/**/*.jpeg
+output/**/*.svg
+output/**/*.mp4
+output/**/*.gif
+output/**/*.wav
+output/**/*.zip
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

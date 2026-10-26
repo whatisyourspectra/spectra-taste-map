@@ -1,0 +1,51 @@
+{
+  "duration_seconds": 30,
+  "resolution": "1920x1080",
+  "fps": 30,
+  "style": "Brand motion graphics; illustrative taste map",
+  "audio": "Existing spectra-dream-synth-preview.wav, looped with fades",
+  "scenes": [
+    [
+      0,
+      4,
+      "YOUR MUSIC TASTE MAP",
+      "좋아하는 음악에는,\n당신이 담겨 있어요.",
+      "음악으로 만나는 새로운 나"
+    ],
+    [
+      4,
+      9,
+      "01  /  IMPORT",
+      "좋아하는 음악을\n한곳에 모으세요.",
+      "음악 목록을 가져오면, 취향 탐험이 시작됩니다."
+    ],
+    [
+      9,
+      15,
+      "02  /  UNDERSTAND",
+      "플레이리스트가\n나만의 지도로.",
+      "닮은 곡들이 모여 취향의 영역을 만듭니다."
+    ],
+    [
+      15,
+      21,
+      "03  /  EXPLORE",
+      "곡과 곡 사이,\n취향의 연결을 따라.",
+      "장르와 연결을 살펴보며 나의 음악을 이해하세요."
+    ],
+    [
+      21,
+      26,
+      "04  /  DISCOVER",
+      "좋아하는 한 곡에서\n새로운 발견으로.",
+      "내 취향을 출발점으로 새로운 음악을 탐색하세요."
+    ],
+    [
+      26,
+      30,
+      "SPECTRA",
+      "당신의 음악,\n당신만의 우주.",
+      "지금, 나만의 취향 지도를 펼쳐보세요."
+    ]
+  ]
+}

@@ -1,0 +1,86 @@
+{
+  "currents": {
+    "page": "https://music.apple.com/us/album/currents/1440838039",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/a8/2e/b4/a82eb490-f30a-a321-461a-0383c88fec95/15UMGIM23316.rgb.jpg/400x400bb.jpg",
+    "path": "/demo-covers/currents.jpg"
+  },
+  "depression-cherry": {
+    "page": "https://music.apple.com/us/album/depression-cherry/997913392",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/09/e0/d5/09e0d559-0682-f0f0-5e0c-3cd11e3114fd/beachhouse_depressioncherry_2400_300.jpg/400x400bb.jpg",
+    "path": "/demo-covers/depression-cherry.jpg"
+  },
+  "cigarettes-after-sex": {
+    "page": "https://music.apple.com/us/album/cigarettes-after-sex/1217977525",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/b3/5e/0f/b35e0fbe-2370-fc48-0f0c-977525e93bf2/720841214601_Cover.jpg/400x400bb.jpg",
+    "path": "/demo-covers/cigarettes-after-sex.jpg"
+  },
+  "show-me-how": {
+    "page": "https://music.apple.com/us/album/show-me-how-single/1719975687",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music126/v4/cf/57/39/cf5739e6-332a-e64c-bed0-b763893c0517/artwork.jpg/400x400bb.jpg",
+    "path": "/demo-covers/show-me-how.jpg"
+  },
+  "salad-days": {
+    "page": "https://music.apple.com/us/album/salad-days/6789834398",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/e0/04/eb/e004eb2b-754f-4a76-9ecc-87d4eea2a327/cover.jpg/400x400bb.jpg",
+    "path": "/demo-covers/salad-days.jpg"
+  },
+  "random-access-memories": {
+    "page": "https://music.apple.com/us/album/random-access-memories/617154241",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/e8/43/5f/e8435ffa-b6b9-b171-40ab-4ff3959ab661/886443919266.jpg/400x400bb.jpg",
+    "path": "/demo-covers/random-access-memories.jpg"
+  },
+  "outrun": {
+    "page": "https://music.apple.com/us/album/outrun/1440873249",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/0c/c7/c4/0cc7c4a3-d3e9-239e-3ea6-ea93b9bc5577/00602537327133.rgb.jpg/400x400bb.jpg",
+    "path": "/demo-covers/outrun.jpg"
+  },
+  "justice": {
+    "page": "https://music.apple.com/us/album/justice/259751732",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/62/e4/01/62e40187-e672-17e5-f31f-9aee262703a3/mzi.bifzeufu.jpg/400x400bb.jpg",
+    "path": "/demo-covers/justice.jpg"
+  },
+  "after-hours": {
+    "page": "https://music.apple.com/us/album/after-hours/1499385848",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/2b/b9/fe/2bb9fef5-d7f3-8345-25a9-db0e79fde4e4/20UMGIM11048.rgb.jpg/400x400bb.jpg",
+    "path": "/demo-covers/after-hours.jpg"
+  },
+  "discovery": {
+    "page": "https://music.apple.com/us/album/discovery/697194953",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/fd/4a/77/fd4a77db-0ebc-d043-41a2-f32fa1bb0fb4/dj.qrikkdwj.jpg/400x400bb.jpg",
+    "path": "/demo-covers/discovery.jpg"
+  },
+  "starboy": {
+    "page": "https://music.apple.com/us/album/starboy/1440870373",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/b5/92/bb/b592bb72-52e3-e756-9b26-9f56d08f47ab/16UMGIM67864.rgb.jpg/400x400bb.jpg",
+    "path": "/demo-covers/starboy.jpg"
+  },
+  "geography": {
+    "page": "https://music.apple.com/us/album/geography/1327772541",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/4c/f6/72/4cf672af-31a3-772a-f27d-4ebc4ddeafbf/5056167104650.jpg/400x400bb.jpg",
+    "path": "/demo-covers/geography.jpg"
+  },
+  "lady-lady": {
+    "page": "https://music.apple.com/us/album/lady-lady/1794865076",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/5d/e3/8a/5de38af4-52e3-993d-213b-7bdfcf8a055f/842812109249.jpg/400x400bb.jpg",
+    "path": "/demo-covers/lady-lady.jpg"
+  },
+  "team-baby": {
+    "page": "https://music.apple.com/us/album/team-baby/1242154383",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/be/ce/5c/bece5cff-2caf-6d8a-9c21-3035537d2a4d/Album_cover_1400X1400.jpg/400x400bb.jpg",
+    "path": "/demo-covers/team-baby.jpg"
+  },
+  "every-letter": {
+    "page": "https://music.apple.com/us/album/every-letter-i-sent-you/1490544506",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/ca/58/77/ca5877d9-2e1e-0456-c3b2-7704e423dc70/Every_letter_I_sent_you_3000.jpg/400x400bb.jpg",
+    "path": "/demo-covers/every-letter.jpg"
+  },
+  "bewitched": {
+    "page": "https://music.apple.com/us/album/bewitched/1690607869",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music126/v4/1f/de/6c/1fde6cb4-9703-c214-cdc6-8ecf7d0f0aa0/197189040030.jpg/400x400bb.jpg",
+    "path": "/demo-covers/bewitched.jpg"
+  },
+  "slow-rush": {
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/65/e3/e7/65e3e740-b69f-f5cb-f2e6-7dedb5265ac9/19UMGIM96748.rgb.jpg/400x400bb.jpg",
+    "path": "/demo-covers/slow-rush.jpg"
+  }
+}

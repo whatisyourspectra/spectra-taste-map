@@ -1,0 +1,82 @@
+[
+  {
+    "name": "01-wire-sculpture-transparent",
+    "role": "메인 조형 / 투명 배경",
+    "width": 6000,
+    "height": 5250,
+    "transparent": true,
+    "vector": true
+  },
+  {
+    "name": "02-wire-ribbon-transparent",
+    "role": "가로 구획·흐름 연결 그래픽 / 투명 배경",
+    "width": 7000,
+    "height": 2567,
+    "transparent": true,
+    "vector": true
+  },
+  {
+    "name": "03-main-hero-dark",
+    "role": "포스터 상단 메인 비주얼",
+    "width": 7000,
+    "height": 4250,
+    "transparent": false,
+    "vector": true
+  },
+  {
+    "name": "04-taste-journey-dark",
+    "role": "이해·분류·확장 3단계 설명 이미지",
+    "width": 7200,
+    "height": 2756,
+    "transparent": false,
+    "vector": true
+  },
+  {
+    "name": "05-album-atlas-transparent",
+    "role": "장르별 취향 지도 / 투명 배경",
+    "width": 6000,
+    "height": 5000,
+    "transparent": true,
+    "vector": true
+  },
+  {
+    "name": "06-constellation-transparent",
+    "role": "음악 연결·별자리 / 투명 배경",
+    "width": 6000,
+    "height": 4000,
+    "transparent": true,
+    "vector": true
+  },
+  {
+    "name": "07-genre-portals-transparent",
+    "role": "3가지 데모 장르 포털 / 투명 배경",
+    "width": 7200,
+    "height": 2133,
+    "transparent": true,
+    "vector": true
+  },
+  {
+    "name": "08-a0-content-background",
+    "role": "A0 비율 무문자 배경 / SVG 인쇄용",
+    "width": 4967,
+    "height": 7022,
+    "transparent": false,
+    "vector": true
+  },
+  {
+    "name": "09-spectra-wordmark",
+    "role": "공식 워드마크 / 투명 배경",
+    "width": 7200,
+    "height": 660,
+    "transparent": true,
+    "vector": true
+  },
+  {
+    "name": "10-service-qr",
+    "role": "Service QR",
+    "width": 1800,
+    "height": 1800,
+    "transparent": false,
+    "vector": true
+  }
+]

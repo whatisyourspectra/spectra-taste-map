@@ -1,0 +1,19 @@
+{
+  "title": "SPECTRA — Shape / Signal (Original 15-second brand score)",
+  "duration_seconds": 15.0,
+  "sample_rate_hz": 48000,
+  "channels": 2,
+  "bit_depth": 24,
+  "peak_dbfs": -1.6,
+  "rms_dbfs": -16.262,
+  "sound": "Warm ambient electronic pads, round low pulse, delicate original glass motif, stereo filtered transition sweeps.",
+  "timings": {
+    "0–2s": "Immediate D signal, low pulse, airy macro sweep.",
+    "2–5s": "Warm broad Fmaj9 pad, unhurried glass notes.",
+    "5–8s": "Album cluster pulse and tiny stereo dust accents.",
+    "8–11.5s": "Ascending constellation signal and widening air.",
+    "11.5–15s": "Dm9 identity chord / bell resolve, soft 900ms fade to exact silence."
+  },
+  "provenance": "Direct procedural synthesis written for this film; no samples, commercial recording, third-party music, or external impulse response used.",
+  "reproduce": "python3 output/video/intro15/generate_score.py"
+}

@@ -1,0 +1,239 @@
+{
+  "description": "Original SPECTRA demo tracks and covers; mood values are illustrative. No audio included.",
+  "tracks": [
+    {
+      "name": "The Less I Know the Better",
+      "artists": "Tame Impala",
+      "album": "Currents",
+      "genres": [
+        "dream pop",
+        "psychedelic",
+        "indie"
+      ],
+      "energy": 0.58,
+      "valence": 0.64,
+      "coverUrl": "/demo-covers/currents.jpg"
+    },
+    {
+      "name": "Space Song",
+      "artists": "Beach House",
+      "album": "Depression Cherry",
+      "genres": [
+        "dream pop",
+        "psychedelic",
+        "indie"
+      ],
+      "energy": 0.7,
+      "valence": 0.7,
+      "coverUrl": "/demo-covers/depression-cherry.jpg"
+    },
+    {
+      "name": "Apocalypse",
+      "artists": "Cigarettes After Sex",
+      "album": "Cigarettes After Sex",
+      "genres": [
+        "dream pop",
+        "psychedelic",
+        "indie"
+      ],
+      "energy": 0.43,
+      "valence": 0.43,
+      "coverUrl": "/demo-covers/cigarettes-after-sex.jpg"
+    },
+    {
+      "name": "Show Me How",
+      "artists": "Men I Trust",
+      "album": "Show Me How — Single",
+      "genres": [
+        "dream pop",
+        "psychedelic",
+        "indie"
+      ],
+      "energy": 0.35,
+      "valence": 0.41,
+      "coverUrl": "/demo-covers/show-me-how.jpg"
+    },
+    {
+      "name": "Chamber of Reflection",
+      "artists": "Mac DeMarco",
+      "album": "Salad Days",
+      "genres": [
+        "dream pop",
+        "psychedelic",
+        "indie"
+      ],
+      "energy": 0.33,
+      "valence": 0.77,
+      "coverUrl": "/demo-covers/salad-days.jpg"
+    },
+    {
+      "name": "Breathe Deeper",
+      "artists": "Tame Impala",
+      "album": "The Slow Rush",
+      "genres": [
+        "dream pop",
+        "psychedelic",
+        "indie"
+      ],
+      "energy": 0.57,
+      "valence": 0.63,
+      "coverUrl": "/demo-covers/slow-rush.jpg"
+    },
+    {
+      "name": "Get Lucky",
+      "artists": "Daft Punk",
+      "album": "Random Access Memories",
+      "genres": [
+        "synthwave",
+        "electronic",
+        "french touch"
+      ],
+      "energy": 0.8,
+      "valence": 0.53,
+      "coverUrl": "/demo-covers/random-access-memories.jpg"
+    },
+    {
+      "name": "Nightcall",
+      "artists": "Kavinsky",
+      "album": "OutRun",
+      "genres": [
+        "synthwave",
+        "electronic",
+        "french touch"
+      ],
+      "energy": 0.75,
+      "valence": 0.48,
+      "coverUrl": "/demo-covers/outrun.jpg"
+    },
+    {
+      "name": "D.A.N.C.E.",
+      "artists": "Justice",
+      "album": "Justice",
+      "genres": [
+        "synthwave",
+        "electronic",
+        "french touch"
+      ],
+      "energy": 0.87,
+      "valence": 0.6,
+      "coverUrl": "/demo-covers/justice.jpg"
+    },
+    {
+      "name": "Blinding Lights",
+      "artists": "The Weeknd",
+      "album": "After Hours",
+      "genres": [
+        "synthwave",
+        "electronic",
+        "french touch"
+      ],
+      "energy": 0.75,
+      "valence": 0.48,
+      "coverUrl": "/demo-covers/after-hours.jpg"
+    },
+    {
+      "name": "Harder, Better, Faster, Stronger",
+      "artists": "Daft Punk",
+      "album": "Discovery",
+      "genres": [
+        "synthwave",
+        "electronic",
+        "french touch"
+      ],
+      "energy": 0.8,
+      "valence": 0.53,
+      "coverUrl": "/demo-covers/discovery.jpg"
+    },
+    {
+      "name": "Starboy",
+      "artists": "The Weeknd",
+      "album": "Starboy",
+      "genres": [
+        "synthwave",
+        "electronic",
+        "french touch"
+      ],
+      "energy": 0.94,
+      "valence": 0.74,
+      "coverUrl": "/demo-covers/starboy.jpg"
+    },
+    {
+      "name": "South of the River",
+      "artists": "Tom Misch",
+      "album": "Geography",
+      "genres": [
+        "jazz",
+        "neo soul",
+        "r&b"
+      ],
+      "energy": 0.24,
+      "valence": 0.35,
+      "coverUrl": "/demo-covers/geography.jpg"
+    },
+    {
+      "name": "Tadow",
+      "artists": "Masego, FKJ",
+      "album": "Lady Lady",
+      "genres": [
+        "jazz",
+        "neo soul",
+        "r&b"
+      ],
+      "energy": 0.29,
+      "valence": 0.4,
+      "coverUrl": "/demo-covers/lady-lady.jpg"
+    },
+    {
+      "name": "Everything Goes",
+      "artists": "The Black Skirts",
+      "album": "TEAM BABY",
+      "genres": [
+        "jazz",
+        "neo soul",
+        "r&b"
+      ],
+      "energy": 0.5,
+      "valence": 0.45,
+      "coverUrl": "/demo-covers/team-baby.jpg"
+    },
+    {
+      "name": "Square",
+      "artists": "Yerin Baek",
+      "album": "Every letter I sent you.",
+      "genres": [
+        "jazz",
+        "neo soul",
+        "r&b"
+      ],
+      "energy": 0.57,
+      "valence": 0.68,
+      "coverUrl": "/demo-covers/every-letter.jpg"
+    },
+    {
+      "name": "From the Start",
+      "artists": "Laufey",
+      "album": "Bewitched",
+      "genres": [
+        "jazz",
+        "neo soul",
+        "r&b"
+      ],
+      "energy": 0.44,
+      "valence": 0.55,
+      "coverUrl": "/demo-covers/bewitched.jpg"
+    },
+    {
+      "name": "Disco Yes",
+      "artists": "Tom Misch",
+      "album": "Geography",
+      "genres": [
+        "jazz",
+        "neo soul",
+        "r&b"
+      ],
+      "energy": 0.4,
+      "valence": 0.35,
+      "coverUrl": "/demo-covers/geography.jpg"
+    }
+  ]
+}

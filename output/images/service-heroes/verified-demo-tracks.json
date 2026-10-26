@@ -1,0 +1,110 @@
+[
+  {
+    "id": "demo-cosmic-dreampop-0",
+    "name": "The Less I Know the Better",
+    "artists": "Tame Impala",
+    "cover": "/demo-covers/currents.jpg"
+  },
+  {
+    "id": "demo-cosmic-dreampop-1",
+    "name": "Space Song",
+    "artists": "Beach House",
+    "cover": "/demo-covers/depression-cherry.jpg"
+  },
+  {
+    "id": "demo-cosmic-dreampop-2",
+    "name": "Apocalypse",
+    "artists": "Cigarettes After Sex",
+    "cover": "/demo-covers/cigarettes-after-sex.jpg"
+  },
+  {
+    "id": "demo-cosmic-dreampop-3",
+    "name": "Show Me How",
+    "artists": "Men I Trust",
+    "cover": "/demo-covers/show-me-how.jpg"
+  },
+  {
+    "id": "demo-cosmic-dreampop-4",
+    "name": "Chamber of Reflection",
+    "artists": "Mac DeMarco",
+    "cover": "/demo-covers/salad-days.jpg"
+  },
+  {
+    "id": "demo-cosmic-dreampop-5",
+    "name": "Breathe Deeper",
+    "artists": "Tame Impala",
+    "cover": "/demo-covers/slow-rush.jpg"
+  },
+  {
+    "id": "demo-cyber-synthwave-0",
+    "name": "Get Lucky",
+    "artists": "Daft Punk",
+    "cover": "/demo-covers/random-access-memories.jpg"
+  },
+  {
+    "id": "demo-cyber-synthwave-1",
+    "name": "Nightcall",
+    "artists": "Kavinsky",
+    "cover": "/demo-covers/outrun.jpg"
+  },
+  {
+    "id": "demo-cyber-synthwave-2",
+    "name": "D.A.N.C.E.",
+    "artists": "Justice",
+    "cover": "/demo-covers/justice.jpg"
+  },
+  {
+    "id": "demo-cyber-synthwave-3",
+    "name": "Blinding Lights",
+    "artists": "The Weeknd",
+    "cover": "/demo-covers/after-hours.jpg"
+  },
+  {
+    "id": "demo-cyber-synthwave-4",
+    "name": "Harder, Better, Faster, Stronger",
+    "artists": "Daft Punk",
+    "cover": "/demo-covers/discovery.jpg"
+  },
+  {
+    "id": "demo-cyber-synthwave-5",
+    "name": "Starboy",
+    "artists": "The Weeknd",
+    "cover": "/demo-covers/starboy.jpg"
+  },
+  {
+    "id": "demo-midnight-jazz-0",
+    "name": "South of the River",
+    "artists": "Tom Misch",
+    "cover": "/demo-covers/geography.jpg"
+  },
+  {
+    "id": "demo-midnight-jazz-1",
+    "name": "Tadow",
+    "artists": "Masego, FKJ",
+    "cover": "/demo-covers/lady-lady.jpg"
+  },
+  {
+    "id": "demo-midnight-jazz-2",
+    "name": "Everything Goes",
+    "artists": "The Black Skirts",
+    "cover": "/demo-covers/team-baby.jpg"
+  },
+  {
+    "id": "demo-midnight-jazz-3",
+    "name": "Square",
+    "artists": "Yerin Baek",
+    "cover": "/demo-covers/every-letter.jpg"
+  },
+  {
+    "id": "demo-midnight-jazz-4",
+    "name": "From the Start",
+    "artists": "Laufey",
+    "cover": "/demo-covers/bewitched.jpg"
+  },
+  {
+    "id": "demo-midnight-jazz-5",
+    "name": "Disco Yes",
+    "artists": "Tom Misch",
+    "cover": "/demo-covers/geography.jpg"
+  }
+]

@@ -1258,3 +1258,34 @@ button.llp-platform-chip[aria-pressed='true'] { color: #d9f3ff; border-color: #7
 html:has(.llp-root), body:has(.llp-root) {
   background-color: #050812;
 }
+
+/* Keep the result and the shortest import path visible before optional export help. */
+.llp-save-note { max-width: 530px; margin: 0; color: #93a6c2; font-size: 13px; line-height: 1.7; }
+.llp-paste-label { display: block; margin: 8px 0 12px; color: #c4d2e6; font-size: 14px; line-height: 1.6; }
+.llp-export-help { margin-top: 24px; border: 1px solid #9bb4de30; border-radius: 12px; padding: 0 18px 14px; text-align: left; }
+.llp-export-help:not([open]) { padding-bottom: 0; }
+.llp-export-help > summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 56px; padding-block: 12px; color: #c3d1e6; font-size: 14px; line-height: 1.5; cursor: pointer; list-style: none; }
+.llp-export-help > summary::-webkit-details-marker { display: none; }
+.llp-export-help > summary > span { flex-shrink: 0; }
+.llp-export-help[open] > summary > span { transform: rotate(45deg); }
+.llp-export-help > p { color: #99acc8; font-size: 14px; line-height: 1.7; }
+.llp-export-choose { min-height: 44px; padding: 10px 16px; border: 1px solid #70d6ff55; border-radius: 10px; background: #70d6ff0d; color: #d9f3ff; font: inherit; font-size: 14px; cursor: pointer; }
+.llp-map-destination { color: #99acc8; font-size: 13px; line-height: 1.7; margin: 20px 0 0; }
+@media (max-width: 360px) {
+  .llp-root .llp-nav-brand { --spectra-logo-width: 96px; }
+  .llp-nav-actions { gap: 6px; }
+  .llp-nav-auth .sa-account-button { width: 36px; min-width: 36px; height: 36px; padding: 8px; gap: 0; justify-content: center; }
+  .llp-nav-auth .sa-account-button > span:last-child { display: none; }
+  .llp-nav:has(.llp-nav-return-btn) .llp-sound-toggle { display: none; }
+}
+@media (max-width: 699px) {
+  .llp-nav:has(.llp-nav-return-btn) .llp-nav-brand { --spectra-logo-width: 118px; }
+  .llp-nav:has(.llp-nav-return-btn) .llp-nav-actions { gap: 4px; }
+  .llp-nav-return-btn { width: 36px; min-width: 36px; height: 36px; padding: 0; justify-content: center; }
+  .llp-nav-return-btn > span:first-child { display: none; }
+  .llp-nav:has(.llp-nav-return-btn) .sa-account-button { width: 36px; min-width: 36px; height: 36px; padding: 8px; gap: 0; justify-content: center; }
+  .llp-nav:has(.llp-nav-return-btn) .sa-account-button > span:last-child { display: none; }
+}
+@media (max-width: 360px) {
+  .llp-nav:has(.llp-nav-return-btn) .llp-nav-brand { --spectra-logo-width: 96px; }
+}

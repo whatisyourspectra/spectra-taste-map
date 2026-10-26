@@ -16,6 +16,10 @@ create table if not exists public.user_taste_maps (
 -- Row Level Security (RLS) 활성화: 다른 사용자가 내 지도를 보거나 수정할 수 없도록 보호
 alter table public.user_taste_maps enable row level security;
 
+-- Data API 접근 권한은 RLS와 별개입니다. 새 프로젝트/테이블 재생성 시에도 명시해야 합니다.
+-- 로그인 사용자의 조회, upsert(INSERT + UPDATE), 삭제에 필요한 권한만 부여합니다.
+grant select, insert, update, delete on table public.user_taste_maps to authenticated;
+
 -- 기존 정책들 정리 후 upsert 및 모든 작업을 완벽하게 지원하는 통합 정책 적용
 drop policy if exists "Users can select own taste map" on public.user_taste_maps;
 drop policy if exists "Users can insert own taste map" on public.user_taste_maps;

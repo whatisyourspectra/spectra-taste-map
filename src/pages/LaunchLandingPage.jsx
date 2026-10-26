@@ -13,16 +13,10 @@ import { MAX_IMPORT_TRACKS } from '../context/TasteDataContext';
 import AccountButton from '../auth/AccountButton';
 import SingleLineTitle from '../components/SingleLineTitle';
 import MobileEntryCard from '../components/MobileEntryCard';
-import ImportVideoGuide from '../components/ImportVideoGuide';
+import PlaylistExportHelp from '../components/PlaylistExportHelp.jsx';
+import { LANDING_SECTIONS, DEMO_CTA } from './landingContent.js';
 import LaunchTasteJourney, { LaunchDemoPortal, LaunchImportOrbit } from './LaunchTasteJourney';
 import useLandingSound from '../audio/useLandingSound';
-
-const TUNE_MY_MUSIC_URL = 'https://www.tunemymusic.com/transfer';
-const IMPORT_PLATFORMS = [
-  { id: 'spotify', label: 'Spotify', format: 'CSV', url: 'https://www.tunemymusic.com/ko/transfer/spotify-to-file' },
-  { id: 'apple', label: 'Apple Music', url: TUNE_MY_MUSIC_URL },
-  { id: 'youtube', label: 'YouTube Music', format: 'TXT', url: TUNE_MY_MUSIC_URL },
-];
 
 export default function LaunchLandingPage({
   onImportTracks,
@@ -33,7 +27,7 @@ export default function LaunchLandingPage({
   onReset = null,
 }) {
   const navigate = useNavigate();
-  const { lang } = useLocale();
+  useLocale();
   const sound = useLandingSound();
   const landingRef = useRef(null);
   const [chapter, setChapter] = useState('hero');
@@ -62,16 +56,7 @@ export default function LaunchLandingPage({
     onScroll();
     return () => { cancelAnimationFrame(frame); reveal.disconnect(); heroSize.disconnect(); window.removeEventListener('scroll', onScroll); window.removeEventListener('resize', onScroll); };
   }, []);
-  const [selectedPlatform, setSelectedPlatform] = useState(() => {
-    try { return window.sessionStorage.getItem('spectra:import-platform') || ''; }
-    catch { return ''; }
-  });
-  const platform = IMPORT_PLATFORMS.find(item => item.id === selectedPlatform);
-  const selectPlatform = (id) => {
-    setSelectedPlatform(id);
-    try { window.sessionStorage.setItem('spectra:import-platform', id); } catch { /* selection still works */ }
-  };
-  const [activeTab, setActiveTab] = useState('file'); // 'file' | 'paste'
+  const [activeTab, setActiveTab] = useState('paste');
   const [rawText, setRawText] = useState('');
   const [fileName, setFileName] = useState('');
   const [parseInfo, setParseInfo] = useState(null);
@@ -200,8 +185,8 @@ export default function LaunchLandingPage({
           </div>
 
           <div className="llp-nav-links">
-            <button type="button" className="llp-nav-link" onClick={() => scrollToSection('demo')}> {translate("취향 지도 체험")} </button>
-            <button type="button" className="llp-nav-link" onClick={() => scrollToSection('features')}> {translate("이해 · 분류 · 확장")} </button>
+            <button type="button" className="llp-nav-link" onClick={() => scrollToSection('demo')}> {translate('데모 지도')} </button>
+            <button type="button" className="llp-nav-link" onClick={() => scrollToSection('features')}> {translate('지도 작동 방식')} </button>
             <button type="button" className="llp-nav-link" onClick={() => scrollToSection('import')}> {translate("음악 가져오기")} </button>
           </div>
 
@@ -237,9 +222,10 @@ export default function LaunchLandingPage({
             <button
               type="button"
               className="llp-nav-demo-btn"
+              disabled={busy}
               onClick={() => handleSelectDemo(DEMO_UNIVERSES[0])}
             >
-              <span>{translate("데모 체험")}</span>
+              <span>{translate(DEMO_CTA)}</span>
               <span aria-hidden="true">↗</span>
             </button>
             <div className="llp-nav-auth">
@@ -254,15 +240,15 @@ export default function LaunchLandingPage({
         {/* ── Section 1: Hero Section ── */}
         <section className="llp-hero-section" id="hero">
           <div className="llp-hero-copy">
-            <p className="llp-art-eyebrow">{translate("음악 취향 관리 서비스")}</p>
+            <p className="llp-art-eyebrow"><span className="llp-section-number">{LANDING_SECTIONS[0].number}</span> / {translate(LANDING_SECTIONS[0].heading)}</p>
             <h1 className="llp-hero-title">
               <span>Your taste.</span>
               <em>In spectra.</em>
             </h1>
-            <p className="llp-hero-desc">{translate("당신의 취향을 이해하고,")}<br />{translate("닮은 곡을 모아 취향을 분류하고,")}<br />{translate("그 연결을 따라 새로운 음악으로 확장하세요.")}</p>
+            <p className="llp-hero-desc">{translate('좋아하는 음악을 장르별 지도로 펼치고, 새로 발견한 곡도 내 SPECTRA 지도에 모아보세요.')}</p>
             <div className="llp-hero-cta-group">
               <button type="button" className="llp-btn-primary" onClick={() => handleSelectDemo(DEMO_UNIVERSES[0])} disabled={busy}>
-                <span>{translate("데모 지도로 먼저 체험하기")}</span><span aria-hidden="true">↗</span>
+                <span>{translate(DEMO_CTA)}</span><span aria-hidden="true">↗</span>
               </button>
               <button type="button" className="llp-btn-secondary" onClick={() => scrollToSection('import')}>{translate("음악 가져오기")}</button>
             </div>
@@ -276,7 +262,7 @@ export default function LaunchLandingPage({
         {/* ── Section 3: One-Click Demo Universes ── */}
         <section className="llp-section" id="demo">
           <div className="llp-section-header">
-            <span className="llp-section-eyebrow">02 / BEFORE EXPLORE YOUR TASTE</span>
+            <span className="llp-section-eyebrow">{LANDING_SECTIONS[2].number} / {translate(LANDING_SECTIONS[2].heading)}</span>
             <h2 className="llp-section-title">
               <span className="llp-title-chunk">{translate("익숙한 음악에서")}</span>{' '}
               <span className="llp-title-chunk">{translate("시작해 볼까요?")}</span>
@@ -312,7 +298,7 @@ export default function LaunchLandingPage({
                     onClick={() => handleSelectDemo(universe)}
                     disabled={busy}
                   >
-                    <span>{translate("이 우주로 들어가기")}</span>
+                    <span>{translate(DEMO_CTA)}</span>
                     <span className="llp-launch-arrow">→</span>
                   </button>
                 </div>
@@ -324,12 +310,13 @@ export default function LaunchLandingPage({
         {/* ── Section 4: The Portal (Import Station) ── */}
         <section className="llp-section llp-import-section" id="import">
           <div className="llp-section-header">
-            <span className="llp-section-eyebrow">03 / MAKE IT YOURS</span>
+            <span className="llp-section-eyebrow">{LANDING_SECTIONS[3].number} / {translate(LANDING_SECTIONS[3].heading)}</span>
             <h2 className="llp-section-title">
               <span className="llp-title-chunk">{translate("당신의 음악을")}</span>{' '}
               <span className="llp-title-chunk">{translate("하나의 지도로")}</span>
             </h2>
-            <p className="llp-section-sub"> {translate("Apple Music, Spotify, YouTube Music 플레이리스트를 파일로 내보내어 끌어다 놓으세요.")} </p>
+            <p className="llp-section-sub">{translate('좋아하는 곡 몇 개로도 시작할 수 있어요. 곡 목록을 붙여넣거나 가지고 있는 파일을 올려보세요.')}</p>
+            <p className="llp-save-note">{translate('지도는 이 브라우저에 저장되고, 로그인하면 계정에도 저장돼요.')}</p>
           </div>
 
           <LaunchImportOrbit count={parseInfo?.count || 0} active={dragActive || Boolean(parseInfo)} onChoose={() => {
@@ -338,54 +325,13 @@ export default function LaunchLandingPage({
           }} />
           <div className={`llp-import-box${dragActive ? ' is-receiving' : ''}${parseInfo ? ' has-music' : ''}`}>
 
-            <p className="llp-platform-question" id="import-platform-label">{translate("어디에서 음악을 듣고 있나요?")}</p>
-            <div className="llp-platform-strip" role="group" aria-labelledby="import-platform-label">
-              {IMPORT_PLATFORMS.map(item => (
-                <button key={item.id} type="button" className="llp-platform-chip" aria-pressed={selectedPlatform === item.id} onClick={() => selectPlatform(item.id)}>{item.label}</button>
-              ))}
-              <button type="button" className="llp-platform-chip" aria-pressed={selectedPlatform === 'file'} onClick={() => selectPlatform('file')}>{translate("이미 파일이 있어요")}</button>
-            </div>
-            {platform && <div className="llp-export-start">
-              <a href={lang === 'en' ? platform.url.replace('/ko/', '/') : platform.url} target="_blank" rel="noopener noreferrer" className="llp-export-link">{translate("{0} 곡 목록 내보내기 ↗", [platform.label])}<span>{translate("새 탭에서 열기")}</span></a>
-              <p>{translate('{0} 파일을 다운로드한 뒤 이 화면으로 돌아와 파일을 선택해 주세요.', [platform.format || translate('CSV 또는 TXT')])}</p>
-            </div>}
-
-            {['spotify', 'youtube'].includes(selectedPlatform) && !parseInfo && <ImportVideoGuide platform={selectedPlatform} onChooseFile={() => { setActiveTab('file'); window.requestAnimationFrame(() => fileInputRef.current?.click()); }} />}
-
-            {/* Collapsible 3-Step Guide */}
-            <details className="llp-guide-accordion">
-              <summary className="llp-guide-summary">
-                <span className="llp-guide-title">{translate('💡 스트리밍 서비스에서 곡 목록 파일({0}) 가져오는 법', [platform?.format || 'CSV / TXT'])}</span>
-                <span className="llp-guide-toggle">{translate("안내 보기 ▾")}</span>
-              </summary>
-              <div className="llp-guide-body">
-                <ol className="llp-guide-steps">
-                  <li> {translate("곡 목록 내보내기 도구인")}{' '}
-                    <a href={lang === 'en' ? (platform?.url || TUNE_MY_MUSIC_URL).replace('/ko/', '/') : (platform?.url || TUNE_MY_MUSIC_URL)} target="_blank" rel="noopener noreferrer" className="llp-guide-link">
-                      Tune My Music ↗
-                    </a> {translate("을 엽니다.")} </li>
-                  <li>{translate("이용 중인 음악 서비스(Apple Music, Spotify, YouTube Music 등)를 소스로 연결합니다.")}</li>
-                  <li>{translate("내보낼 보관함/플레이리스트를 고른 뒤, 목적지를")} <b>{translate("파일 내보내기")}</b>{translate("로 고르고,")} <b>{platform?.format || translate("CSV 또는 TXT")}</b> {translate("형식으로 다운로드합니다.")}</li>
-                  <li>{translate("다운로드한 CSV 또는 TXT 파일을 아래에서 선택하세요. PC에서는 끌어다 놓아도 됩니다.")}</li>
-                </ol>
-              </div>
-            </details>
-
             {/* Input Mode Selector */}
-            <div className="llp-tabs">
-              <button
-                type="button"
-                className={`llp-tab${activeTab === 'file' ? ' active' : ''}`}
-                onClick={() => setActiveTab('file')}
-              >
-                <span>{translate("파일 업로드 (CSV / TXT)")}</span>
+            <div className="llp-tabs" role="group" aria-label={translate('음악 가져오기 방식')}>
+              <button type="button" className={`llp-tab${activeTab === 'paste' ? ' active' : ''}`} aria-pressed={activeTab === 'paste'} onClick={() => setActiveTab('paste')}>
+                <span>{translate('텍스트 직접 붙여넣기')}</span>
               </button>
-              <button
-                type="button"
-                className={`llp-tab${activeTab === 'paste' ? ' active' : ''}`}
-                onClick={() => setActiveTab('paste')}
-              >
-                <span>{translate("텍스트 직접 붙여넣기")}</span>
+              <button type="button" className={`llp-tab${activeTab === 'file' ? ' active' : ''}`} aria-pressed={activeTab === 'file'} onClick={() => setActiveTab('file')}>
+                <span>{translate('파일 업로드 (CSV / TXT)')}</span>
               </button>
             </div>
 
@@ -433,7 +379,9 @@ export default function LaunchLandingPage({
                     <span>{translate("✦ 예시 곡 목록 자동 채우기")}</span>
                   </button>
                 </div>
+                <label className="llp-paste-label" htmlFor="import-track-list">{translate('아티스트 - 곡 제목을 한 줄에 하나씩 붙여넣으세요.')}</label>
                 <textarea
+                  id="import-track-list"
                   className="llp-textarea"
                   placeholder={translate("한 줄에 한 곡씩 입력해 주세요:\nDaft Punk - Around the World\nTame Impala - The Less I Know the Better\nBeach House - Space Song")}
                   value={rawText}
@@ -472,14 +420,16 @@ export default function LaunchLandingPage({
 
             {error && <div className="llp-import-error">{translate(error)}</div>}
 
+            <PlaylistExportHelp onChooseFile={() => { setActiveTab('file'); requestAnimationFrame(() => fileInputRef.current?.click()); }} />
+            <p className="llp-map-destination">{translate('새로 찾은 곡은 SPECTRA 지도에 추가돼요. Spotify·Apple Music 플레이리스트로 내보내기는 아직 지원하지 않아요.')}</p>
             <p className="llp-privacy-note"> {translate("🔒 파일을 가져올 때 스트리밍 계정을 연결할 필요가 없습니다.")} </p>
           </div>
         </section>
       </main>
 
       <nav className="llp-chapter-nav" aria-label={translate("랜딩 탐색 단계")}>
-        {[['hero', 'INTRO'], ['features', 'TASTE MAP'], ['demo', 'EXPLORE'], ['import', 'YOUR MUSIC']].map(([id, label], i) => (
-          <button type="button" key={id} aria-current={chapter === id ? 'step' : undefined} onClick={() => scrollToSection(id)}><span>0{i + 1}</span><span>{label}</span></button>
+        {LANDING_SECTIONS.map(({ id, number, label }) => (
+          <button type="button" key={id} aria-current={chapter === id ? 'step' : undefined} onClick={() => scrollToSection(id)}><span>{number}</span><span>{translate(label)}</span></button>
         ))}
       </nav>
 
@@ -502,7 +452,7 @@ export default function LaunchLandingPage({
           <div className="import-analyzing__card">
             <span className="import-analyzing__spinner" aria-hidden />
             <h3 className="import-analyzing__title">{translate("나만의 음악 우주를 생성하는 중…")}</h3>
-            <p className="import-analyzing__sub"> {translate("음악의 5차원 특성과 taste맵 좌표를 계산하고 앨범 커버를 매칭하고 있어요.")} </p>
+            <p className="import-analyzing__sub"> {translate('곡 이름과 아티스트를 연결하고 장르 태그로 지도를 정리하고 있어요.')} </p>
             <div className="import-analyzing__bar" aria-hidden>
               <span style={{ width: `${pct}%` }} />
             </div>

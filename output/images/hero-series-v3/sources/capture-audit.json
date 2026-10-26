@@ -1,0 +1,276 @@
+[
+  {
+    "name": "01-map",
+    "results": [
+      {
+        "url": "http://127.0.0.1:5173/spectra-wordmark.svg",
+        "width": 300,
+        "variation": 73.59039129170237,
+        "ok": true
+      },
+      {
+        "url": "http://127.0.0.1:5173/demo-covers/currents.jpg",
+        "width": 400,
+        "variation": 20.2941999381488,
+        "ok": true
+      },
+      {
+        "url": "http://127.0.0.1:5173/demo-covers/depression-cherry.jpg",
+        "width": 400,
+        "variation": 7.909178028102576,
+        "ok": true
+      },
+      {
+        "url": "http://127.0.0.1:5173/demo-covers/cigarettes-after-sex.jpg",
+        "width": 400,
+        "variation": 3.218678155453643,
+        "ok": true
+      },
+      {
+        "url": "http://127.0.0.1:5173/demo-covers/show-me-how.jpg",
+        "width": 400,
+        "variation": 51.37869924927848,
+        "ok": true
+      },
+      {
+        "url": "http://127.0.0.1:5173/demo-covers/salad-days.jpg",
+        "width": 400,
+        "variation": 56.908846824626,
+        "ok": true
+      },
+      {
+        "url": "http://127.0.0.1:5173/demo-covers/slow-rush.jpg",
+        "width": 400,
+        "variation": 37.64629378836218,
+        "ok": true
+      },
+      {
+        "url": "http://127.0.0.1:5173/demo-covers/random-access-memories.jpg",
+        "width": 400,
+        "variation": 48.30518548937024,
+        "ok": true
+      },
+      {
+        "url": "http://127.0.0.1:5173/demo-covers/outrun.jpg",
+        "width": 400,
+        "variation": 56.60206550463393,
+        "ok": true
+      },
+      {
+        "url": "http://127.0.0.1:5173/demo-covers/justice.jpg",
+        "width": 400,
+        "variation": 7.978385873729075,
+        "ok": true
+      },
+      {
+        "url": "http://127.0.0.1:5173/demo-covers/after-hours.jpg",
+        "width": 400,
+        "variation": 48.41918824788679,
+        "ok": true
+      },
+      {
+        "url": "http://127.0.0.1:5173/demo-covers/discovery.jpg",
+        "width": 400,
+        "variation": 42.10895141045837,
+        "ok": true
+      },
+      {
+        "url": "http://127.0.0.1:5173/demo-covers/starboy.jpg",
+        "width": 400,
+        "variation": 40.892160670725964,
+        "ok": true
+      },
+      {
+        "url": "http://127.0.0.1:5173/demo-covers/geography.jpg",
+        "width": 400,
+        "variation": 57.21181917114738,
+        "ok": true
+      },
+      {
+        "url": "http://127.0.0.1:5173/demo-covers/lady-lady.jpg",
+        "width": 400,
+        "variation": 36.87099695495551,
+        "ok": true
+      },
+      {
+        "url": "http://127.0.0.1:5173/demo-covers/team-baby.jpg",
+        "width": 400,
+        "variation": 70.62551151835383,
+        "ok": true
+      },
+      {
+        "url": "http://127.0.0.1:5173/demo-covers/every-letter.jpg",
+        "width": 400,
+        "variation": 48.550196784548525,
+        "ok": true
+      },
+      {
+        "url": "http://127.0.0.1:5173/demo-covers/bewitched.jpg",
+        "width": 400,
+        "variation": 54.729802409734376,
+        "ok": true
+      }
+    ],
+    "bubbleCount": 18,
+    "body": "←\n런칭 홈\nDEMO FIELD\n나의 Taste Field\n\nListening history, mapped in space.\n\nLIVE FIELD\n18 개의 기억\n3 개의 영역\n⌂\n런칭 홈\n로그인\nKO\nEN\nTaste Field\nSpectra\n−\n35%\n+\n✦\n탐색\n⌗\n선택\n⊙\n전체\n드림팝 & 인디 별자리\n사이버 신스웨이브 & 일렉트로 펄스\n미드나잇 재즈 & 벨벳 알앤비\n드림팝 & 인디 별자리\n사이버 신스웨이브 & 일렉트로 펄스\n미드나잇 재즈 & 벨벳 알앤비\nNavigator\n35%\n지금 탐색 중인 영역\nThe Less I Know the Better\nTame Impala\nSpace Song\nBeach House\nApocalypse\nCigarettes After Sex\nShow Me How\nMen I Trust\nChamber of Reflection\nMac DeMarco\nBreathe Deeper\nTame Impala\nGet Lucky\nDaft Punk\nNightcall\nKavinsky\nD.A.N.C.E.\nJustice\nBlinding Lights\nThe Weeknd\nHarder, Better, Faster, Stronger\nDaft Punk\nStarboy\nThe Weeknd\nSouth of the River\nTom Misch\nTadow\nMasego, FKJ\nEverything Goes\nThe Black Skirts\nSquare\nYerin Baek\nFrom the Start\nLaufey\nDisco Yes\nTom Misch\n18곡 버블 탐색 · drag / zoom\n?\n사용 안내"
+  },
+  {
+    "name": "02-track-exploration",
+    "results": [
+      {
+        "url": "http://127.0.0.1:5173/spectra-wordmark.svg",
+        "width": 300,
+        "variation": 73.59039129170237,
+        "ok": true
+      },
+      {
+        "url": "http://127.0.0.1:5173/demo-covers/currents.jpg",
+        "width": 400,
+        "variation": 20.2941999381488,
+        "ok": true
+      },
+      {
+        "url": "http://127.0.0.1:5173/demo-covers/depression-cherry.jpg",
+        "width": 400,
+        "variation": 7.909178028102576,
+        "ok": true
+      },
+      {
+        "url": "http://127.0.0.1:5173/demo-covers/cigarettes-after-sex.jpg",
+        "width": 400,
+        "variation": 3.218678155453643,
+        "ok": true
+      },
+      {
+        "url": "http://127.0.0.1:5173/demo-covers/show-me-how.jpg",
+        "width": 400,
+        "variation": 51.37869924927848,
+        "ok": true
+      },
+      {
+        "url": "http://127.0.0.1:5173/demo-covers/salad-days.jpg",
+        "width": 400,
+        "variation": 56.908846824626,
+        "ok": true
+      },
+      {
+        "url": "http://127.0.0.1:5173/demo-covers/slow-rush.jpg",
+        "width": 400,
+        "variation": 37.64629378836218,
+        "ok": true
+      }
+    ],
+    "bubbleCount": 6,
+    "body": "←\n런칭 홈\nDEMO FIELD\n나의 Taste Field\n\nListening history, mapped in space.\n\nLIVE FIELD\n18 개의 기억\n3 개의 영역\n⌂\n런칭 홈\n로그인\nKO\nEN\nTaste Field\nSpectra\n−\n88%\n+\n✦\n탐색\n⌗\n선택\n⊙\n전체\n드림팝 & 인디 별자리\n사이버 신스웨이브 & 일렉트로 펄스\n미드나잇 재즈 & 벨벳 알앤비\n드림팝 & 인디 별자리\nNavigator\n88%\n지금 탐색 중인 영역\nThe Less I Know the Better\nTame Impala\nSpace Song\nBeach House\nApocalypse\nCigarettes After Sex\nShow Me How\nMen I Trust\nChamber of Reflection\nMac DeMarco\nBreathe Deeper\nTame Impala\n6곡 버블 탐색 · drag / zoom\n드림팝 & 인디 별자리\ndream pop · psychedelic · indie\n✕\n\n푸른 선율 별자리\n\n선택한 별\nBreathe Deeper\n\nTame Impala\n\n▶\nYouTube로 듣기\n✦\n별자리 항해\n다른 선택\nSpotify ↗\n✓\n추가됨\n◎\n확장\n?\n사용 안내"
+  },
+  {
+    "name": "03-constellation",
+    "results": [
+      {
+        "url": "http://127.0.0.1:5173/demo-covers/slow-rush.jpg",
+        "width": 400,
+        "variation": 37.64629378836218,
+        "ok": true
+      },
+      {
+        "url": "http://127.0.0.1:5173/demo-covers/currents.jpg",
+        "width": 400,
+        "variation": 20.2941999381488,
+        "ok": true
+      },
+      {
+        "url": "http://127.0.0.1:5173/demo-covers/cigarettes-after-sex.jpg",
+        "width": 400,
+        "variation": 3.218678155453643,
+        "ok": true
+      },
+      {
+        "url": "http://127.0.0.1:5173/demo-covers/salad-days.jpg",
+        "width": 400,
+        "variation": 56.908846824626,
+        "ok": true
+      },
+      {
+        "url": "http://127.0.0.1:5173/demo-covers/show-me-how.jpg",
+        "width": 400,
+        "variation": 51.37869924927848,
+        "ok": true
+      },
+      {
+        "url": "http://127.0.0.1:5173/demo-covers/depression-cherry.jpg",
+        "width": 400,
+        "variation": 7.909178028102576,
+        "ok": true
+      }
+    ],
+    "bubbleCount": 0,
+    "body": "←\n지도\n드림팝 & 인디 별자리\n6개의 별이 연결되어 있어요\n···\n별을 눌러 곡을 선택하세요\n−\n＋\n전체 보기\nBreathe Deeper\nThe Less I Know the Better\nApocalypse\nChamber of Reflection\nShow Me How\nSpace Song\n선택한 별\nBreathe Deeper\nTame Impala\n✦ 이 별에서 탐색\nBreathe Deeper\n일시정지 · 1/6\nYouTube\nTame Impala - Breathe Deeper\n×\n?\n사용 안내"
+  },
+  {
+    "name": "02-music-exploration",
+    "results": [
+      {
+        "url": "http://127.0.0.1:5173/demo-covers/slow-rush.jpg",
+        "width": 400,
+        "variation": 37.64629378836218,
+        "ok": true
+      },
+      {
+        "url": "http://127.0.0.1:5173/demo-covers/currents.jpg",
+        "width": 400,
+        "variation": 20.2941999381488,
+        "ok": true
+      },
+      {
+        "url": "http://127.0.0.1:5173/demo-covers/cigarettes-after-sex.jpg",
+        "width": 400,
+        "variation": 3.218678155453643,
+        "ok": true
+      },
+      {
+        "url": "http://127.0.0.1:5173/demo-covers/salad-days.jpg",
+        "width": 400,
+        "variation": 56.908846824626,
+        "ok": true
+      },
+      {
+        "url": "http://127.0.0.1:5173/demo-covers/show-me-how.jpg",
+        "width": 400,
+        "variation": 51.37869924927848,
+        "ok": true
+      },
+      {
+        "url": "http://127.0.0.1:5173/demo-covers/depression-cherry.jpg",
+        "width": 400,
+        "variation": 7.909178028102576,
+        "ok": true
+      },
+      {
+        "url": "https://i.scdn.co/image/ab67616d0000b2738aed7e9b6c824e48920eb2e8",
+        "width": 640,
+        "variation": null,
+        "ok": true
+      },
+      {
+        "url": "https://i.scdn.co/image/ab67616d0000b27378cb65b776269d1c03e74848",
+        "width": 640,
+        "variation": null,
+        "ok": true
+      },
+      {
+        "url": "https://i.scdn.co/image/ab67616d0000b273303f33e04e354e417616c6e8",
+        "width": 640,
+        "variation": null,
+        "ok": true
+      },
+      {
+        "url": "https://i.scdn.co/image/ab67616d0000b27325f924c9cf422db13a5fdeeb",
+        "width": 640,
+        "variation": null,
+        "ok": true
+      }
+    ],
+    "bubbleCount": 0,
+    "body": "←\n지도\n드림팝 & 인디 별자리\n6개의 별이 연결되어 있어요\n···\n별을 눌러 곡을 선택하세요\n−\n＋\n전체 보기\nBreathe Deeper\nThe Less I Know the Better\nApocalypse\nChamber of Reflection\nShow Me How\nSpace Song\n음악 탐색\n다음 별을 찾아보세요\n×\n이 곡에서 이어지는 음악\nBreathe Deeper\nTame Impala\n\n마음에 드는 곡을 골라 별자리를 넓혀보세요.\n\nSave the Birds\nHis Name Is Alive\n+ 별자리에 추가\nSave The Birds - 2024 Remaster\nHis Name Is Alive\n+ 별자리에 추가\nAre You Comin' Down This Weekend?\nHis Name Is Alive\n+ 별자리에 추가\nAre You Comin' Down This Weekend? - 2024 Remaster\nHis Name Is Alive\n+ 별자리에 추가\nInterlude\nHis Name Is Alive\n+ 별자리에 추가\nOpposite Side Of The Window - Remastered\nSecret Asian Men\n+ 별자리에 추가\nDracula (with JENNIE)\nTame Impala, JENNIE\n+ 별자리에 추가\nDracula\nTame Impala\n+ 별자리에 추가\nLoser\nTame Impala\n+ 별자리에 추가\nThe Less I Know The Better\nTame Impala\n✓ 추가됨\ni miss ㅠ\nSYSTEM SEOUL, sn7, ycs\n+ 별자리에 추가\nHere Because You Fell\nHello Satellites\n+ 별자리에 추가\n\n추가한 별은 이 별자리를 나갈 때까지 유지돼요.\n\nBreathe Deeper\n일시정지 · 1/6\n!\nYouTube\nTame Impala - Breathe Deeper\n×\n?\n사용 안내"
+  }
+]

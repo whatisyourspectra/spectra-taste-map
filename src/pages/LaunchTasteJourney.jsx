@@ -1,3 +1,4 @@
+import { LANDING_SECTIONS, DEMO_CTA } from './landingContent.js';
 import { translate } from '../i18n/translate.js';
 import SpectraLogo from '../components/SpectraLogo';
 import React, { useEffect, useRef, useState } from 'react';
@@ -15,7 +16,7 @@ const TRACKS = DEMO_UNIVERSES.flatMap((universe, group) =>
   })));
 const CHAPTERS = [
   { label: '이해', title: '좋아하는 음악에서 나를 이해해요.', text: '내가 모아 온 곡을 한눈에 살펴보세요. 곡 정보와 장르, 곡 사이의 연결이 내가 좋아하는 음악의 공통점을 보여줍니다.', hint: '버블을 선택하면 곡 정보가 나타나요.', symbol: 'sparkle' },
-  { label: '분류', title: '닮은 곡을 모아 취향을 읽어요.', text: '장르와 음악적 특징이 닮은 곡들이 가까이 모입니다. 흩어져 있던 플레이리스트를 취향의 영역으로 살펴보세요.', hint: '장르 영역을 눌러 곡들이 어떻게 모이는지 살펴보세요.', symbol: 'wave' },
+  { label: '분류', title: '닮은 곡을 모아 취향을 읽어요.', text: '장르 태그가 비슷한 곡들이 가까이 모입니다. 흩어져 있던 플레이리스트를 취향의 영역으로 살펴보세요.', hint: '장르 영역을 눌러 곡들이 어떻게 모이는지 살펴보세요.', symbol: 'wave' },
   { label: '확장', title: '내 취향에서 새로운 음악으로.', text: '좋아하는 한 곡을 출발점으로 연결을 따라가세요. 실제 지도에서는 탐색 버튼으로 새로운 곡을 발견하고, 마음에 드는 곡을 내 지도에 담을 수 있어요.', hint: '다른 별을 선택하면 연결의 중심이 바뀝니다.', symbol: 'matrix' },
 ];
 
@@ -78,7 +79,7 @@ function BubbleAtlas({ stage, onOpen, busy }) {
       <div className="lj-track-detail" style={{ '--region': selected.color }}>
         <img src={selected.coverUrl} alt="" decoding="async" />
         <div aria-live="polite"><span>SELECTED TRACK</span><strong>{selected.name}</strong><small>{selected.artists}</small></div>
-        <button type="button" onClick={() => onOpen(DEMO_UNIVERSES[selected.group])} disabled={busy} aria-label={translate("{0}의 데모 taste맵 열기", [selected.name])}>{translate("탐험 ↗")}</button>
+        <button type="button" onClick={() => onOpen(DEMO_UNIVERSES[selected.group])} disabled={busy} aria-label={`${translate(DEMO_CTA)} · ${selected.name}`}>{translate(DEMO_CTA)}</button>
       </div>
       <p className="lj-preview-note">{translate("데모 곡으로 구성한 인터랙티브 프리뷰")}</p>
     </div>
@@ -111,17 +112,22 @@ export default function LaunchTasteJourney({ onOpen, busy }) {
   };
   return (
     <section className="lj-journey llp-section" id="features" ref={sectionRef}>
-      <header className="lj-intro llp-section-header"><span className="llp-section-eyebrow">01 / FROM SOUND TO SHAPE</span><h2 className="llp-section-title">{translate("당신이 좋아하는 음악을")}<br /><span>{translate("지도로 펼쳐보아요.")}</span></h2><p className="llp-section-sub">{translate("이해 → 분류 → 확장. 아래 지도에서 직접 체험해 보세요.")}</p></header>
+      <header className="lj-intro llp-section-header"><span className="llp-section-eyebrow">{LANDING_SECTIONS[1].number} / {translate(LANDING_SECTIONS[1].heading)}</span><h2 className="llp-section-title">{translate("당신이 좋아하는 음악을")}<br /><span>{translate("지도로 펼쳐보아요.")}</span></h2><p className="llp-section-sub">{translate("이해 → 분류 → 확장. 아래 지도에서 직접 체험해 보세요.")}</p></header>
       <div className="lj-story-grid">
         <div className="lj-story-copy">
-          {CHAPTERS.map((chapter, i) => <article key={translate(chapter.label)} className={`lj-step${stage === i ? ' is-current' : ''}`}>
-            <span className="lj-step-number">0{i + 1}</span><span className="lj-kicker"><SpectraSymbol symbol={chapter.symbol} /> {translate(chapter.label)}</span>
+          {CHAPTERS.map((chapter, i) => <article key={chapter.symbol} className={`lj-step${stage === i ? ' is-current' : ''}`}>
+            <span className="lj-kicker"><SpectraSymbol symbol={chapter.symbol} /> {translate(chapter.label)}</span>
             <h3>{translate(chapter.title)}</h3><p>{translate(chapter.text)}</p><small>{translate(chapter.hint)}</small>
           </article>)}
         </div>
         <div className="lj-stage">
-          <div className="lj-stage-tabs" role="group" aria-label={translate("지도 변화 단계")}>{CHAPTERS.map((chapter, i) => <button key={translate(chapter.label)} type="button" aria-pressed={stage === i} onClick={() => chooseStage(i)}><span>0{i + 1}</span>{translate(chapter.label)}</button>)}</div>
+          <div className="lj-stage-tabs" role="group" aria-label={translate("지도 변화 단계")}>{CHAPTERS.map((chapter, i) => <button key={chapter.symbol} type="button" aria-pressed={stage === i} onClick={() => chooseStage(i)}>{translate(chapter.label)}</button>)}</div>
           <BubbleAtlas stage={stage} onOpen={onOpen} busy={busy} />
+          <aside className="lj-method-note" aria-labelledby="map-method-title">
+            <h3 id="map-method-title">{translate('곡은 어떻게 배치되나요?')}</h3>
+            <p>{translate('Last.fm의 곡·아티스트 태그와 이용 가능한 Spotify 아티스트 장르로 비슷한 곡을 묶어요.')}</p>
+            <p>{translate('분위기·에너지는 태그에서 추정한 값이에요. 음원을 직접 분석하거나 Spotify Audio Features API를 사용한 결과는 아닙니다.')}</p>
+          </aside>
           <p className="lj-mobile-hint">{translate(CHAPTERS[stage].hint)}</p>
         </div>
       </div>

@@ -1,0 +1,17 @@
+/* SPECTRA source: src/index.css, LaunchLandingPage.css, TasteMapMobilePage.css. */
+:root {
+  --font-display: 'Syne', 'Space Grotesk', 'Pretendard Variable', 'Pretendard', sans-serif;
+  --font-main: 'Space Grotesk', 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', system-ui, sans-serif;
+  --spectra-night: #080c13;
+  --spectra-deep: #050812;
+  --spectra-surface: #101925;
+  --spectra-text: #e6edf8;
+  --spectra-subtle: #acbcd2;
+  --spectra-muted: #8999b0;
+  --spectra-cyan: #70d6ff;
+  --spectra-violet: #c084fc;
+  --spectra-pink: #ed70bc;
+  --spectra-border: #a1bcf326;
+  --spectra-gradient: linear-gradient(100deg, #ed70bc, #c084fc 48%, #70d6ff);
+  --spectra-radius: 22px;
+}

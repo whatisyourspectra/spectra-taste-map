@@ -1,0 +1,62 @@
+{
+  "title": "SPECTRA — Your taste. In spectra.",
+  "duration_seconds": 15,
+  "master": {
+    "file": "spectra-intro-15s-4k.mp4",
+    "width": 3840,
+    "height": 2160,
+    "fps": 30,
+    "frames": 450,
+    "codec": "H.264 High / yuv420p",
+    "quality": "CRF 17",
+    "native_render": true
+  },
+  "delivery": {
+    "file": "spectra-intro-15s-1080p.mp4",
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "codec": "H.264 / yuv420p",
+    "quality": "CRF 18"
+  },
+  "audio": {
+    "file": "score.wav",
+    "original_procedural_synthesis": true,
+    "delivery_codec": "AAC 320 kbps stereo 48 kHz"
+  },
+  "chapters": [
+    {
+      "time": "0.00–3.35",
+      "visual": "Native landing wire sculpture macro, camera pullback, oversized Syne typography",
+      "copy": "Your taste. In spectra."
+    },
+    {
+      "time": "3.35–7.60",
+      "visual": "18 album bubbles assemble into three color-coded regions",
+      "copy": "좋아하는 음악이 나만의 지도가 됩니다."
+    },
+    {
+      "time": "7.60–11.80",
+      "visual": "Album field collapses into connected constellation; signals discover a new branch",
+      "copy": "취향을 잇고, 발견을 넓혀요."
+    },
+    {
+      "time": "11.80–15.00",
+      "visual": "Large actual gradient wordmark with lingering sculpture",
+      "copy": "음악으로 발견하는 나의 스펙트라 / spectra-music.org"
+    }
+  ],
+  "assets": [
+    "src/pages/LaunchTasteMapHero.jsx (sculpture equation)",
+    "public/spectra-wordmark.svg",
+    "public/demo-covers/*.jpg",
+    "Syne 600/800 from Google Fonts",
+    "Apple SD Gothic Neo (local system font)"
+  ],
+  "validation": {
+    "decoded_frames": 450,
+    "unexpected_black_intervals": false,
+    "log": "validation.log"
+  },
+  "application_files_changed": false
+}

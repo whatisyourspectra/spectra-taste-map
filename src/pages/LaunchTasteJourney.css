@@ -15,14 +15,12 @@
 .lj-story-grid { display: grid; grid-template-columns: .8fr 1.2fr; gap: 70px; align-items: start; }
 .lj-step { min-height: 550px; display: flex; flex-direction: column; justify-content: center; position: relative; padding: 60px 0; opacity: .38; transition: opacity .6s; }
 .lj-step.is-current { opacity: 1; }
-.lj-step-number { font: 600 90px var(--font-display); letter-spacing: -.08em; color: #c084fc14; margin-bottom: 20px; }
 .lj-step h3 { font-weight: 500; font-size: 30px; line-height: 1.5; letter-spacing: -.045em; margin: 20px 0; }
 .lj-step p { font-size: 16px; line-height: 1.95; color: #9cacbf; max-width: 330px; }
 .lj-step small { color: #70d6ffc9; font-size: 12px; line-height: 1.8; margin-top: 30px; }
 .lj-stage { position: sticky; top: 118px; min-width: 0; }
 .lj-stage-tabs { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 19px; border-bottom: 1px solid #adc4ff20; }
 .lj-stage-tabs button { border: 0; border-bottom: 1px solid transparent; background: transparent; color: #7386a2; padding: 14px 0; font-size: 12px; letter-spacing: .09em; cursor: pointer; margin-bottom: -1px; }
-.lj-stage-tabs button span { opacity: .5; margin-right: 7px; }
 .lj-stage-tabs button[aria-pressed='true'] { color: #d6eaff; border-bottom-color: #70d6ff; }
 .lj-atlas { border: 1px solid #a1bcf326; border-radius: 22px; background: #080e1be8; box-shadow: 0 24px 110px #44397615,inset 0 1px #ffffff06; overflow: hidden; }
 .lj-atlas-heading { display: flex; justify-content: space-between; padding: 22px 23px 16px; font-size: 12px; letter-spacing: .15em; color: #8599b8; }
@@ -103,7 +101,6 @@
   .lj-story-copy { width: 100%; }
   .lj-step { display: none; min-height: 0; padding: 0; }
   .lj-step.is-current { display: block; }
-  .lj-step-number { display: none; }
   .lj-step h3 { font-size: 24px; margin: 15px 0 12px; }
   .lj-step p { max-width: 520px; font-size: 16px; }
   .lj-step small { display: none; }
@@ -145,7 +142,6 @@
 
 /* Keep the interactive preview readable at desktop and phone widths. */
 .lj-stage-tabs button { font-size: 15px; min-height: 48px; color: #a0aec5; }
-.lj-stage-tabs button span { opacity: .8; }
 .lj-atlas-heading { flex-wrap: wrap; gap: 12px; font-size: 13px; letter-spacing: .08em; }
 .lj-track-detail strong { font-size: 15px; }
 .lj-track-detail small, .lj-track-detail button, .lj-mobile-hint { font-size: 14px; }
@@ -159,4 +155,12 @@
   .lj-track-detail { flex-wrap: wrap; }
   .lj-track-detail button { margin-left: auto; }
   .lj-atlas-heading { letter-spacing: .04em; }
+}
+.lj-method-note { margin-top: 18px; padding: 16px 18px; border: 1px solid #a1bcf326; border-radius: 12px; background: #0b1221b0; }
+.lj-method-note h3 { margin: 0 0 8px; color: #cbd8eb; font-size: 14px; font-weight: 500; }
+.lj-method-note p { margin: 6px 0 0; color: #99acc8; font-size: 13px; line-height: 1.7; }
+@media (max-width: 699px) {
+  .llp-chapter-nav { width: calc(100% - 28px); max-width: 420px; padding: 5px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2px; }
+  .llp-chapter-nav button { min-width: 0; min-height: 36px; justify-content: center; white-space: normal; }
+  .llp-chapter-nav button > span:last-child { padding: 4px 2px; font-size: 11px; line-height: 1.35; text-align: center; }
 }

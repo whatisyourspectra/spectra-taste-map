@@ -48,6 +48,7 @@ try {
         assert.equal(await dialog.getByLabel(/^제목/).inputValue(), 'My feedback draft');
         await page.keyboard.press('Escape');
         await page.getByRole('button', { name: 'EN', exact: true }).click();
+        await page.locator('.llp-export-help > summary').click();
         await page.locator('.llp-platform-chip').filter({ hasText: /^Spotify$/ }).click();
         assert.ok((await page.locator('.llp-export-link').getAttribute('href')).includes('/transfer/spotify-to-file'));
         assert.ok(!(await page.locator('.llp-export-link').getAttribute('href')).includes('/ko/'));

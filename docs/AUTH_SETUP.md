@@ -147,3 +147,21 @@ SPECTRA는 카카오 로그인 시 `profile_nickname profile_image`만 요청하
 Spotify 로그인은 SPECTRA 계정 인증에 사용합니다. 사용자 음악 목록을 가져오기 위한 추가 권한은 요청하지 않습니다. 카탈로그 검색용 서버 환경 변수와 별도로 Supabase에 로그인용 앱 자격 증명을 설정해야 합니다.
 
 공식 안내: [Supabase Spotify 로그인](https://supabase.com/docs/guides/auth/social-login/auth-spotify).
+
+## 9. Data API 테이블 권한과 RLS
+
+Supabase는 2026년 10월 30일부터 기존 프로젝트에서도 `public`에 새로 만드는 테이블의 Data API 권한을 자동 부여하지 않습니다. 기존 테이블의 권한은 유지됩니다. 새 프로젝트는 이 동작이 이미 기본값이므로, 테이블 생성 SQL에 필요한 `GRANT`와 RLS 정책을 함께 명시합니다.
+
+SPECTRA의 계정 저장, 공유, 문의 기능을 설정할 때 Supabase SQL Editor에서 해당 SQL을 실행합니다. 새 환경에서 테이블을 재생성할 때도 같은 파일을 사용합니다.
+
+| 기능 | SQL 파일 | 앱에서 사용하는 접근 방식 |
+| --- | --- | --- |
+| 개인 지도 저장·불러오기·삭제 | [user_taste_maps.sql](user_taste_maps.sql) | `authenticated`에 SELECT·INSERT·UPDATE·DELETE 부여, RLS로 본인 행만 허용 |
+| 공유 지도 생성·목록·삭제 | [shared_taste_maps.sql](shared_taste_maps.sql) | `authenticated`에 SELECT·INSERT·DELETE 부여, RLS로 본인 행만 허용. 공개 조회는 `get_shared_taste_map` RPC 사용 |
+| 문의 제출 | [user_feedback.sql](user_feedback.sql) | `anon`·`authenticated`는 `submit_user_feedback` RPC만 실행. 테이블 직접 접근은 차단하고 `service_role`에 관리 권한 부여 |
+
+`GRANT`는 역할이 테이블에 접근할 수 있는지를, RLS는 접근 가능한 행을 제어합니다. 개인 지도나 문의 테이블에 예시 SQL의 `anon` SELECT 권한을 일괄 추가하지 마세요. 현재 앱에서 사용하지 않는 역할에 권한을 추가할 필요도 없습니다.
+
+테이블을 새로 만든 후 실제 로그인으로 개인 지도 저장·새로고침 후 불러오기·삭제를 확인하고, 공유 링크 조회와 문의 제출도 확인합니다. `permission denied` 오류가 나면 해당 역할의 테이블 권한을 먼저 확인합니다. Mock 모드는 실제 DB 권한을 검증하지 않습니다.
+
+공식 안내: [Data API 기본 권한 변경](https://github.com/orgs/supabase/discussions/45329).

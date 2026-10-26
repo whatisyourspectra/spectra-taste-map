@@ -1,0 +1,103 @@
+{
+  "packageName": "io.spectra.drive",
+  "appDescription": "Uses the user's music taste and saved scenes to coordinate music selection and supported cabin ambient lighting.",
+  "invokeWord": "스펙트라",
+  "version": "0.2.0",
+  "actionCalls": [
+    {
+      "type": "function",
+      "function": {
+        "name": "SET_MOOD",
+        "description": "Selects music settings and requests supported cabin lighting for a built-in or user-saved mood, limited to the requested target.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "mood": {
+              "type": "string",
+              "description": "The built-in mood identifier calm, uplift, or familiar, or the exact name of a user-saved mood."
+            },
+            "target": {
+              "type": "string",
+              "enum": [
+                "all",
+                "music",
+                "lighting"
+              ],
+              "description": "The scene components to change; defaults to all when omitted."
+            }
+          },
+          "required": [
+            "mood"
+          ]
+        },
+        "component": "activity"
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "ADJUST_MOOD",
+        "description": "Makes a small relative adjustment to music or cabin lighting while leaving the other component unchanged.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "target": {
+              "type": "string",
+              "enum": [
+                "music",
+                "lighting"
+              ],
+              "description": "The scene component to adjust; the other component must remain unchanged."
+            },
+            "dimension": {
+              "type": "string",
+              "enum": [
+                "energy",
+                "brightness",
+                "color"
+              ],
+              "description": "Music supports energy or brightness; lighting supports brightness or color."
+            },
+            "direction": {
+              "type": "string",
+              "enum": [
+                "up",
+                "down"
+              ],
+              "description": "Required for energy or brightness adjustments; omitted for color changes."
+            },
+            "color": {
+              "type": "string",
+              "description": "Required for lighting color changes; a six-digit hexadecimal RGB color with a leading hash."
+            }
+          },
+          "required": [
+            "target",
+            "dimension"
+          ]
+        },
+        "component": "activity"
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "SAVE_MOOD",
+        "description": "Saves current music settings and requested cabin lighting under a user-provided name for later recall.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "The name assigned by the user to the current mood settings."
+            }
+          },
+          "required": [
+            "name"
+          ]
+        },
+        "component": "activity"
+      }
+    }
+  ]
+}
