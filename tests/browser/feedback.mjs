@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { mkdirSync } from 'node:fs';
+import { openFeedback } from './helpCenterActions.mjs';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROMIUM_EXECUTABLE || undefined });
 const base = process.env.BASE_URL || 'http://127.0.0.1:5192';
@@ -17,7 +18,7 @@ try {
                 : { status: 200, contentType: 'application/json', body: JSON.stringify(requests.at(-1).p_request_id) });
         });
         await page.goto(`${base}/?tracking=private`, { waitUntil: 'domcontentloaded' });
-        await page.getByRole('button', { name: '문의 남기기' }).click();
+        await openFeedback(page);
         const dialog = page.getByRole('dialog');
         await dialog.waitFor();
         await dialog.getByLabel(/^문의 유형/).selectOption('bug');
@@ -27,7 +28,7 @@ try {
         await dialog.getByRole('checkbox').check();
         await page.keyboard.press('Escape');
         assert.equal(await dialog.isVisible(), false);
-        await page.getByRole('button', { name: '문의 남기기' }).click();
+        await openFeedback(page);
         assert.equal(await dialog.getByLabel(/^제목/).inputValue(), '지도를 확대할 때 곡 선택이 어려워요');
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
         const bounds = await dialog.boundingBox();
@@ -45,7 +46,7 @@ try {
         assert.match(requests[0].p_request_id, /^[\da-f]{8}-(?:[\da-f]{4}-){3}[\da-f]{12}$/i);
         await page.screenshot({ path: `output/feedback-review/${name}-success.png` });
         await dialog.getByRole('button', { name: '닫기', exact: true }).click();
-        assert.equal(await page.evaluate(() => document.activeElement?.textContent.includes('문의 남기기')), true);
+        await page.waitForFunction(() => document.activeElement?.classList.contains('help-center-trigger'));
         console.log(`${name}: form, failure, draft preservation, idempotent retry, success and focus passed`);
         await page.close();
     }

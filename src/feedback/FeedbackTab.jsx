@@ -8,7 +8,7 @@ import './FeedbackTab.css';
 
 const emptyForm = () => ({ category: 'question', subject: '', message: '', email: '', consent: false });
 
-export default function FeedbackTab({ inMenu = false, onOpened }) {
+export default function FeedbackTab({ inMenu = false, onOpened, onBeforeOpen, onClosed }) {
     const { pathname } = useLocation();
     const dialogRef = useRef(null);
     const tabRef = useRef(null);
@@ -24,6 +24,7 @@ export default function FeedbackTab({ inMenu = false, onOpened }) {
 
     const open = () => {
         sourcePath.current = pathname;
+        onBeforeOpen?.();
         dialogRef.current.showModal();
         onOpened?.();
     };
@@ -64,7 +65,7 @@ export default function FeedbackTab({ inMenu = false, onOpened }) {
             <span>{translate("문의 남기기")}</span>
         </button>
         {createPortal(<dialog ref={dialogRef} id={`${id}-dialog`} className="feedback-dialog" aria-labelledby={`${id}-title`}
-            onClose={() => { const menu = tabRef.current?.closest('details'); (menu && !menu.open ? menu.querySelector('summary') : tabRef.current)?.focus(); }} onClick={event => { if (event.target === event.currentTarget) { const r = event.currentTarget.getBoundingClientRect(); if (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom) close(); } }}>
+            onClose={() => { if (onClosed) { onClosed(); return; } const menu = tabRef.current?.closest('details'); (menu && !menu.open ? menu.querySelector('summary') : tabRef.current)?.focus(); }} onClick={event => { if (event.target === event.currentTarget) { const r = event.currentTarget.getBoundingClientRect(); if (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom) close(); } }}>
             <div className="feedback-head"><span>SPECTRA · FEEDBACK</span><button type="button" onClick={close} aria-label={translate("문의 창 닫기")}>×</button></div>
             {status === 'sent' ? <section className="feedback-success" role="status">
                 <span className="feedback-success-mark" aria-hidden="true">✦</span>

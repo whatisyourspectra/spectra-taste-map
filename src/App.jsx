@@ -10,7 +10,7 @@ import './LoginOverlay.css';
 import { AuthProvider, useAuth } from './auth/AuthContext';
 import AuthPage, { AuthCallback, AuthLoading } from './auth/AuthPage';
 import AccountButton from './auth/AccountButton';
-import FeedbackTab from './feedback/FeedbackTab';
+import HelpCenter from './components/HelpCenter';
 
 import LaunchLandingPage from './pages/LaunchLandingPage';
 import { DEMO_UNIVERSES, getCombinedDemoTracks } from './taste/demoUniverses';
@@ -140,7 +140,7 @@ function App() {
   return (
     <Router>
       <AuthProvider>
-        <FeedbackTab />
+        <HelpCenter />
         <Routes>
           <Route path="/share/map/:id" element={<SharedMapPage />} />
           <Route path="/share/card" element={<SharedCardPage />} />

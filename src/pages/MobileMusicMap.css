@@ -34,8 +34,8 @@ html:has(.mobile-taste-map), body:has(.mobile-taste-map) { background: #070b13; 
 .mtm-more-panel > a, .mtm-more-panel > button, .mtm-more-panel .sa-account-button { display: flex; align-items: center; justify-content: flex-start; gap: 10px; width: 100%; min-height: 46px; height: auto; padding: 10px 12px; border: 0; border-radius: 10px; color: #c5d3e9; background: none; font: inherit; font-size: 13px; text-decoration: none; }
 .mtm-more-panel .sa-account-button > span:last-child { display: inline; }
 .mtm-more-panel > button:hover, .mtm-more-panel > a:hover { background: #ffffff08; }
-body:has(.mobile-taste-map) .feedback-tab { display: none; }
-.mtm-more-panel .feedback-menu-entry { border-top: 1px solid #9bb4de24; border-radius: 0 0 10px 10px; }
+body:has(.mobile-taste-map) > #root .help-center-trigger { display: none; }
+.mtm-more-panel .help-center-menu-entry { border-top: 1px solid #9bb4de24; border-radius: 0 0 10px 10px; }
 .mobile-taste-map .public-map-header { gap: 10px; }
 .mobile-taste-map .public-map-header .spectra-logo { width: 118px; }
 .mobile-taste-map .sa-account-button { display: grid; place-items: center; width: 44px; height: 44px; min-height: 44px; padding: 0; border: 1px solid #b9caff24; border-radius: 50%; background: #141d2d; color: #d2e0f4; flex-shrink: 0; }

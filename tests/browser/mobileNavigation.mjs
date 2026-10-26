@@ -1,6 +1,7 @@
 // Local fixtures only: navigation, discovery decisions, and direct Kakao entry.
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
+import { openFeedback } from './helpCenterActions.mjs';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROMIUM_EXECUTABLE || undefined });
 const base = process.env.BASE_URL || 'http://127.0.0.1:5194';
@@ -30,9 +31,9 @@ try {
         assert.deepEqual(await nav.getByRole('button').allTextContents(), ['내 지도', '발견', '오늘']);
         assert.equal(calls.length, 0);
         await inside(page.getByRole('button', { name: '카카오톡으로 공유하기', exact: true }), viewport.height);
-        assert.equal(await page.getByRole('button', { name: '문의 남기기', exact: true }).isVisible(), false);
+        assert.equal(await page.locator('.help-center-trigger').isVisible(), false);
         await page.getByLabel('더 보기', { exact: true }).click();
-        await page.getByRole('button', { name: '문의 남기기', exact: true }).click();
+        await openFeedback(page);
         await page.getByRole('button', { name: '문의 창 닫기', exact: true }).click();
         await page.getByRole('dialog').waitFor({ state: 'hidden' });
         await page.screenshot({ path: `${out}/map-${viewport.width}.png` });

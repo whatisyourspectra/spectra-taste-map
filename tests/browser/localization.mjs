@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { mkdirSync } from 'node:fs';
+import { openFeedback } from './helpCenterActions.mjs';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const base = process.env.BASE_URL || 'http://127.0.0.1:5192';
 const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROMIUM_EXECUTABLE || undefined });
@@ -39,12 +40,12 @@ try {
         await page.locator('.llp-textarea').fill('Daft Punk - Get Lucky\nBeach House - Space Song');
         await page.getByRole('button', { name: 'EN', exact: true }).click();
         assert.ok((await page.locator('.llp-textarea').inputValue()).includes('Get Lucky'));
-        await page.getByRole('button', { name: 'Send feedback', exact: true }).click();
+        await openFeedback(page);
         const dialog = page.getByRole('dialog');
         await dialog.getByLabel(/^Subject/).fill('My feedback draft');
         await page.keyboard.press('Escape');
         await page.getByRole('button', { name: '한국어', exact: true }).click();
-        await page.getByRole('button', { name: '문의 남기기', exact: true }).click();
+        await openFeedback(page);
         assert.equal(await dialog.getByLabel(/^제목/).inputValue(), 'My feedback draft');
         await page.keyboard.press('Escape');
         await page.getByRole('button', { name: 'EN', exact: true }).click();
@@ -160,7 +161,7 @@ try {
     ` }));
     const feedbackPage = await feedbackContext.newPage();
     await feedbackPage.goto(base);
-    await feedbackPage.getByRole('button', { name: 'Send feedback', exact: true }).click();
+    await openFeedback(feedbackPage);
     const feedbackDialog = feedbackPage.getByRole('dialog');
     await feedbackDialog.getByLabel(/^Subject/).fill('A feedback test');
     await feedbackDialog.getByLabel(/^Message/).fill('The map is interesting. I would like to explore more music.');
@@ -170,7 +171,7 @@ try {
     assert.ok((await feedbackDialog.getByRole('alert').innerText()).includes('Your draft is safe'));
     await feedbackPage.keyboard.press('Escape');
     await feedbackPage.getByRole('button', { name: '한국어', exact: true }).click();
-    await feedbackPage.getByRole('button', { name: '문의 남기기', exact: true }).click();
+    await openFeedback(feedbackPage);
     assert.ok((await feedbackDialog.getByRole('alert').innerText()).includes('입력 내용은 유지됩니다'));
     await feedbackDialog.getByRole('button', { name: '의견 보내기', exact: true }).click();
     await feedbackDialog.getByRole('heading', { name: '소중한 의견을 받았어요.' }).waitFor();
@@ -189,7 +190,7 @@ try {
     const privatePage = await privateContext.newPage();
     await privatePage.goto(base);
     await privatePage.getByRole('button', { name: 'EN', exact: true }).click();
-    await privatePage.getByRole('button', { name: 'Send feedback', exact: true }).waitFor();
+    await privatePage.getByRole('button', { name: 'Guide & feedback', exact: true }).waitFor();
     assert.equal(await privatePage.locator('html').getAttribute('lang'), 'en');
     await privateContext.close();
     assert.deepEqual(errors, []);

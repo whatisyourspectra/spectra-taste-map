@@ -1,0 +1,17 @@
+.help-center-trigger { position: fixed; right: 20px; bottom: 20px; z-index: 9999; display: flex; align-items: center; gap: 9px; min-height: 44px; padding: 10px 16px; border: 1px solid #8198bf55; border-radius: 24px; background: #111827ed; color: #d5dff1; box-shadow: 0 4px 16px #0004; backdrop-filter: blur(16px); font: 600 13px -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif; cursor: pointer; }
+.help-center-trigger > span:first-child, .help-center-menu-entry > span:first-child { font-weight: 700; font-size: 18px; }
+.help-center-trigger:hover { background: #26324e; }
+.help-center-trigger:focus-visible, .help-center-dialog :focus-visible { outline: 2px solid #70d6ff; outline-offset: 3px; }
+.help-center-dialog { box-sizing: border-box; width: min(460px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); margin: auto; padding: 22px; overflow-y: auto; overscroll-behavior: contain; border: 1px solid #8198bf55; border-radius: 22px; background: #111827; color: #eff3ff; box-shadow: 0 24px 80px #0008; font-family: inherit; text-align: left; color-scheme: dark; }
+.help-center-dialog::backdrop { background: #030713b8; backdrop-filter: blur(6px); }
+body:has(.help-center-dialog[open]) { overflow: hidden; }
+.help-center-dialog header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.help-center-dialog h2 { margin: 0; font-size: 21px; letter-spacing: -.04em; }
+.help-center-dialog header button { flex: none; width: 44px; height: 44px; border: 0; border-radius: 10px; background: transparent; color: #b6c3d9; font: inherit; font-size: 26px; cursor: pointer; }
+.help-center-topics { display: grid; gap: 18px; padding: 4px 0 22px; }
+.help-center-topics h3 { margin: 0 0 6px; color: #d8e8ff; font-size: 14px; }
+.help-center-topics p { margin: 4px 0 0; color: #aebed6; font-size: 13px; line-height: 1.7; word-break: keep-all; }
+.help-center-actions { display: grid; gap: 10px; border-top: 1px solid #8198bf33; padding-top: 18px; }
+.help-center-actions > button { display: flex; align-items: center; justify-content: center; gap: 9px; width: 100%; min-height: 46px; padding: 11px 14px; border: 1px solid #8198bf55; border-radius: 12px; background: #ffffff08; color: #d8e8ff; font: inherit; font-size: 13px; cursor: pointer; }
+.help-center-actions > .feedback-menu-entry { background: linear-gradient(110deg, #70d6ff, #b9a3ff); border-color: transparent; color: #101827; font-weight: 600; }
+@media (max-width: 900px) { .help-center-trigger { right: 14px; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); } .help-center-dialog { padding: 18px; } }

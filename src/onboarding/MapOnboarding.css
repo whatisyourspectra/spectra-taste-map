@@ -1,5 +1,5 @@
 /* Spectra palette; keep the guide's type and action hierarchy. */
-.map-guide-panel, .map-guide-reopen {
+.map-guide-panel {
   --guide-surface: #111827;
   --guide-border: #8198bf42;
   --guide-accent: #70d6ff;
@@ -26,8 +26,7 @@
 .map-guide-panel .map-guide-next:active { background: linear-gradient(110deg, #60c7f2, #a58ee9); }
 .map-guide-panel .map-guide-prev { flex: 0 0 72px; background: #ffffff0a; color: var(--guide-body); }
 .map-guide-panel .map-guide-prev:hover { background: #ffffff12; }
-.map-guide-reopen { position: fixed; right: 20px; bottom: 20px; z-index: 9999; display: flex; align-items: center; gap: 8px; padding: 10px 14px; border: 1px solid var(--guide-border); border-radius: 24px; background: var(--guide-surface); color: var(--guide-body); box-shadow: 0 4px 16px #0004; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
-.map-guide-panel button:focus-visible, .map-guide-reopen:focus-visible { outline: 3px solid var(--guide-accent); outline-offset: 3px; }
+.map-guide-panel button:focus-visible { outline: 3px solid var(--guide-accent); outline-offset: 3px; }
 .map-guide-panel:focus { outline: none; }
 .map-guide-arrow { position: absolute; width: 12px; height: 12px; background: var(--guide-surface); transform: rotate(45deg); pointer-events: none; }
 .map-guide-panel[data-side="above"] .map-guide-arrow { bottom: -7px; left: calc(var(--guide-arrow) - 6px); border-right: 1px solid var(--guide-border); border-bottom: 1px solid var(--guide-border); }

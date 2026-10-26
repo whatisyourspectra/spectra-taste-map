@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import './MapOnboarding.css';
 import { positionGuide } from './guidePosition';
+import { OPEN_MAP_GUIDE_EVENT } from './mapGuideEvents.js';
 
 const DESKTOP = [
   { target: '.tm-canvas-wrap', label: '별자리 항해', title: '좋아하는 곡에서 항해를 시작해요', action: '앨범이나 별을 누른 뒤', text: ' 곡 정보에서 ‘별자리 항해’를 선택해 보세요.', hint: '연결된 곡을 따라가며 새로운 음악을 발견할 수 있어요.' },
@@ -30,6 +31,11 @@ export default function MapOnboarding({ mobile = false }) {
   const panelRef = useRef(null);
   const [mobileHost, setMobileHost] = useState(null);
   const restoreFocus = useRef(null);
+  useEffect(() => {
+    const open = () => setStep(0);
+    window.addEventListener(OPEN_MAP_GUIDE_EVENT, open);
+    return () => window.removeEventListener(OPEN_MAP_GUIDE_EVENT, open);
+  }, []);
   const close = () => {
     try { localStorage.setItem(key, 'seen'); } catch { /* The guide still closes if storage is unavailable. */ }
     setStep(null);
@@ -80,7 +86,7 @@ export default function MapOnboarding({ mobile = false }) {
     window.addEventListener('keydown', escape, true);
     return () => { host?.remove(); if (mobile) setMobileHost(null); if (openedTrack) document.querySelector('.ccp-close-btn')?.click(); window.clearInterval(timer); observer.disconnect(); window.removeEventListener('scroll', update, true); window.removeEventListener('resize', update); window.removeEventListener('keydown', escape, true); };
   }, [step, mobile]);
-  if (step === null) return <button type="button" className="map-guide-reopen" onClick={() => setStep(0)} aria-label={translate("취향 지도 사용 안내 다시 보기")}>? <span>{translate("사용 안내")}</span></button>;
+  if (step === null) return null;
   const panel = (
     <section ref={panelRef} tabIndex={-1} role="dialog" aria-labelledby="map-guide-title" aria-describedby="map-guide-description"
       className={`map-guide-panel${mobile ? ' is-mobile' : ''}`}
