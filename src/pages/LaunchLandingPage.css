@@ -189,6 +189,12 @@
   align-items: center;
 }
 
+.llp-nav-auth .sa-account-with-status { position: relative; }
+.llp-nav-auth .taste-save-status { max-width: 140px; font-size: 11px; }
+@media (max-width: 1100px) {
+  .llp-nav-auth .taste-save-status { position: absolute; right: 0; top: calc(100% + 6px); width: max-content; max-width: min(240px, calc(100vw - 32px)); justify-content: flex-end; text-align: right; }
+}
+
 /* ── Content Layout ── */
 .llp-content {
   position: relative;

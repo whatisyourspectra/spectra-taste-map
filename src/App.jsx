@@ -18,7 +18,6 @@ import SharedMapPage from './share/SharedMapPage';
 import SharedCardPage from './share/SharedCardPage';
 import MapOnboarding from './onboarding/MapOnboarding';
 import SpectraLogo from './components/SpectraLogo';
-import TasteSaveStatus from './components/TasteSaveStatus';
 import { isDemoTaste } from './taste/tasteStorage';
 
 function AppInner({ onRestorePersonalMap }) {
@@ -31,7 +30,7 @@ function AppInner({ onRestorePersonalMap }) {
   }
 
   return (
-    <><TasteSaveStatus /><Routes>
+    <Routes>
       <Route
         path="/"
         element={
@@ -58,7 +57,7 @@ function AppInner({ onRestorePersonalMap }) {
       />
       <Route path="/mobile-start" element={<MobileStart />} />
       <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes></>
+    </Routes>
   );
 }
 
@@ -70,7 +69,7 @@ function EmptyPersonalMap() {
     <h1>{translate("나의 취향 지도")}</h1>
     <p>{translate("아직 이 계정에 저장된 곡이 없어요.")}<br />{translate("좋아하는 음악을 가져오면 이곳에 내 지도가 펼쳐집니다.")}</p>
     <Link to="/" className="sa-primary">{translate("음악 가져오기")}</Link>
-    <AccountButton />
+    <AccountButton showSaveStatus />
   </div></main>;
 }
 

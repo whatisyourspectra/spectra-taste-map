@@ -14,7 +14,7 @@ try {
         await page.addInitScript(({ mode, personal }) => {
             window.testWrites = [];
             window.allowWrites = mode !== 'save-failure';
-            localStorage.setItem('spectra:map-guide:v1:desktop', 'seen');
+            localStorage.setItem('spectra:map-guide:v2:desktop', 'seen');
             if (!localStorage.getItem('test:seeded') && mode !== 'pre-enriched') {
                 const local = { ...personal, ...(mode === 'legacy-older-date' ? { updatedAt: '2026-10-01T00:00:00Z' } : {}) };
                 sessionStorage.setItem('spectra:taste:v5:user:account', JSON.stringify(local));
@@ -77,6 +77,9 @@ try {
         });
         await page.reload();
         await page.locator('.taste-save-status.saved').waitFor();
+        const saveStatus = page.locator('.tm-header-side .sa-account-with-status .taste-save-status.saved');
+        await saveStatus.waitFor();
+        assert.equal(await saveStatus.evaluate(element => getComputedStyle(element).position), 'static', 'Save state stays beside the account instead of floating over the map');
         await page.waitForFunction(() => JSON.parse(sessionStorage.getItem('spectra:taste:v5:user:account') || 'null')?.tracks[0]?.id === 'personal-upload');
         assert.deepEqual(errors, []);
         console.log(`${mode}: personal data saved and restored from database without browser copies.`);

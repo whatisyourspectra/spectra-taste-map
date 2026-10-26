@@ -240,7 +240,7 @@ export default function LaunchLandingPage({
               <span aria-hidden="true">↗</span>
             </button>
             <div className="llp-nav-auth">
-              <AccountButton />
+              <AccountButton showSaveStatus />
             </div>
           </div>
         </nav>

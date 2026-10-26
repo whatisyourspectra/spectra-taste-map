@@ -5137,7 +5137,7 @@ export default function TasteMapPage() {
                     {mobileSearchResults.length ? mobileSearchResults.map(track => <button type="button" key={track.id} onClick={() => { openTrackCard(track, knownTrackIds.has(track.id) ? 'library' : 'recommendation'); focusBubbleTrack(track.id, { ensureZoom: 0.85 }); setMobileMapSearch(''); }}><strong>{track.name}</strong><span>{track.artists}</span></button>) : <p>{translate("일치하는 곡이 없어요.")}</p>}
                 </div>}
                 {mobileMapMenu && <div className="tm-mobile-map-menu">
-                    <AccountButton lang={lang} />
+                    <AccountButton lang={lang} showSaveStatus />
                     <button type="button" onClick={() => setLang(lang === 'ko' ? 'en' : 'ko')}>{lang === 'ko' ? 'English' : '한국어'}</button>
                     <button type="button" onClick={handleGoHome}>{lang === 'ko' ? '런칭 홈' : 'Launch home'}</button>
                     <span>{tracks.length}{translate("곡 ·")} {clusterStats.length}{translate("개 영역")}</span>
@@ -5214,7 +5214,7 @@ export default function TasteMapPage() {
                         <span className="tm-nav-home-icon" aria-hidden="true">⌂</span>
                         <span>{lang === 'en' ? 'Launch Home' : '런칭 홈'}</span>
                     </button>
-                    <AccountButton lang={lang} />
+                    <AccountButton lang={lang} showSaveStatus />
                     <div className="tm-lang-toggle" role="tablist" aria-label="language toggle">
                         <button
                             type="button"
