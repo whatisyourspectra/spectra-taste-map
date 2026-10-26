@@ -9,7 +9,7 @@ const storage = () => {
 
 test('OAuth returns only to known local routes and removes unsolicited URL data', () => {
     for (const value of ['//evil.com', '/\\evil.com', 'https://evil.com', 'javascript:alert(1)', '/auth/callback?code=x', '/taste-map\n', null, '/%2f%2fevil.com']) assert.equal(safeReturnTo(value), '/taste-map');
-    assert.equal(safeReturnTo('/'), '/');
+    assert.equal(safeReturnTo('/'), '/taste-map');
     assert.equal(safeReturnTo('/taste-map/mobile'), '/taste-map/mobile');
     assert.equal(safeReturnTo('/taste-map?view=constellation&access_token=secret#fake'), '/taste-map?view=constellation');
     assert.equal(safeReturnTo('/taste-map?tab=today&access_token=secret'), '/taste-map?tab=today');
@@ -24,6 +24,15 @@ test('return destination survives cancellation, then is consumed once on success
     rememberReturnTo(store, '/taste-map/mobile');
     assert.equal(savedReturnTo(store), '/taste-map/mobile');
     assert.equal(consumeReturnTo(store), '/taste-map/mobile');
+    assert.equal(consumeReturnTo(store), '/taste-map');
+});
+
+test('signing in from the landing page opens the personal map, including legacy saved returns', () => {
+    const store = storage();
+    rememberReturnTo(store, '/');
+    assert.equal(savedReturnTo(store), '/taste-map');
+    assert.equal(consumeReturnTo(store), '/taste-map');
+    store.setItem('spectra:auth:return-to:v1', '/');
     assert.equal(consumeReturnTo(store), '/taste-map');
 });
 

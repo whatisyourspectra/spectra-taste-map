@@ -11,6 +11,7 @@ import { DEMO_UNIVERSES, getCombinedDemoTracks } from '../taste/demoUniverses';
 import { parseTrackList, parseTrackListDetailed, readTrackFile } from '../utils/parseTrackList';
 import { MAX_IMPORT_TRACKS } from '../context/TasteDataContext';
 import AccountButton from '../auth/AccountButton';
+import { useAuth } from '../auth/AuthContext';
 import SingleLineTitle from '../components/SingleLineTitle';
 import MobileEntryCard from '../components/MobileEntryCard';
 import PlaylistExportHelp from '../components/PlaylistExportHelp.jsx';
@@ -25,8 +26,10 @@ export default function LaunchLandingPage({
   error = null,
   hasTaste = false,
   onReset = null,
+  onOpenPersonalMap,
 }) {
   const navigate = useNavigate();
+  const { user } = useAuth();
   useLocale();
   const sound = useLandingSound();
   const landingRef = useRef(null);
@@ -169,6 +172,13 @@ export default function LaunchLandingPage({
     }
   };
 
+  const openPersonalMap = () => {
+    onOpenPersonalMap?.();
+    navigate('/taste-map');
+  };
+  const primaryLabel = user ? '내 지도로 가기' : DEMO_CTA;
+  const openPrimaryMap = () => user ? openPersonalMap() : handleSelectDemo(DEMO_UNIVERSES[0]);
+
   return (
     <div className="llp-root" ref={landingRef} data-chapter={chapter} onClickCapture={sound.handleClick}>
       <LaunchTasteMapHero onTry={() => scrollToSection('features')} onPulse={() => sound.play('pulse')} />
@@ -207,7 +217,7 @@ export default function LaunchLandingPage({
               </svg>
             </button>
             {sound.unavailable && <span className="llp-sound-status" role="status">{translate("사운드를 재생할 수 없어요.")}</span>}
-            {hasTaste && (
+            {hasTaste && !user && (
               <button
                 type="button"
                 className="llp-nav-return-btn"
@@ -221,11 +231,12 @@ export default function LaunchLandingPage({
             )}
             <button
               type="button"
-              className="llp-nav-demo-btn"
+              className={user ? 'llp-nav-return-btn' : 'llp-nav-demo-btn'}
+              aria-label={translate(primaryLabel)}
               disabled={busy}
-              onClick={() => handleSelectDemo(DEMO_UNIVERSES[0])}
+              onClick={openPrimaryMap}
             >
-              <span>{translate(DEMO_CTA)}</span>
+              <span>{translate(primaryLabel)}</span>
               <span aria-hidden="true">↗</span>
             </button>
             <div className="llp-nav-auth">
@@ -247,8 +258,8 @@ export default function LaunchLandingPage({
             </h1>
             <p className="llp-hero-desc">{translate('좋아하는 음악을 장르별 지도로 펼치고, 새로 발견한 곡도 내 SPECTRA 지도에 모아보세요.')}</p>
             <div className="llp-hero-cta-group">
-              <button type="button" className="llp-btn-primary" onClick={() => handleSelectDemo(DEMO_UNIVERSES[0])} disabled={busy}>
-                <span>{translate(DEMO_CTA)}</span><span aria-hidden="true">↗</span>
+              <button type="button" className="llp-btn-primary" onClick={openPrimaryMap} disabled={busy}>
+                <span>{translate(primaryLabel)}</span><span aria-hidden="true">↗</span>
               </button>
               <button type="button" className="llp-btn-secondary" onClick={() => scrollToSection('import')}>{translate("음악 가져오기")}</button>
             </div>

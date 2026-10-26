@@ -19,9 +19,10 @@ import SharedCardPage from './share/SharedCardPage';
 import MapOnboarding from './onboarding/MapOnboarding';
 import SpectraLogo from './components/SpectraLogo';
 import TasteSaveStatus from './components/TasteSaveStatus';
+import { isDemoTaste } from './taste/tasteStorage';
 
-function AppInner() {
-  const { hasTaste, cloudSyncing, importTracks, status, progress, error, reset } = useTasteData();
+function AppInner({ onRestorePersonalMap }) {
+  const { hasTaste, tracks, stats, cloudSyncing, importTracks, status, progress, error, reset } = useTasteData();
   const { user } = useAuth();
   const emptyMap = user ? <EmptyPersonalMap /> : <Navigate to="/" replace />;
 
@@ -41,6 +42,9 @@ function AppInner() {
             error={error}
             hasTaste={hasTaste}
             onReset={reset}
+            onOpenPersonalMap={() => {
+              if (user && isDemoTaste({ tracks, stats })) onRestorePersonalMap();
+            }}
           />
         }
       />
@@ -72,15 +76,16 @@ function EmptyPersonalMap() {
 
 function MobileStart() {
   const { hasTaste, importTracks } = useTasteData();
+  const { user } = useAuth();
   const started = useRef(false);
   const [error, setError] = useState(false);
   useEffect(() => {
-    if (hasTaste || started.current) return;
+    if (user || hasTaste || started.current) return;
     started.current = true;
     importTracks(getCombinedDemoTracks(), { preEnriched: true, demoUniverse: DEMO_UNIVERSES[0].id })
       .then(result => { if (result?.ok === false) setError(true); }).catch(() => setError(true));
-  }, [hasTaste, importTracks]);
-  if (hasTaste) return <Navigate to="/taste-map" replace />;
+  }, [user, hasTaste, importTracks]);
+  if (user || hasTaste) return <Navigate to="/taste-map" replace />;
   if (error) return <main className="sa-page"><div className="sa-card"><h1>{translate("데모를 열지 못했어요")}</h1><a href="/">{translate("시작 페이지로 돌아가기")}</a></div></main>;
   return <AuthLoading title={translate("모바일 취향 지도를 준비하고 있어요")} message={translate("예시 음악으로 먼저 체험해 보세요.")} />;
 }
@@ -117,13 +122,17 @@ function ResponsiveTasteMapRoute() {
 
 function TasteSession() {
   const { user, ready, error, retrySession } = useAuth();
+  const [personalMapRevision, setPersonalMapRevision] = useState(0);
   if (!ready) return <AuthLoading />;
   if (error) return <main className="sa-page"><div className="sa-card">
     <LanguageSwitcher /><h1>{translate("계정을 확인하지 못했어요")}</h1>
     <p role="alert">{translate("연결을 확인한 뒤 다시 시도해 주세요.")}</p>
     <button type="button" className="sa-primary" onClick={retrySession}>{translate("다시 시도")}</button>
   </div></main>;
-  return <TasteDataProvider key={user?.id || 'guest'} ownerId={user?.id || null}><AppInner /></TasteDataProvider>;
+  // Re-entering a personal map after an explicit demo restores its own cache and cloud data.
+  return <TasteDataProvider key={`${user?.id || 'guest'}:${personalMapRevision}`} ownerId={user?.id || null}>
+    <AppInner onRestorePersonalMap={() => setPersonalMapRevision(revision => revision + 1)} />
+  </TasteDataProvider>;
 }
 
 function App() {

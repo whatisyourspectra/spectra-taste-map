@@ -3,6 +3,7 @@ export default {
   "취향 지도를 불러오고 있어요": "Loading your taste map",
   "저장된 나의 우주를 안전하게 연결하고 있습니다.": "Connecting to your saved music universe.",
   "나의 취향 지도": "My taste map",
+  "내 지도로 가기": "Go to my map",
   "아직 이 계정에 저장된 곡이 없어요.": "There are no songs saved to this account yet.",
   "좋아하는 음악을 가져오면 이곳에 내 지도가 펼쳐집니다.": "Import your favorite music to create your map here.",
   "음악 가져오기": "Import music",

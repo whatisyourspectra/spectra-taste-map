@@ -8,6 +8,7 @@ export function safeReturnTo(value) {
     try {
         const url = new URL(value, APP_ORIGIN);
         if (url.origin !== APP_ORIGIN || !['/', '/taste-map', '/taste-map/mobile'].includes(url.pathname)) return '/taste-map';
+        if (url.pathname === '/') return '/taste-map';
         if (url.pathname === '/taste-map') {
             const tab = url.searchParams.get('tab');
             if (['discover', 'today'].includes(tab)) return `/taste-map?tab=${tab}`;
