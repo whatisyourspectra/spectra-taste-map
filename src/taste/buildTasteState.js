@@ -1,4 +1,5 @@
-import { normalizeGenre, titleizeGenre } from './genreIdentity.js';
+import { titleizeGenre } from './genreIdentity.js';
+import { trackGenreTags } from './musicTags.js';
 import { deduplicateTracks } from '../utils/trackIdentity.js';
 
 /**
@@ -11,8 +12,7 @@ import { deduplicateTracks } from '../utils/trackIdentity.js';
  * measured listening frequency. Dates are optional; missing dates imply no trend.
  */
 export function getTasteGenres(track) {
-    return [...new Set((Array.isArray(track?.genres) ? track.genres : [])
-        .filter((genre) => typeof genre === 'string').map(normalizeGenre).filter(Boolean))];
+    return trackGenreTags(track);
 }
 
 export function uniqueTracks(tracks = []) {

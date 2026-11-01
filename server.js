@@ -4,6 +4,7 @@ import { existsSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import crypto from 'crypto';
+import { classifyMusicTags, findMusicTagScore, MUSIC_TAG_VERSION } from './src/taste/musicTags.js';
 import {
     getTrackInfo as getSpotifyTrackInfo,
     getArtistGenres,
@@ -120,10 +121,8 @@ function genresToFeatures(genres) {
     let eSum = 0;
     let count = 0;
     for (const genre of genres) {
-        const gl = String(genre).toLowerCase();
-        for (const [key, [v, e]] of TAG_SCORE_ENTRIES) {
-            if (gl.includes(key)) { vSum += v; eSum += e; count++; break; }
-        }
+        const score = findMusicTagScore(genre, TAG_SCORE_ENTRIES);
+        if (score) { vSum += score[0]; eSum += score[1]; count++; }
     }
     if (count === 0) {
         return { ...NEUTRAL_FEATURES, matched: 0 };
@@ -271,15 +270,22 @@ app.post('/api/taste/enrich', asyncRoute(async (req, res) => {
             }),
             enrichmentDeadline(getLastfmTrackInfo(item.artist, item.title), null),
         ]);
-        let lastfmTags = lastfmInfo?.tags || [];
-        if (lastfmTags.length === 0) {
+        const trackTags = lastfmInfo?.tags || [];
+        const exclude = [item.artist, item.title];
+        let lastfmTags = trackTags;
+        let genreSource = 'lastfm-track';
+        if (!classifyMusicTags(trackTags, { exclude }).genres.length) {
             const artistKey = item.artist.toLowerCase();
             if (!artistTagCache.has(artistKey)) {
-                artistTagCache.set(artistKey, await enrichmentDeadline(getArtistTopTags(item.artist), [], 3000));
+                artistTagCache.set(artistKey, enrichmentDeadline(getArtistTopTags(item.artist), [], 3000));
             }
-            lastfmTags = artistTagCache.get(artistKey) || [];
+            // Keep track-level moods/eras while falling back to artist genres.
+            lastfmTags = [...trackTags, ...await artistTagCache.get(artistKey)];
+            genreSource = 'lastfm-artist';
         }
-        const spotifyGenres = spotifyInfo?.genres || [];
+        const tagMetadata = classifyMusicTags(lastfmTags, { exclude });
+        const spotifyRawGenres = spotifyInfo?.genres || [];
+        const spotifyGenres = classifyMusicTags(spotifyRawGenres, { exclude }).genres;
         if (spotifyInfo) spotifyMatchedCount += 1;
         if (lastfmTags.length > 0) lastfmTaggedCount += 1;
         if (spotifyGenres.length > 0) spotifyGenreCount += 1;
@@ -309,7 +315,11 @@ app.post('/api/taste/enrich', asyncRoute(async (req, res) => {
             tempo: null,
             key: null,
             mode: null,
-            genres: lastfmTags.slice(0, 8),
+            ...tagMetadata,
+            genres: tagMetadata.genres.slice(0, 8),
+            tagVersion: MUSIC_TAG_VERSION,
+            genreSource: tagMetadata.genres.length ? genreSource : 'none',
+            spotifyRawGenres,
             spotifyGenres: spotifyGenres.slice(0, 8),
             spotifyFeatures: {
                 valence: spotifyFeatures.valence,
@@ -437,8 +447,10 @@ app.get('/api/discover', asyncRoute(async (req, res) => {
 
             const picked = candidates.slice(0, Math.max(limit * 3, 30));
             enriched = await mapLimit(picked, 5, async (track) => {
-                const genres = await getArtistGenres(track.primaryArtistId);
-                const feat = genresToFeatures(genres);
+                const rawGenres = await getArtistGenres(track.primaryArtistId);
+                const tagMetadata = classifyMusicTags(rawGenres, { exclude: [track.artist, track.name] });
+                const genres = tagMetadata.genres;
+                const feat = genresToFeatures(rawGenres);
                 return {
                     id: track.id || slugId(track.artist, track.name),
                     name: track.name,
@@ -451,7 +463,10 @@ app.get('/api/discover', asyncRoute(async (req, res) => {
                     acousticness: feat.acousticness,
                     instrumentalness: feat.instrumentalness,
                     tempo: null,
+                    ...tagMetadata,
                     genres: genres.slice(0, 8),
+                    tagVersion: MUSIC_TAG_VERSION,
+                    genreSource: genres.length ? 'spotify-artist' : 'none',
                     externalUrl: track.externalUrl || externalSearchUrl(track.artist, track.name),
                     featuresSource: genres.length > 0 ? 'spotify-genres' : 'none',
                 };
@@ -497,7 +512,13 @@ app.get('/api/discover', asyncRoute(async (req, res) => {
                     }),
                 ]);
                 let tags = lastfmInfo?.tags || [];
-                if (tags.length === 0) tags = await getArtistTopTags(candidate.artist);
+                let genreSource = 'lastfm-track';
+                const exclude = [candidate.artist, candidate.name];
+                if (!classifyMusicTags(tags, { exclude }).genres.length) {
+                    tags = [...tags, ...await getArtistTopTags(candidate.artist)];
+                    genreSource = 'lastfm-artist';
+                }
+                const tagMetadata = classifyMusicTags(tags, { exclude });
                 const feat = tagsToFeatures(tags);
                 const artist = spotifyInfo?.artist || lastfmInfo?.artist || candidate.artist;
                 const name = spotifyInfo?.name || lastfmInfo?.name || candidate.name;
@@ -513,7 +534,10 @@ app.get('/api/discover', asyncRoute(async (req, res) => {
                     acousticness: feat.acousticness,
                     instrumentalness: feat.instrumentalness,
                     tempo: null,
-                    genres: tags.slice(0, 8),
+                    ...tagMetadata,
+                    genres: tagMetadata.genres.slice(0, 8),
+                    tagVersion: MUSIC_TAG_VERSION,
+                    genreSource: tagMetadata.genres.length ? genreSource : 'none',
                     externalUrl: spotifyInfo?.externalUrl || externalSearchUrl(artist, name),
                     featuresSource: tags.length > 0 ? 'lastfm' : 'none',
                 };

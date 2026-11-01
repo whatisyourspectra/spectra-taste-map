@@ -1,15 +1,16 @@
 import { titleizeGenre } from './genreIdentity.js';
 import { deduplicateTracks } from '../utils/trackIdentity.js';
+import { trackGenreTags } from './musicTags.js';
 
 export function clusterGenreName(genres = []) {
-    return [...new Set(genres.filter(Boolean))].slice(0, 2).map(titleizeGenre).join(' · ') || 'Mixed / Other';
+    return trackGenreTags({ genres }).slice(0, 2).map(titleizeGenre).join(' · ') || 'Mixed / Other';
 }
 
 export function getClusterEvidence(cluster, source = 'lastfm') {
     const members = deduplicateTracks(cluster?.members || []);
     const counts = new Map();
     for (const track of members) {
-        for (const genre of new Set((Array.isArray(track.genres) ? track.genres : []).filter(value => typeof value === 'string').map(value => value.trim().toLowerCase()).filter(Boolean))) {
+        for (const genre of trackGenreTags(track)) {
             counts.set(genre, (counts.get(genre) || 0) + 1);
         }
     }

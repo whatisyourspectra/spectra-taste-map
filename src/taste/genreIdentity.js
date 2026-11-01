@@ -1,6 +1,5 @@
-export function normalizeGenre(genre) {
-    return String(genre || '').trim().toLowerCase();
-}
+import { canonicalMusicTag } from './musicTags.js';
+export const normalizeGenre = canonicalMusicTag;
 
 const GENRE_FAMILY_TONES = {
     house: { rgb: '116, 154, 255', text: '#e4eeff' },
@@ -32,8 +31,8 @@ const GENRE_IDENTITY_RULES = [
     { test: /(dream\s*pop)/i, short: 'Halo Dream Pop', family: 'pop' },
     { test: /(hyperpop)/i, short: 'Hyperpop Flux', family: 'pop' },
     { test: /(k[\s-]?pop)/i, short: 'K-Pop Prism', family: 'pop' },
-    { test: /(\bpop\b)/i, short: 'Prism Pop', family: 'pop' },
     { test: /(bedroom\s*pop)/i, short: 'Bedroom Pop', family: 'indie' },
+    { test: /(\bpop\b)/i, short: 'Prism Pop', family: 'pop' },
     { test: /(taiwanese\s+indie|indie)/i, short: 'Indie Haze', family: 'indie' },
     { test: /(rock)/i, short: 'Granite Rock', family: 'rock' },
     { test: /(r[\s&/]*b|soul|funk)/i, short: 'Velvet Soul', family: 'soul' },
