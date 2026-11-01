@@ -1,0 +1,38 @@
+[
+  {
+    "name": "01-mobile-hero-transparent",
+    "pixels": [
+      6000,
+      4750
+    ],
+    "alpha_channel": true,
+    "embedded_screenshots": 2
+  },
+  {
+    "name": "02-mobile-hero-poster-dark",
+    "pixels": [
+      6000,
+      5000
+    ],
+    "alpha_channel": true,
+    "embedded_screenshots": 2
+  },
+  {
+    "name": "03-mobile-map-device",
+    "pixels": [
+      2207,
+      4200
+    ],
+    "alpha_channel": true,
+    "embedded_screenshots": 1
+  },
+  {
+    "name": "04-mobile-song-device",
+    "pixels": [
+      2207,
+      4200
+    ],
+    "alpha_channel": true,
+    "embedded_screenshots": 1
+  }
+]

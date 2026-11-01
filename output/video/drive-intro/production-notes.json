@@ -1,0 +1,76 @@
+{
+  "title": "SPECTRA Drive — 내 취향 그대로. 다음 곡은, 한마디로.",
+  "duration_seconds": 30,
+  "width": 1920,
+  "height": 1080,
+  "fps": 30,
+  "frames": 900,
+  "codec": "H.264 / AAC stereo / yuv420p",
+  "screen_source": {
+    "captured_at": "2026-10-26T13:18:08.732Z",
+    "source": "http://127.0.0.1:5190/drive",
+    "current_track": "The Less I Know the Better",
+    "current_track_preserved": true,
+    "constellation_coordinates_preserved": true,
+    "initial_queue": [
+      "tame impala::breathe deeper",
+      "the black skirts::everything goes",
+      "laufey::from the start"
+    ],
+    "calm_queue": [
+      "masego, fkj::tadow",
+      "men i trust::show me how",
+      "tom misch::south of the river"
+    ],
+    "uplift_queue": [
+      "cigarettes after sex::apocalypse",
+      "laufey::from the start",
+      "men i trust::show me how"
+    ],
+    "page_errors": [],
+    "method": "Actual React example-request controls; voice input and vehicle events are simulated. UI screenshots are composited with presentation motion."
+  },
+  "audio": "Existing original SPECTRA dream-synth score, looped and mixed under two Yuna synthetic example requests.",
+  "limitations": "Web prototype; no real vehicle, Gleo or native Pleos integration. Current demo audio tracks are not played. Driver background is an existing AI-generated concept image.",
+  "chapters": [
+    [
+      0,
+      5,
+      "Driver context and value"
+    ],
+    [
+      5,
+      10.5,
+      "Calm request and reranked queue"
+    ],
+    [
+      10.5,
+      15.5,
+      "Current song and taste preserved"
+    ],
+    [
+      15.5,
+      21.5,
+      "Uplift request"
+    ],
+    [
+      21.5,
+      26.5,
+      "Pleos single and split UI concepts"
+    ],
+    [
+      26.5,
+      30,
+      "Brand close"
+    ]
+  ],
+  "validation": {
+    "decoded_frames": 900,
+    "duration_seconds": 30.0,
+    "unexpected_black_intervals": false,
+    "audio_peak_dbfs": -5.8,
+    "audio_channels": 2,
+    "audio_sample_rate_hz": 48000
+  },
+  "file_mb": 10.6
+}

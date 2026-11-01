@@ -1,0 +1,24 @@
+{
+  "captured_at": "2026-10-26T13:18:08.732Z",
+  "source": "http://127.0.0.1:5190/drive",
+  "current_track": "The Less I Know the Better",
+  "current_track_preserved": true,
+  "constellation_coordinates_preserved": true,
+  "initial_queue": [
+    "tame impala::breathe deeper",
+    "the black skirts::everything goes",
+    "laufey::from the start"
+  ],
+  "calm_queue": [
+    "masego, fkj::tadow",
+    "men i trust::show me how",
+    "tom misch::south of the river"
+  ],
+  "uplift_queue": [
+    "cigarettes after sex::apocalypse",
+    "laufey::from the start",
+    "men i trust::show me how"
+  ],
+  "page_errors": [],
+  "method": "Actual React example-request controls; voice input and vehicle events are simulated. UI screenshots are composited with presentation motion."
+}

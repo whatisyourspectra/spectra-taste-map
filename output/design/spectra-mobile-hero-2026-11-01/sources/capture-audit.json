@@ -1,0 +1,128 @@
+{
+  "date": "2026-11-01",
+  "source": "current local SPECTRA React application",
+  "route": "/taste-map?lang=en",
+  "viewport": {
+    "width": 393,
+    "height": 852
+  },
+  "deviceScaleFactor": 4,
+  "screenPixels": {
+    "width": 1572,
+    "height": 3408
+  },
+  "tracks": [
+    {
+      "id": "demo-cosmic-dreampop-0",
+      "name": "The Less I Know the Better",
+      "artists": "Tame Impala",
+      "coverUrl": "/demo-covers/currents.jpg"
+    },
+    {
+      "id": "demo-cosmic-dreampop-1",
+      "name": "Space Song",
+      "artists": "Beach House",
+      "coverUrl": "/demo-covers/depression-cherry.jpg"
+    },
+    {
+      "id": "demo-cosmic-dreampop-2",
+      "name": "Apocalypse",
+      "artists": "Cigarettes After Sex",
+      "coverUrl": "/demo-covers/cigarettes-after-sex.jpg"
+    },
+    {
+      "id": "demo-cosmic-dreampop-3",
+      "name": "Show Me How",
+      "artists": "Men I Trust",
+      "coverUrl": "/demo-covers/show-me-how.jpg"
+    },
+    {
+      "id": "demo-cosmic-dreampop-4",
+      "name": "Chamber of Reflection",
+      "artists": "Mac DeMarco",
+      "coverUrl": "/demo-covers/salad-days.jpg"
+    },
+    {
+      "id": "demo-cosmic-dreampop-5",
+      "name": "Breathe Deeper",
+      "artists": "Tame Impala",
+      "coverUrl": "/demo-covers/slow-rush.jpg"
+    },
+    {
+      "id": "demo-cyber-synthwave-0",
+      "name": "Get Lucky",
+      "artists": "Daft Punk",
+      "coverUrl": "/demo-covers/random-access-memories.jpg"
+    },
+    {
+      "id": "demo-cyber-synthwave-1",
+      "name": "Nightcall",
+      "artists": "Kavinsky",
+      "coverUrl": "/demo-covers/outrun.jpg"
+    },
+    {
+      "id": "demo-cyber-synthwave-2",
+      "name": "D.A.N.C.E.",
+      "artists": "Justice",
+      "coverUrl": "/demo-covers/justice.jpg"
+    },
+    {
+      "id": "demo-cyber-synthwave-3",
+      "name": "Blinding Lights",
+      "artists": "The Weeknd",
+      "coverUrl": "/demo-covers/after-hours.jpg"
+    },
+    {
+      "id": "demo-cyber-synthwave-4",
+      "name": "Harder, Better, Faster, Stronger",
+      "artists": "Daft Punk",
+      "coverUrl": "/demo-covers/discovery.jpg"
+    },
+    {
+      "id": "demo-cyber-synthwave-5",
+      "name": "Starboy",
+      "artists": "The Weeknd",
+      "coverUrl": "/demo-covers/starboy.jpg"
+    },
+    {
+      "id": "demo-midnight-jazz-0",
+      "name": "South of the River",
+      "artists": "Tom Misch",
+      "coverUrl": "/demo-covers/geography.jpg"
+    },
+    {
+      "id": "demo-midnight-jazz-1",
+      "name": "Tadow",
+      "artists": "Masego, FKJ",
+      "coverUrl": "/demo-covers/lady-lady.jpg"
+    },
+    {
+      "id": "demo-midnight-jazz-2",
+      "name": "Everything Goes",
+      "artists": "The Black Skirts",
+      "coverUrl": "/demo-covers/team-baby.jpg"
+    },
+    {
+      "id": "demo-midnight-jazz-3",
+      "name": "Square",
+      "artists": "Yerin Baek",
+      "coverUrl": "/demo-covers/every-letter.jpg"
+    },
+    {
+      "id": "demo-midnight-jazz-4",
+      "name": "From the Start",
+      "artists": "Laufey",
+      "coverUrl": "/demo-covers/bewitched.jpg"
+    },
+    {
+      "id": "demo-midnight-jazz-5",
+      "name": "Disco Yes",
+      "artists": "Tom Misch",
+      "coverUrl": "/demo-covers/geography.jpg"
+    }
+  ],
+  "demo": true,
+  "account": null,
+  "uiAlterations": false,
+  "errors": []
+}

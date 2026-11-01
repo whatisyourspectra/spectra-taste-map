@@ -1,0 +1,38 @@
+{
+  "date": "2026-11-01",
+  "uiSource": "Current local SPECTRA application, unmodified screenshots with 18 curated demo tracks",
+  "assets": [
+    {
+      "name": "01-mobile-hero-transparent",
+      "width": 6000,
+      "height": 4750,
+      "transparent": true,
+      "description": "Two floating silver devices, actual map and song selection screens, transparent background",
+      "svgContains": "Vector device frames, outlined type, embedded actual UI screenshots"
+    },
+    {
+      "name": "02-mobile-hero-poster-dark",
+      "width": 6000,
+      "height": 5000,
+      "transparent": false,
+      "description": "Poster-ready dark composition with curved lilac typography and minimal spectral accents",
+      "svgContains": "Vector device frames, outlined type, embedded actual UI screenshots"
+    },
+    {
+      "name": "03-mobile-map-device",
+      "width": 2207,
+      "height": 4200,
+      "transparent": true,
+      "description": "Individual map device on transparent background",
+      "svgContains": "Vector device frames, outlined type, embedded actual UI screenshots"
+    },
+    {
+      "name": "04-mobile-song-device",
+      "width": 2207,
+      "height": 4200,
+      "transparent": true,
+      "description": "Individual selected-song device on transparent background",
+      "svgContains": "Vector device frames, outlined type, embedded actual UI screenshots"
+    }
+  ]
+}

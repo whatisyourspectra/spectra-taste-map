@@ -1,0 +1,202 @@
+{
+  "ui": [
+    {
+      "name": "01-header",
+      "width": 4000,
+      "height": 454,
+      "nativeTextRuns": 16,
+      "foreignObject": false,
+      "images": 1
+    },
+    {
+      "name": "02-view-toolbar",
+      "width": 4000,
+      "height": 666,
+      "nativeTextRuns": 10,
+      "foreignObject": false,
+      "images": 0
+    },
+    {
+      "name": "03-region-tags",
+      "width": 4000,
+      "height": 491,
+      "nativeTextRuns": 5,
+      "foreignObject": false,
+      "images": 0
+    },
+    {
+      "name": "04-zoom-controls",
+      "width": 4000,
+      "height": 1805,
+      "nativeTextRuns": 4,
+      "foreignObject": false,
+      "images": 0
+    },
+    {
+      "name": "05-map-actions",
+      "width": 4000,
+      "height": 1388,
+      "nativeTextRuns": 4,
+      "foreignObject": false,
+      "images": 0
+    },
+    {
+      "name": "06-taste-field-map",
+      "width": 4000,
+      "height": 2537,
+      "nativeTextRuns": 15,
+      "foreignObject": false,
+      "images": 70
+    },
+    {
+      "name": "07-map-overview",
+      "width": 4000,
+      "height": 2537,
+      "nativeTextRuns": 9,
+      "foreignObject": false,
+      "images": 70
+    },
+    {
+      "name": "08-constellation-map",
+      "width": 4000,
+      "height": 2537,
+      "nativeTextRuns": 13,
+      "foreignObject": false,
+      "images": 1
+    },
+    {
+      "name": "09-song-constellation-card",
+      "width": 2917,
+      "height": 4000,
+      "nativeTextRuns": 21,
+      "foreignObject": false,
+      "images": 1
+    },
+    {
+      "name": "10-song-actions",
+      "width": 4000,
+      "height": 933,
+      "nativeTextRuns": 4,
+      "foreignObject": false,
+      "images": 0
+    },
+    {
+      "name": "11-constellation-preview",
+      "width": 4000,
+      "height": 2383,
+      "nativeTextRuns": 4,
+      "foreignObject": false,
+      "images": 0
+    },
+    {
+      "name": "12-grouping-evidence",
+      "width": 2885,
+      "height": 4001,
+      "nativeTextRuns": 18,
+      "foreignObject": false,
+      "images": 0
+    },
+    {
+      "name": "13-voyage-topbar",
+      "width": 4000,
+      "height": 291,
+      "nativeTextRuns": 5,
+      "foreignObject": false,
+      "images": 0
+    },
+    {
+      "name": "14-voyage-playback",
+      "width": 4000,
+      "height": 547,
+      "nativeTextRuns": 8,
+      "foreignObject": false,
+      "images": 1
+    },
+    {
+      "name": "15-voyage-queue",
+      "width": 1927,
+      "height": 4001,
+      "nativeTextRuns": 28,
+      "foreignObject": false,
+      "images": 8
+    },
+    {
+      "name": "16-custom-group-panel",
+      "width": 2212,
+      "height": 4000,
+      "nativeTextRuns": 27,
+      "foreignObject": false,
+      "images": 3
+    },
+    {
+      "name": "19-discovery-panel",
+      "width": 2185,
+      "height": 3999,
+      "nativeTextRuns": 49,
+      "foreignObject": false,
+      "images": 8
+    },
+    {
+      "name": "20-discovery-song-row",
+      "width": 4000,
+      "height": 1054,
+      "nativeTextRuns": 5,
+      "foreignObject": false,
+      "images": 1
+    },
+    {
+      "name": "21-discovery-controls",
+      "width": 4000,
+      "height": 753,
+      "nativeTextRuns": 2,
+      "foreignObject": false,
+      "images": 0
+    },
+    {
+      "name": "22-landing-navigation",
+      "width": 4000,
+      "height": 364,
+      "nativeTextRuns": 10,
+      "foreignObject": false,
+      "images": 1
+    }
+  ],
+  "heroes": [
+    {
+      "name": "03-web-overview-browser",
+      "width": 6000,
+      "height": 4750,
+      "alpha": false
+    },
+    {
+      "name": "04-spectra-map-and-song",
+      "width": 6000,
+      "height": 4250,
+      "alpha": false
+    },
+    {
+      "name": "05-feature-exploration",
+      "width": 6000,
+      "height": 4250,
+      "alpha": false
+    },
+    {
+      "name": "06-voyage-browser",
+      "width": 6000,
+      "height": 4750,
+      "alpha": false
+    },
+    {
+      "name": "07-map-overview-transparent",
+      "width": 6000,
+      "height": 3750,
+      "alpha": true
+    },
+    {
+      "name": "08-landing-browser",
+      "width": 6000,
+      "height": 4750,
+      "alpha": false
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+[
+  {
+    "name": "01-macbook-taste-field",
+    "width": 6000,
+    "height": 3999,
+    "transparent": true,
+    "method": "Three.js WebGL",
+    "source": "field",
+    "stats": {
+      "calls": 14,
+      "triangles": 17808
+    }
+  },
+  {
+    "name": "02-macbook-song-and-spectra",
+    "width": 6000,
+    "height": 3999,
+    "transparent": true,
+    "method": "Three.js WebGL",
+    "source": "spectra",
+    "stats": {
+      "calls": 14,
+      "triangles": 17808
+    }
+  }
+]
