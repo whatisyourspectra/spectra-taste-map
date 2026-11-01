@@ -1,4 +1,5 @@
 // Density-based clustering Web Worker (DBSCAN with automatic epsilon)
+import { buildGenreFeatures } from '../taste/genreFeatures.js';
 const FEATURE_KEYS = ['valence', 'energy', 'danceability', 'acousticness', 'instrumentalness'];
 const FEATURE_META = {
     valence:          { fallback: 0.5 },
@@ -15,13 +16,6 @@ function getTrackFeature(track, key) {
 
 function getTrackVector(track) {
     return FEATURE_KEYS.map((key) => getTrackFeature(track, key));
-}
-
-function normalizeGenre(g) { return String(g || '').trim().toLowerCase(); }
-
-function getTrackGenres(track) {
-    if (!Array.isArray(track?.genres)) return [];
-    return [...new Set(track.genres.map(normalizeGenre).filter(Boolean))];
 }
 
 function euclidDistSq(a, b) {
@@ -55,7 +49,9 @@ function percentile(sortedValues, q) {
 function estimateDbscanParams(points) {
     const n = points.length;
     const dims = points[0]?.length || 1;
-    const minPts = clamp(Math.round(2 * Math.log2(Math.max(4, n))), Math.max(4, dims + 1), 18);
+    // Sparse genre vocabularies can have dozens of axes; that must not force
+    // every small but coherent genre group to become noise.
+    const minPts = clamp(Math.round(2 * Math.log2(Math.max(4, n))), Math.min(8, Math.max(4, dims + 1)), 18);
     if (n <= minPts + 1) {
         return { minPts: Math.min(minPts, Math.max(2, n - 1)), eps: 0.18 };
     }
@@ -328,36 +324,11 @@ self.onmessage = ({ data }) => {
     let derivedGenreVocab = [];
 
     if (clusterBasis === 'genre') {
-        const trackGenreSets = tracks.map((t) => new Set(getTrackGenres(t)));
-        const dfMap = new Map(), freqMap = new Map();
-        trackGenreSets.forEach((gs) => gs.forEach((g) => {
-            dfMap.set(g, (dfMap.get(g) || 0) + 1);
-            freqMap.set(g, (freqMap.get(g) || 0) + 1);
-        }));
-        const minDf = Math.max(2, Math.floor(tracks.length * 0.004));
-        const maxDfRatio = 0.42;
-        const filteredFreq = [...freqMap.entries()]
-            .filter(([g]) => {
-                const df = dfMap.get(g) || 0;
-                const dfRatio = df / Math.max(1, tracks.length);
-                return df >= minDf && dfRatio <= maxDfRatio;
-            });
-        const vocab = (filteredFreq.length >= 2 ? filteredFreq : [...freqMap.entries()])
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 28)
-            .map(([g]) => g);
-        if (vocab.length >= 2) {
-            const idf = vocab.map((g) => Math.log((tracks.length + 1) / ((dfMap.get(g) || 0) + 1)) + 1);
-            const genrePoints = trackGenreSets.map((gs) => {
-                const vec = vocab.map((g, idx) => (gs.has(g) ? idf[idx] : 0));
-                const norm = Math.sqrt(vec.reduce((s, v) => s + v * v, 0));
-                return norm > 0 ? vec.map((v) => v / norm) : vec;
-            });
-            if (genrePoints.some((vec) => vec.some((v) => v > 0))) {
-                points = genrePoints;
-                usingGenre = true;
-                derivedGenreVocab = vocab;
-            }
+        const features = buildGenreFeatures(tracks);
+        if (features.vocab.length) {
+            points = features.points;
+            usingGenre = true;
+            derivedGenreVocab = features.vocab;
         }
     }
 

@@ -1,0 +1,281 @@
+{
+  "created": "2026-11-01",
+  "dataset": {
+    "all": 69,
+    "discoveryLibrary": 61,
+    "discoveryHeldOut": 8,
+    "duplicateIds": 0
+  },
+  "screens": [
+    {
+      "name": "01-desktop-taste-field",
+      "purpose": "Full desktop service interface, 69-track taste field",
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "pixels": {
+        "width": 4800,
+        "height": 3000
+      },
+      "libraryCount": "LIVE FIELD69 memories3 regions",
+      "renderedNodes": 69
+    },
+    {
+      "name": "02-map-overview",
+      "purpose": "Full album map at fit-to-content camera",
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "pixels": {
+        "width": 4800,
+        "height": 3000
+      },
+      "libraryCount": "LIVE FIELD69 memories3 regions",
+      "renderedNodes": 69
+    },
+    {
+      "name": "03-spectra-map",
+      "purpose": "Constellation map view",
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "pixels": {
+        "width": 4800,
+        "height": 3000
+      },
+      "libraryCount": "LIVE FIELD69 memories3 regions",
+      "renderedNodes": 69
+    },
+    {
+      "name": "04-song-and-constellation",
+      "purpose": "Selected song, grouping preview, listening and voyage actions",
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "pixels": {
+        "width": 4800,
+        "height": 3000
+      },
+      "libraryCount": "LIVE FIELD69 memories3 regions",
+      "renderedNodes": 69
+    },
+    {
+      "name": "05-constellation-voyage",
+      "purpose": "Interactive constellation voyage, paused audio",
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "pixels": {
+        "width": 4800,
+        "height": 3000
+      },
+      "libraryCount": "LIVE FIELD69 memories3 regions",
+      "renderedNodes": 0
+    },
+    {
+      "name": "06-voyage-queue",
+      "purpose": "Direct constellation song queue",
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "pixels": {
+        "width": 4800,
+        "height": 3000
+      },
+      "libraryCount": "LIVE FIELD69 memories3 regions",
+      "renderedNodes": 0
+    },
+    {
+      "name": "07-create-music-group",
+      "purpose": "Create a named group from three real demo tracks",
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "pixels": {
+        "width": 4800,
+        "height": 3000
+      },
+      "libraryCount": "LIVE FIELD69 memories3 regions",
+      "renderedNodes": 69
+    },
+    {
+      "name": "09-new-music-discovery",
+      "purpose": "Demo discovery: 61 library tracks plus 8 held-out real demo tracks",
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "pixels": {
+        "width": 4800,
+        "height": 3000
+      },
+      "libraryCount": "LIVE FIELD61 memories3 regions",
+      "renderedNodes": 61
+    },
+    {
+      "name": "00-web-landing",
+      "purpose": "Actual desktop landing hero",
+      "viewport": {
+        "width": 1600,
+        "height": 1000
+      },
+      "pixels": {
+        "width": 4800,
+        "height": 3000
+      },
+      "libraryCount": null,
+      "renderedNodes": 0
+    }
+  ],
+  "ui": [
+    {
+      "name": "01-header",
+      "selector": ".tm-header",
+      "width": 1600,
+      "height": 181.578,
+      "runs": 16
+    },
+    {
+      "name": "02-view-toolbar",
+      "selector": ".tm-axis-panel",
+      "width": 588.969,
+      "height": 98,
+      "runs": 10
+    },
+    {
+      "name": "03-region-tags",
+      "selector": ".tm-map-tag-strip",
+      "width": 660,
+      "height": 81,
+      "runs": 5
+    },
+    {
+      "name": "04-zoom-controls",
+      "selector": ".tm-dock-zoom",
+      "width": 164,
+      "height": 74,
+      "runs": 4
+    },
+    {
+      "name": "05-map-actions",
+      "selector": ".tm-dock-actions",
+      "width": 219.063,
+      "height": 76,
+      "runs": 4
+    },
+    {
+      "name": "06-taste-field-map",
+      "selector": ".tm-canvas-wrap",
+      "width": 1640,
+      "height": 1040,
+      "runs": 15
+    },
+    {
+      "name": "07-map-overview",
+      "selector": ".tm-bubble-wrap",
+      "width": 1640,
+      "height": 1040,
+      "runs": 9
+    },
+    {
+      "name": "08-constellation-map",
+      "selector": ".tm-canvas-wrap",
+      "width": 1640,
+      "height": 1040,
+      "runs": 13
+    },
+    {
+      "name": "09-song-constellation-card",
+      "selector": ".ccp-card",
+      "width": 420,
+      "height": 575.891,
+      "runs": 21
+    },
+    {
+      "name": "10-song-actions",
+      "selector": ".ccp-primary-actions",
+      "width": 360,
+      "height": 84,
+      "runs": 4
+    },
+    {
+      "name": "11-constellation-preview",
+      "selector": ".ccp-constellation-canvas",
+      "width": 386,
+      "height": 230,
+      "runs": 4
+    },
+    {
+      "name": "12-grouping-evidence",
+      "selector": ".ccp-evidence",
+      "width": 350,
+      "height": 485.344,
+      "runs": 18
+    },
+    {
+      "name": "13-voyage-topbar",
+      "selector": ".cv-topbar",
+      "width": 1592,
+      "height": 116,
+      "runs": 5
+    },
+    {
+      "name": "14-voyage-playback",
+      "selector": ".cv-dock",
+      "width": 760,
+      "height": 104,
+      "runs": 8
+    },
+    {
+      "name": "15-voyage-queue",
+      "selector": ".cv-play-queue",
+      "width": 420,
+      "height": 872,
+      "runs": 28
+    },
+    {
+      "name": "16-custom-group-panel",
+      "selector": ".tm-group-panel",
+      "width": 470,
+      "height": 850,
+      "runs": 27
+    },
+    {
+      "name": "19-discovery-panel",
+      "selector": ".tm-discovery-panel",
+      "width": 410,
+      "height": 750.422,
+      "runs": 49
+    },
+    {
+      "name": "20-discovery-song-row",
+      "selector": ".tm-discovery-song-list li",
+      "width": 372,
+      "height": 98,
+      "runs": 5
+    },
+    {
+      "name": "21-discovery-controls",
+      "selector": ".tm-discovery-list-meta",
+      "width": 372,
+      "height": 70,
+      "runs": 2
+    },
+    {
+      "name": "22-landing-navigation",
+      "selector": ".llp-nav",
+      "width": 1496,
+      "height": 136,
+      "runs": 10
+    }
+  ],
+  "errors": [],
+  "warnings": []
+}

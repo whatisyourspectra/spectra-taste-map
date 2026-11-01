@@ -8,9 +8,9 @@ import AccountButton from '../auth/AccountButton';
 import { DEMO_UNIVERSES, getDemoUniverseIndex } from '../taste/demoUniverses';
 import { buildConstellationTopology, buildSeedConstellation, buildVoyageSequence, getVoyageNeighbor } from '../taste/constellationTopology';
 import { createVoyageGraph, extendVoyage, undoVoyageExpansion } from '../taste/voyageExpansion';
-import { getGenreIdentity } from '../taste/genreIdentity';
+import { getGenreIdentity, normalizeGenre } from '../taste/genreIdentity';
 import { useTasteData } from '../context/TasteDataContext';
-import { uniqueTracks } from '../taste/buildTasteState';
+import { uniqueTracks, getTasteGenres } from '../taste/buildTasteState';
 import { clusterGenreName } from '../taste/clusterEvidence';
 import { fetchDesktopRecommendations } from '../taste/desktopDiscovery';
 import DesktopDiscoveryPanel from './DesktopDiscoveryPanel';
@@ -38,7 +38,7 @@ const TM_FETCH_CACHE_TTL_MS = 10 * 60 * 1000;
 const TM_CLUSTER_CACHE_TTL_MS = 10 * 60 * 1000;
 const TM_LIBRARY_CACHE_TTL_MS = 10 * 60 * 1000;
 const TM_FETCH_CACHE_PREFIX = 'taste-map-fetch-v7';
-const TM_CLUSTER_CACHE_PREFIX = 'taste-map-cluster-v3';
+const TM_CLUSTER_CACHE_PREFIX = 'taste-map-cluster-v4';
 const TM_LIBRARY_CACHE_PREFIX = 'taste-map-library-v1';
 
 const TM_THEME_STORAGE_KEY = 'spectra-tastemap-theme-v1';
@@ -474,10 +474,6 @@ function sampleTracksForBubbleView(list, maxCount) {
 }
 
 
-function normalizeGenre(genre) {
-    return String(genre || '').trim().toLowerCase();
-}
-
 function getGenreSymbol(genre) {
     const identity = getGenreIdentity(genre);
     switch (identity.family) {
@@ -535,8 +531,7 @@ function formatDateLabel(raw) {
 }
 
 function getTrackGenres(track) {
-    if (!Array.isArray(track?.genres)) return [];
-    return [...new Set(track.genres.map(normalizeGenre).filter(Boolean))];
+    return getTasteGenres(track);
 }
 
 function getTrackTimeMs(track) {
@@ -1926,9 +1921,8 @@ export default function TasteMapPage() {
         const clusterCacheKey = `${TM_CLUSTER_CACHE_PREFIX}|u:${cacheUserId}|s:${source}|b:${clusterBasis}|alg:dbscan-v3|sig:${trackSignature}`;
         const clusterHit = readSessionCache(clusterCacheKey, TM_CLUSTER_CACHE_TTL_MS);
         if (clusterHit && Array.isArray(clusterHit.assignments) && Array.isArray(clusterHit.centroids)) {
-            // Recompute audio points for clusterVectors (needed downstream) — cheap
-            const audioPoints = tracks.map((t) => getTrackVector(t));
-            setClusterVectors(audioPoints);
+            // Genre centroids and member distances must use the same embedding.
+            setClusterVectors(Array.isArray(clusterHit.points) ? clusterHit.points : tracks.map(getTrackVector));
             setAssignments(clusterHit.assignments);
             setCentroids(clusterHit.centroids);
             setGenreVocab(Array.isArray(clusterHit.genreVocab) ? clusterHit.genreVocab : []);
@@ -1953,6 +1947,7 @@ export default function TasteMapPage() {
             setGenreVocab(data.genreVocab);
             setNoiseClusterId(Number.isInteger(data.noiseClusterId) ? data.noiseClusterId : null);
             writeSessionCache(clusterCacheKey, {
+                points: data.points,
                 assignments: data.assignments,
                 centroids: data.centroids,
                 genreVocab: data.genreVocab,

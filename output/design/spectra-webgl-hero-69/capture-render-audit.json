@@ -1,0 +1,435 @@
+{
+  "date": "2026-11-01",
+  "tracks": 69,
+  "artists": 20,
+  "localArtwork": 18,
+  "proceduralArtwork": 51,
+  "uiModifications": false,
+  "duplicatedTracks": 0,
+  "account": null,
+  "library": [
+    {
+      "id": "demo-cosmic-dreampop-0",
+      "name": "The Less I Know the Better",
+      "artists": "Tame Impala"
+    },
+    {
+      "id": "demo-cosmic-dreampop-1",
+      "name": "Space Song",
+      "artists": "Beach House"
+    },
+    {
+      "id": "demo-cosmic-dreampop-2",
+      "name": "Apocalypse",
+      "artists": "Cigarettes After Sex"
+    },
+    {
+      "id": "demo-cosmic-dreampop-3",
+      "name": "Show Me How",
+      "artists": "Men I Trust"
+    },
+    {
+      "id": "demo-cosmic-dreampop-4",
+      "name": "Chamber of Reflection",
+      "artists": "Mac DeMarco"
+    },
+    {
+      "id": "demo-cosmic-dreampop-5",
+      "name": "Breathe Deeper",
+      "artists": "Tame Impala"
+    },
+    {
+      "id": "demo-cosmic-dreampop-6",
+      "name": "Tomboy",
+      "artists": "Hyukoh"
+    },
+    {
+      "id": "demo-cosmic-dreampop-7",
+      "name": "Sunsetz",
+      "artists": "Cigarettes After Sex"
+    },
+    {
+      "id": "demo-cosmic-dreampop-8",
+      "name": "Myth",
+      "artists": "Beach House"
+    },
+    {
+      "id": "demo-cosmic-dreampop-9",
+      "name": "Ode to Viceroy",
+      "artists": "Mac DeMarco"
+    },
+    {
+      "id": "demo-cosmic-dreampop-10",
+      "name": "Silver Soul",
+      "artists": "Beach House"
+    },
+    {
+      "id": "demo-cosmic-dreampop-11",
+      "name": "Tailwhip",
+      "artists": "Men I Trust"
+    },
+    {
+      "id": "demo-cosmic-dreampop-12",
+      "name": "Eventually",
+      "artists": "Tame Impala"
+    },
+    {
+      "id": "demo-cosmic-dreampop-13",
+      "name": "Sweet",
+      "artists": "Cigarettes After Sex"
+    },
+    {
+      "id": "demo-cosmic-dreampop-14",
+      "name": "Wiing Wiing",
+      "artists": "Hyukoh"
+    },
+    {
+      "id": "demo-cosmic-dreampop-15",
+      "name": "My Kind of Woman",
+      "artists": "Mac DeMarco"
+    },
+    {
+      "id": "demo-cosmic-dreampop-16",
+      "name": "Nunjucks",
+      "artists": "Men I Trust"
+    },
+    {
+      "id": "demo-cosmic-dreampop-17",
+      "name": "Borderline",
+      "artists": "Tame Impala"
+    },
+    {
+      "id": "demo-cosmic-dreampop-18",
+      "name": "K.",
+      "artists": "Cigarettes After Sex"
+    },
+    {
+      "id": "demo-cosmic-dreampop-19",
+      "name": "Days",
+      "artists": "The Drums"
+    },
+    {
+      "id": "demo-cosmic-dreampop-20",
+      "name": "Let It Happen",
+      "artists": "Tame Impala"
+    },
+    {
+      "id": "demo-cosmic-dreampop-21",
+      "name": "Master of None",
+      "artists": "Beach House"
+    },
+    {
+      "id": "demo-cosmic-dreampop-22",
+      "name": "On the Level",
+      "artists": "Mac DeMarco"
+    },
+    {
+      "id": "demo-cosmic-dreampop-23",
+      "name": "Seven",
+      "artists": "Men I Trust"
+    },
+    {
+      "id": "demo-cyber-synthwave-0",
+      "name": "Get Lucky",
+      "artists": "Daft Punk"
+    },
+    {
+      "id": "demo-cyber-synthwave-1",
+      "name": "Nightcall",
+      "artists": "Kavinsky"
+    },
+    {
+      "id": "demo-cyber-synthwave-2",
+      "name": "D.A.N.C.E.",
+      "artists": "Justice"
+    },
+    {
+      "id": "demo-cyber-synthwave-3",
+      "name": "Blinding Lights",
+      "artists": "The Weeknd"
+    },
+    {
+      "id": "demo-cyber-synthwave-4",
+      "name": "Harder, Better, Faster, Stronger",
+      "artists": "Daft Punk"
+    },
+    {
+      "id": "demo-cyber-synthwave-5",
+      "name": "Starboy",
+      "artists": "The Weeknd"
+    },
+    {
+      "id": "demo-cyber-synthwave-6",
+      "name": "Genesis",
+      "artists": "Justice"
+    },
+    {
+      "id": "demo-cyber-synthwave-7",
+      "name": "Pacific Coast Highway",
+      "artists": "Kavinsky"
+    },
+    {
+      "id": "demo-cyber-synthwave-8",
+      "name": "Around the World",
+      "artists": "Daft Punk"
+    },
+    {
+      "id": "demo-cyber-synthwave-9",
+      "name": "Lost in the Fire",
+      "artists": "Gesaffelstein, The Weeknd"
+    },
+    {
+      "id": "demo-cyber-synthwave-10",
+      "name": "One More Time",
+      "artists": "Daft Punk"
+    },
+    {
+      "id": "demo-cyber-synthwave-11",
+      "name": "Safe and Sound",
+      "artists": "Justice"
+    },
+    {
+      "id": "demo-cyber-synthwave-12",
+      "name": "Odd Look",
+      "artists": "Kavinsky"
+    },
+    {
+      "id": "demo-cyber-synthwave-13",
+      "name": "Instant Crush",
+      "artists": "Daft Punk"
+    },
+    {
+      "id": "demo-cyber-synthwave-14",
+      "name": "Save Your Tears",
+      "artists": "The Weeknd"
+    },
+    {
+      "id": "demo-cyber-synthwave-15",
+      "name": "Waters of Nazareth",
+      "artists": "Justice"
+    },
+    {
+      "id": "demo-cyber-synthwave-16",
+      "name": "Protovision",
+      "artists": "Kavinsky"
+    },
+    {
+      "id": "demo-cyber-synthwave-17",
+      "name": "Digital Love",
+      "artists": "Daft Punk"
+    },
+    {
+      "id": "demo-cyber-synthwave-18",
+      "name": "Take My Breath",
+      "artists": "The Weeknd"
+    },
+    {
+      "id": "demo-cyber-synthwave-19",
+      "name": "We Are Your Friends",
+      "artists": "Justice"
+    },
+    {
+      "id": "demo-cyber-synthwave-20",
+      "name": "Something About Us",
+      "artists": "Daft Punk"
+    },
+    {
+      "id": "demo-cyber-synthwave-21",
+      "name": "I Feel It Coming",
+      "artists": "The Weeknd"
+    },
+    {
+      "id": "demo-cyber-synthwave-22",
+      "name": "Midnight City",
+      "artists": "M83"
+    },
+    {
+      "id": "demo-midnight-jazz-0",
+      "name": "South of the River",
+      "artists": "Tom Misch"
+    },
+    {
+      "id": "demo-midnight-jazz-1",
+      "name": "Tadow",
+      "artists": "Masego, FKJ"
+    },
+    {
+      "id": "demo-midnight-jazz-2",
+      "name": "Everything Goes",
+      "artists": "The Black Skirts"
+    },
+    {
+      "id": "demo-midnight-jazz-3",
+      "name": "Square",
+      "artists": "Yerin Baek"
+    },
+    {
+      "id": "demo-midnight-jazz-4",
+      "name": "From the Start",
+      "artists": "Laufey"
+    },
+    {
+      "id": "demo-midnight-jazz-5",
+      "name": "Disco Yes",
+      "artists": "Tom Misch"
+    },
+    {
+      "id": "demo-midnight-jazz-6",
+      "name": "Ylang Ylang",
+      "artists": "FKJ"
+    },
+    {
+      "id": "demo-midnight-jazz-7",
+      "name": "Antifreeze",
+      "artists": "The Black Skirts"
+    },
+    {
+      "id": "demo-midnight-jazz-8",
+      "name": "Maybe It's Not Our Fault",
+      "artists": "Yerin Baek"
+    },
+    {
+      "id": "demo-midnight-jazz-9",
+      "name": "Valentine",
+      "artists": "Laufey"
+    },
+    {
+      "id": "demo-midnight-jazz-10",
+      "name": "It Runs Through Me",
+      "artists": "Tom Misch"
+    },
+    {
+      "id": "demo-midnight-jazz-11",
+      "name": "Vibin' Out",
+      "artists": "FKJ"
+    },
+    {
+      "id": "demo-midnight-jazz-12",
+      "name": "Who Do You Love",
+      "artists": "The Black Skirts"
+    },
+    {
+      "id": "demo-midnight-jazz-13",
+      "name": "Popo",
+      "artists": "Yerin Baek"
+    },
+    {
+      "id": "demo-midnight-jazz-14",
+      "name": "Promise",
+      "artists": "Laufey"
+    },
+    {
+      "id": "demo-midnight-jazz-15",
+      "name": "Movie",
+      "artists": "Tom Misch"
+    },
+    {
+      "id": "demo-midnight-jazz-16",
+      "name": "So Much to Me",
+      "artists": "FKJ"
+    },
+    {
+      "id": "demo-midnight-jazz-17",
+      "name": "Love Is All",
+      "artists": "The Black Skirts"
+    },
+    {
+      "id": "demo-midnight-jazz-18",
+      "name": "0310",
+      "artists": "Yerin Baek"
+    },
+    {
+      "id": "demo-midnight-jazz-19",
+      "name": "Falling Behind",
+      "artists": "Laufey"
+    },
+    {
+      "id": "demo-midnight-jazz-20",
+      "name": "Lost in Paris",
+      "artists": "Tom Misch"
+    },
+    {
+      "id": "demo-midnight-jazz-21",
+      "name": "Die With A Smile",
+      "artists": "Lady Gaga, Bruno Mars"
+    }
+  ],
+  "captures": [
+    {
+      "name": "mobile-map-69.png",
+      "kind": "Unmodified actual app, all 69 demo tracks, constellation view",
+      "viewport": {
+        "width": 430,
+        "height": 932
+      },
+      "deviceScaleFactor": 4,
+      "pixels": {
+        "width": 1720,
+        "height": 3728
+      },
+      "visibleStars": 31,
+      "libraryLabel": "My map 69 tracks"
+    },
+    {
+      "name": "mobile-selected-69.png",
+      "kind": "Unmodified actual app, Space Song selected",
+      "viewport": {
+        "width": 430,
+        "height": 932
+      },
+      "deviceScaleFactor": 4,
+      "pixels": {
+        "width": 1720,
+        "height": 3728
+      },
+      "visibleStars": 25,
+      "libraryLabel": "My map 69 tracks"
+    },
+    {
+      "name": "mobile-overview-69.png",
+      "kind": "Unmodified actual app, 3D overview, keyboard zoom to 1.3",
+      "viewport": {
+        "width": 430,
+        "height": 932
+      },
+      "deviceScaleFactor": 4,
+      "pixels": {
+        "width": 1720,
+        "height": 3728
+      },
+      "libraryLabel": "My map 69 tracks",
+      "note": "Overview stars were not counted; underlying map was hidden."
+    }
+  ],
+  "renders": [
+    {
+      "name": "01-webgl-hero-transparent",
+      "pixels": {
+        "width": 6000,
+        "height": 4500
+      },
+      "renderer": "WebKit WebGL",
+      "stats": {
+        "triangles": 55088,
+        "calls": 56,
+        "textureSize": "1572x3600",
+        "maxTextureSize": 16384
+      }
+    },
+    {
+      "name": "02-webgl-hero-poster-dark",
+      "pixels": {
+        "width": 6000,
+        "height": 4500
+      },
+      "renderer": "WebKit WebGL",
+      "stats": {
+        "triangles": 55466,
+        "calls": 61,
+        "textureSize": "1572x3600",
+        "maxTextureSize": 16384
+      }
+    }
+  ],
+  "errors": []
+}

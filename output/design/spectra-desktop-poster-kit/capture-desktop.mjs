@@ -1,0 +1,49 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {createServer} from 'vite';
+import {chromium} from '/private/tmp/spectra-mobile-hero-tools/node_modules/playwright/index.mjs';
+import {getCombinedDemoTracks} from '../../../src/taste/demoUniverses.js';
+const out=path.dirname(fileURLToPath(import.meta.url)),all=getCombinedDemoTracks().map(t=>{if(!t.coverUrl.startsWith('data:image/svg+xml;utf8,'))return t;const url='data:image/svg+xml;base64,'+Buffer.from(decodeURIComponent(t.coverUrl.split(',').slice(1).join(','))).toString('base64');return {...t,coverUrl:url,albumArt:url,imageUrl:url};}),base='http://127.0.0.1:5196';
+const withheld=new Set(['demo-cyber-synthwave-0','demo-cyber-synthwave-1','demo-cyber-synthwave-2','demo-cyber-synthwave-3','demo-midnight-jazz-0','demo-midnight-jazz-1','demo-midnight-jazz-3','demo-midnight-jazz-4']);
+const recs=all.filter(t=>withheld.has(t.id)),library=all.filter(t=>!withheld.has(t.id));
+const audit={created:'2026-11-01',dataset:{all:all.length,discoveryLibrary:library.length,discoveryHeldOut:recs.length,duplicateIds:all.length-new Set(all.map(t=>t.id)).size},screens:[],ui:[],errors:[],warnings:[]};
+const server=await createServer({server:{host:'127.0.0.1',port:5196,strictPort:true}});let browser;
+try{
+ await server.listen();console.log('SERVER READY / DESKTOP 1600 × 1000');
+ browser=await chromium.launch({headless:true,timeout:25000,executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',args:['--enable-unsafe-swiftshader','--force-color-profile=srgb','--hide-scrollbars']});
+ const fontCSS=`@font-face{font-family:'Space Grotesk';font-style:normal;font-weight:300 700;font-display:swap;src:url('${base}/output/design/spectra-desktop-poster-kit/sources/fonts/SpaceGrotesk-Variable.ttf')}@font-face{font-family:Syne;font-weight:400 700;src:url('${base}/output/video/intro15/assets/Syne-SemiBold.ttf')}@font-face{font-family:Syne;font-weight:800;src:url('${base}/output/video/intro15/assets/Syne-ExtraBold.ttf')}`;
+ async function open({route='/taste-map?lang=en',songs=all,recommendations=[]}={}){
+  const context=await browser.newContext({viewport:{width:1600,height:1000},deviceScaleFactor:3,locale:'en-US',colorScheme:'dark',reducedMotion:'reduce'});
+  await context.addInitScript(tracks=>{localStorage.setItem('spectra-tastemap-lang-v1','en');localStorage.setItem('spectra:map-guide:v2:desktop','seen');localStorage.setItem('spectra-tastemap-theme-v1','dark');sessionStorage.setItem('spectra:taste:v5',JSON.stringify({tracks,mapId:'desktop-poster-demo',featuresSource:'spotify-genres',stats:{isDemo:true,fetchedCount:tracks.length,totalAvailable:tracks.length,processedCount:tracks.length,failedCount:0}}));window.YT={PlayerState:{PLAYING:1,PAUSED:2,BUFFERING:3,CUED:5,ENDED:0},Player:class{constructor(_,o){this.e=o.events;setTimeout(()=>this.e.onReady?.({target:this}),0)}cueVideoById(){this.e.onStateChange?.({data:5})}loadVideoById(){this.e.onStateChange?.({data:5})}playVideo(){}pauseVideo(){this.e.onStateChange?.({data:2})}getCurrentTime(){return 0}getDuration(){return 0}destroy(){}}};},songs);
+  await context.route('https://fonts.googleapis.com/**',r=>r.fulfill({contentType:'text/css',body:fontCSS}));
+  await context.route('**/pretendardvariable-dynamic-subset.min.css',r=>r.fulfill({contentType:'text/css',body:''}));
+  await context.route(/\/src\/auth\/supabaseClient\.js(?:\?.*)?$/,r=>r.fulfill({contentType:'application/javascript',body:'export const supabase=null;export function finishGoogleLogin(){return Promise.reject();}'}));
+  await context.route('**/itunes.apple.com/**',r=>r.fulfill({json:{results:[]}}));
+  await context.route('**/api/**',r=>r.fulfill({json:r.request().url().includes('/api/discover?')?{tracks:recommendations}:r.request().url().includes('/youtube/')?{video:{videoId:'offline-demo',title:'Offline preview'}}:{tracks:[]}}));
+  const page=await context.newPage();page.setDefaultTimeout(15000);page.on('pageerror',e=>audit.errors.push(e.message));
+  await page.goto(base+route,{waitUntil:'domcontentloaded',timeout:30000});
+  await page.evaluate(()=>Promise.race([document.fonts.ready,new Promise(r=>setTimeout(r,8000))]));
+  if(route.startsWith('/taste-map')){await page.locator('.tm-bubble-item').first().waitFor();await page.waitForTimeout(3500);await page.locator('.tm-dock-zoom-value').dispatchEvent('click');await page.waitForTimeout(400);}
+  await page.addScriptTag({path:path.join(out,'dom-snapshot.js')});return {page,context};
+ }
+ const settle=async page=>{const c=page.locator('.tm-canvas-wrap');if(await c.isVisible())await c.hover({force:true});await page.waitForTimeout(250);};
+ async function shot(page,name,purpose){await settle(page);await page.screenshot({path:path.join(out,'sources',name+'.png'),timeout:25000});audit.screens.push({name,purpose,viewport:{width:1600,height:1000},pixels:{width:4800,height:3000},libraryCount:await page.locator('.tm-header-live').textContent().catch(()=>null),renderedNodes:await page.locator('.tm-bubble-item').count()});console.log('SCREEN',name);}
+ async function part(page,name,selector){const element=page.locator(selector).first();if(!await element.isVisible()){audit.warnings.push('Not visible: '+name+' '+selector);return;}await settle(page);const data=await page.evaluate(s=>window.snapshotUI(s),selector);await fs.writeFile(path.join(out,'sources',name+'.json'),JSON.stringify(data));await element.screenshot({path:path.join(out,'sources',name+'-reference.png'),timeout:25000});audit.ui.push({name,selector,width:data.width,height:data.height,runs:data.runs.length});console.log('UI',name,Math.round(data.width),Math.round(data.height));}
+ async function feature(name,work){try{await work();}catch(e){audit.warnings.push(name+': '+e.message);console.error('FEATURE',name,e.message);}}
+ const main=await open();const p=main.page;
+ await shot(p,'01-desktop-taste-field','Full desktop service interface, 69-track taste field');
+ for(const [n,s]of [['01-header','.tm-header'],['02-view-toolbar','.tm-axis-panel'],['03-region-tags','.tm-map-tag-strip'],['04-zoom-controls','.tm-dock-zoom'],['05-map-actions','.tm-dock-actions'],['06-taste-field-map','.tm-canvas-wrap']])await part(p,n,s);
+ if(process.argv.includes('--probe')){console.log(await p.locator('button').allTextContents());}
+ else{
+ await feature('map-overview',async()=>{await p.locator('.tm-dock-zoom-value').dispatchEvent('click');await shot(p,'02-map-overview','Full album map at fit-to-content camera');await part(p,'07-map-overview','.tm-bubble-wrap');});
+ await feature('spectra-map',async()=>{await p.locator('[data-map-view="constellation"]').click();await p.waitForTimeout(700);await shot(p,'03-spectra-map','Constellation map view');await part(p,'08-constellation-map','.tm-canvas-wrap');});
+ await feature('track-card',async()=>{const b=p.locator('.tm-bubble-item .tm-bubble').first();await b.dispatchEvent('click');await p.locator('.ccp-card').waitFor();await shot(p,'04-song-and-constellation','Selected song, grouping preview, listening and voyage actions');await part(p,'09-song-constellation-card','.ccp-card');await part(p,'10-song-actions','.ccp-primary-actions');await part(p,'11-constellation-preview','.ccp-constellation-canvas');await p.locator('.ccp-evidence > summary').first().click();await part(p,'12-grouping-evidence','.ccp-evidence');await p.locator('.ccp-evidence > summary').first().click();});
+ await feature('voyage',async()=>{await p.locator('.ccp-voyage-launch-btn').click();await p.locator('.cv-star').first().waitFor();await shot(p,'05-constellation-voyage','Interactive constellation voyage, paused audio');await part(p,'13-voyage-topbar','.cv-topbar');await part(p,'14-voyage-playback','.cv-dock');await p.getByRole('button',{name:'Open play queue',exact:true}).click();await shot(p,'06-voyage-queue','Direct constellation song queue');await part(p,'15-voyage-queue','.cv-play-queue');await p.getByRole('button',{name:'Close queue',exact:true}).click();await p.getByRole('button',{name:'Return to map',exact:true}).click();});
+ await feature('custom-group',async()=>{await p.locator('.ccp-close-btn').dispatchEvent('click').catch(()=>{});await p.locator('.tm-dock-actions .tm-dock-action').filter({hasText:'Select'}).click();await p.locator('.tm-group-panel').waitFor();for(let i=0;i<3;i++)await p.locator('.tm-bubble-share-select').nth(i).dispatchEvent('click');await p.locator('#tm-custom-group-name').fill('Night Drive');await shot(p,'07-create-music-group','Create a named group from three real demo tracks');await part(p,'16-custom-group-panel','.tm-group-panel');await p.locator('.tm-group-panel-head button').dispatchEvent('click');});
+ await main.context.close();
+ await feature('discovery',async()=>{const d=await open({songs:library,recommendations:recs}),q=d.page;await q.locator('.tm-dock-actions .tm-dock-action').filter({hasText:'New music'}).click();await q.locator('.tm-discovery-song-list li').first().waitFor();await shot(q,'09-new-music-discovery','Demo discovery: 61 library tracks plus 8 held-out real demo tracks');await part(q,'19-discovery-panel','.tm-discovery-panel');await part(q,'20-discovery-song-row','.tm-discovery-song-list li');await part(q,'21-discovery-controls','.tm-discovery-list-meta');await d.context.close();});
+ await feature('landing',async()=>{const l=await open({route:'/?lang=en'}),q=l.page;await q.locator('.llp-hero-section').waitFor();await q.waitForTimeout(1000);await shot(q,'00-web-landing','Actual desktop landing hero');await part(q,'22-landing-navigation','.llp-nav');await l.context.close();});
+ }
+ await fs.writeFile(path.join(out,'capture-audit.json'),JSON.stringify(audit,null,2));console.log('DONE',audit.screens.length,'desktop screens',audit.ui.length,'UI modules',JSON.stringify(audit.warnings));
+}finally{await browser?.close();await server.close();}
