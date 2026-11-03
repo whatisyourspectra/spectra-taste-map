@@ -2,7 +2,7 @@ import { genreParents, trackGenreTags } from './musicTags.js';
 
 // Shared by the worker and diagnostics so saved/legacy and newly imported maps
 // use the same vocabulary. Every track has unit norm regardless of tag count.
-export function buildGenreFeatures(tracks, { maxGenres = 32, maxParents = 8 } = {}) {
+export function buildGenreFeatures(tracks, { maxGenres = 128, maxParents = 16 } = {}) {
     const directCounts = new Map(), parentCounts = new Map(), documents = new Map();
     const signals = tracks.map(track => {
         const values = new Map();

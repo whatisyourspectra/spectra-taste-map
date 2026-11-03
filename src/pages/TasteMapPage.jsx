@@ -11,7 +11,7 @@ import { createVoyageGraph, extendVoyage, undoVoyageExpansion } from '../taste/v
 import { getGenreIdentity, normalizeGenre } from '../taste/genreIdentity';
 import { useTasteData } from '../context/TasteDataContext';
 import { uniqueTracks, getTasteGenres } from '../taste/buildTasteState';
-import { clusterGenreName } from '../taste/clusterEvidence';
+import { clusterGenreName, rankClusterGenres, representativeClusterGenres } from '../taste/clusterEvidence';
 import { fetchDesktopRecommendations } from '../taste/desktopDiscovery';
 import DesktopDiscoveryPanel from './DesktopDiscoveryPanel';
 import TasteMapMetroStudio from './TasteMapMetroStudio';
@@ -38,7 +38,7 @@ const TM_FETCH_CACHE_TTL_MS = 10 * 60 * 1000;
 const TM_CLUSTER_CACHE_TTL_MS = 10 * 60 * 1000;
 const TM_LIBRARY_CACHE_TTL_MS = 10 * 60 * 1000;
 const TM_FETCH_CACHE_PREFIX = 'taste-map-fetch-v7';
-const TM_CLUSTER_CACHE_PREFIX = 'taste-map-cluster-v4';
+const TM_CLUSTER_CACHE_PREFIX = 'taste-map-cluster-v5';
 const TM_LIBRARY_CACHE_PREFIX = 'taste-map-library-v1';
 
 const TM_THEME_STORAGE_KEY = 'spectra-tastemap-theme-v1';
@@ -1918,7 +1918,7 @@ export default function TasteMapPage() {
             const fv = FEATURE_KEYS.map((key) => Math.round(getTrackFeature(track, key) * 1000)).join(',');
             return `${track.id}:${fv}`;
         }).join('|'))}`;
-        const clusterCacheKey = `${TM_CLUSTER_CACHE_PREFIX}|u:${cacheUserId}|s:${source}|b:${clusterBasis}|alg:dbscan-v3|sig:${trackSignature}`;
+        const clusterCacheKey = `${TM_CLUSTER_CACHE_PREFIX}|u:${cacheUserId}|s:${source}|b:${clusterBasis}|alg:genre-anchor-v1|sig:${trackSignature}`;
         const clusterHit = readSessionCache(clusterCacheKey, TM_CLUSTER_CACHE_TTL_MS);
         if (clusterHit && Array.isArray(clusterHit.assignments) && Array.isArray(clusterHit.centroids)) {
             // Genre centroids and member distances must use the same embedding.
@@ -1994,14 +1994,7 @@ export default function TasteMapPage() {
                     const sum = members.reduce((acc, track) => acc + getTrackFeature(track, key), 0);
                     return sum / members.length;
                 });
-                const genreCount = new Map();
-                members.forEach((track) => {
-                    getTrackGenres(track).forEach((genre) => {
-                        genreCount.set(genre, (genreCount.get(genre) || 0) + 1);
-                    });
-                });
-                const topGenres = [...genreCount.entries()]
-                    .sort((a, b) => b[1] - a[1])
+                const topGenres = rankClusterGenres(members)
                     .slice(0, 6)
                     .map(([genre]) => genre);
                 const isNoiseCluster = effectiveClusterBasis === 'genre'
@@ -2013,7 +2006,7 @@ export default function TasteMapPage() {
                     : isNoiseCluster
                     ? { name: 'Mixed / Other', symbol: 'matrix' }
                     : effectiveClusterBasis === 'genre'
-                        ? getGenreClusterLabel(topGenres)
+                        ? getGenreClusterLabel(representativeClusterGenres(members))
                         : getClusterLabel(displayCentroid);
                 return {
                     j,

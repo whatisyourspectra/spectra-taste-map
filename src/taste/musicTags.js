@@ -1,6 +1,6 @@
 // Product taxonomy: explicit aliases and conservative genre relations, not an
 // audio classifier. Unknown community tags stay available for later review.
-export const MUSIC_TAG_VERSION = 1;
+export const MUSIC_TAG_VERSION = 2;
 
 const aliases = new Map(Object.entries({
     'hip-hop': 'hip hop', hiphop: 'hip hop', 'hip hop music': 'hip hop',
@@ -38,6 +38,8 @@ const styles = new Set(['acoustic', 'instrumental', 'vocal', 'vocals', 'piano', 
 const contexts = new Set(('favorites|favourites|favorite|favourite|love|loved|seen live|female vocalists|male vocalists|female vocalist|male vocalist|singer|american|british|korean|japanese|french|german|canadian|taiwanese|korea|japan|english|korean language|spotify|last.fm|music').split('|'));
 const standaloneGenres = new Set(('indie|alternative|electronic|electronica|edm|idm|ebm|electro|experimental|avant-garde|ambient|downtempo|chillout|chillwave|vaporwave|synthwave|retrowave|synthpop|electropop|hyperpop|artpop|citypop|sophisti-pop|shoegaze|grunge|emo|screamo|hardcore|post-hardcore|metalcore|deathcore|grindcore|ska|reggae|dub|dancehall|reggaeton|reggaetón|soca|afrobeat|afrobeats|highlife|amapiano|bossa nova|samba|salsa|tango|flamenco|fado|bhangra|klezmer|qawwali|gamelan|skweee|bluegrass|americana|singer-songwriter|chanson|new age|drone|breakbeat|breaks|jungle|dubstep|brostep|garage|ukg|2-step|future bass|bass music|grime|trap|rap|boom bap|phonk|g-funk|r&b|drum and bass|lo-fi|soundtrack|score|cinematic|orchestral|opera|baroque|romantic classical|classical piano|minimalism|world|world music|gospel|spiritual|ballad|trot|comedy|spoken word|a cappella|acapella').split('|'));
 const genreEnding = /(?:^|[\s-])(?:pop|rock|metal|punk|jazz|blues|soul|funk|disco|house|techno|trance|folk|country|classical|indie|ambient|electronic|electronica|rap|hip hop|r&b|drum and bass|garage|dubstep|reggae|soundtrack|swing|bossa nova|shoegaze|afrobeats|afrobeat|dancehall)$/;
+const knownGenreNames = new Set([...standaloneGenres, ...aliases.values(),
+    ...'pop|rock|metal|punk|jazz|blues|soul|funk|disco|house|techno|trance|folk|country|classical|hip hop|swing'.split('|')]);
 const contextPattern = /^(?:i (?:love|like)|my |best |favorite |favourite |seen |music for |songs? for |albums? of |\d+ stars?\b)|\b(?:to check out|to listen|seen live)\b/;
 
 export function classifyMusicTags(values = [], { exclude = [] } = {}) {
@@ -51,7 +53,7 @@ export function classifyMusicTags(values = [], { exclude = [] } = {}) {
     });
     for (const tag of new Set(normalized)) {
         // A song/artist called "Jazz" must not erase a legitimate Jazz tag.
-        if (blocked.has(tag) && !standaloneGenres.has(tag) && !genreEnding.test(tag)) { result.contextTags.push(tag); continue; }
+        if (blocked.has(tag) && !knownGenreNames.has(tag)) { result.contextTags.push(tag); continue; }
         const era = tag.match(/^(?:(\d{4})|['’]?(\d{2}))'?s$/);
         if (era) {
             const year = era[1] || `${Number(era[2]) >= 30 ? '19' : '20'}${era[2]}`;

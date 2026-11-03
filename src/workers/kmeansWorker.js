@@ -1,5 +1,6 @@
-// Density-based clustering Web Worker (DBSCAN with automatic epsilon)
+// Genre profiles use bounded seed similarity; audio features use DBSCAN.
 import { buildGenreFeatures } from '../taste/genreFeatures.js';
+import { clusterGenreProfiles } from '../taste/genreClustering.js';
 const FEATURE_KEYS = ['valence', 'energy', 'danceability', 'acousticness', 'instrumentalness'];
 const FEATURE_META = {
     valence:          { fallback: 0.5 },
@@ -332,7 +333,7 @@ self.onmessage = ({ data }) => {
         }
     }
 
-    if (points.length < 3) {
+    if (!usingGenre && points.length < 3) {
         self.postMessage({
             assignments: points.map(() => 0),
             centroids: [points.reduce((acc, cur) => acc.map((v, idx) => v + cur[idx]), Array(points[0].length).fill(0)).map((v) => v / points.length)],
@@ -346,33 +347,38 @@ self.onmessage = ({ data }) => {
         return;
     }
 
-    const { minPts, eps } = estimateDbscanParams(points);
-    const tight = dbscan(points, eps * 0.88, Math.max(3, minPts - 1));
-    const base = dbscan(points, eps, minPts);
-    const wide = dbscan(points, eps * 1.12, minPts);
+    let best;
+    if (usingGenre) {
+        best = clusterGenreProfiles(tracks, points, derivedGenreVocab);
+    } else {
+        const { minPts, eps } = estimateDbscanParams(points);
+        const tight = dbscan(points, eps * 0.88, Math.max(3, minPts - 1));
+        const base = dbscan(points, eps, minPts);
+        const wide = dbscan(points, eps * 1.12, minPts);
 
-    const candidates = [tight, base, wide].map((candidate) => {
-        const clusterCount = Math.max(0, candidate.clusterCount);
-        const noiseCount = candidate.labels.filter((label) => label < 0).length;
-        const clusterSizes = Array(clusterCount).fill(0);
-        candidate.labels.forEach((label) => { if (label >= 0) clusterSizes[label] += 1; });
-        const nonTinyClusters = clusterSizes.filter((size) => size >= 4).length;
-        const largestShare = clusterSizes.length ? Math.max(...clusterSizes) / points.length : 1;
-        const noiseRatio = noiseCount / points.length;
-        const compactness = clusterCount > 0
-            ? average(clusterSizes.filter(Boolean).map((size) => Math.abs(size - points.length / clusterCount)))
-            : points.length;
-        const score =
-            nonTinyClusters * 3.2
-            + Math.min(clusterCount, 18) * 1.3
-            - Math.abs(largestShare - 0.38) * 2.5
-            - noiseRatio * 4.5
-            - compactness / Math.max(1, points.length) * 1.6;
-        return { ...candidate, score };
-    });
+        const candidates = [tight, base, wide].map((candidate) => {
+            const clusterCount = Math.max(0, candidate.clusterCount);
+            const noiseCount = candidate.labels.filter((label) => label < 0).length;
+            const clusterSizes = Array(clusterCount).fill(0);
+            candidate.labels.forEach((label) => { if (label >= 0) clusterSizes[label] += 1; });
+            const nonTinyClusters = clusterSizes.filter((size) => size >= 4).length;
+            const largestShare = clusterSizes.length ? Math.max(...clusterSizes) / points.length : 1;
+            const noiseRatio = noiseCount / points.length;
+            const compactness = clusterCount > 0
+                ? average(clusterSizes.filter(Boolean).map((size) => Math.abs(size - points.length / clusterCount)))
+                : points.length;
+            const score =
+                nonTinyClusters * 3.2
+                + Math.min(clusterCount, 18) * 1.3
+                - Math.abs(largestShare - 0.38) * 2.5
+                - noiseRatio * 4.5
+                - compactness / Math.max(1, points.length) * 1.6;
+            return { ...candidate, score };
+        });
 
-    candidates.sort((a, b) => b.score - a.score);
-    const best = candidates[0];
+        candidates.sort((a, b) => b.score - a.score);
+        best = candidates[0];
+    }
     const assignments = [...best.labels];
     const noiseIdx = [];
     assignments.forEach((label, idx) => {

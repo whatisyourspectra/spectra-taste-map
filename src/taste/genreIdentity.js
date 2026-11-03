@@ -46,7 +46,7 @@ export function titleizeGenre(genre) {
     return String(genre || '')
         .split(/[\s-]+/)
         .filter(Boolean)
-        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .map((part) => part.toLowerCase() === 'r&b' ? 'R&B' : part.charAt(0).toUpperCase() + part.slice(1))
         .join(' ');
 }
 
