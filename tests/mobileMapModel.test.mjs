@@ -24,7 +24,7 @@ test('discovery cannot duplicate a library song through a different provider ID'
 });
 test('featureless and untagged imports remain explorable with honest grouping', () => {
  const model=buildMobileMapModel([{id:'a',name:'Pending',artists:'Artist',metadataPending:true},{id:'b',name:'No tags',artists:'Artist'}]);
- assert.equal(model.library[0].mapGroup,'Genre Unknown');assert.equal(model.library[1].mapGroup,'Genre Unknown');
+ assert.equal(model.library[0].mapGroup,'Mixed');assert.equal(model.library[1].mapGroup,'Mixed');
  assert.equal(model.genres.length,1);assert.equal(model.genres[0].count,2);
  assert.ok(model.library.every(track=>track.mapGenreKey===model.genres[0].key));
  assert.deepEqual(buildMobileMapModel([]),{genres:[],library:[],recommendations:[]});

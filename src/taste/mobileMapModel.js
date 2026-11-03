@@ -1,6 +1,6 @@
 import { getTasteGenres, uniqueTracks } from './buildTasteState.js';
 import { getGenreIdentity } from './genreIdentity.js';
-import { partitionGenreTracks } from './genreClustering.js';
+import { partitionGenreTracks, MIXED_GENRE_LABEL } from './genreClustering.js';
 import { hash01 } from './constellationTopology.js';
 import { importTrackKey } from '../utils/parseTrackList.js';
 
@@ -31,7 +31,7 @@ export function buildMobileMapModel(library = [], recommendations = []) {
             x: bounded(anchor.x + Math.cos(angle) * radius + (validFeatures ? (bounded(track.valence) - .5) * .08 : 0)),
             y: bounded(anchor.y + Math.sin(angle) * radius + (validFeatures ? (bounded(track.energy) - .5) * .08 : 0)),
             mapColor: primary?.color || '#a3b4d4',
-            mapGroup: primary?.label || 'Genre Unknown',
+            mapGroup: primary?.label || MIXED_GENRE_LABEL,
             mapGenreKey: primary?.key || null,
             mapRecommended: recommended,
         };

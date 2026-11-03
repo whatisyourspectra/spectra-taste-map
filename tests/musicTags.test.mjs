@@ -95,6 +95,6 @@ test('actual worker groups spelling variants together and excludes non-genre met
         assert.equal(output.genreGroups.reduce((sum, item) => sum + item.count, 0), diverse.length);
         self.onmessage({ data: { tracks: [{ genres: [] }, { genres: ['happy'] }], clusterBasis: 'genre' } });
         assert.equal(output.effectiveClusterBasis, 'genre');
-        assert.equal(output.genreGroups[0].name, 'Genre Unknown');
+        assert.equal(output.genreGroups[0].name, 'Mixed');
     } finally { delete globalThis.self; }
 });

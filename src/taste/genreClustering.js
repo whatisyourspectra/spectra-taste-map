@@ -3,6 +3,7 @@ import { titleizeGenre } from './genreIdentity.js';
 
 export const MAX_GENRE_GROUPS = 15;
 export const GENRE_PARTITION_VERSION = 2;
+export const MIXED_GENRE_LABEL = 'Mixed';
 
 // Broad navigation families, never additional tags written onto songs.
 // Fourteen families leave room for one bucket with no genre evidence.
@@ -60,7 +61,7 @@ export function partitionGenreTracks(tracks = []) {
             votes.set(family, (votes.get(family) || 0) + 1 + genreParents(genre).length * .1);
         }
         const family = [...votes].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0] || 'unknown';
-        if (!roots.has(family)) roots.set(family, makeNode(family, families[family] || 'Genre Unknown', family === 'unknown' ? 'unknown' : family === 'other' ? 'other' : 'genre'));
+        if (!roots.has(family)) roots.set(family, makeNode(family, families[family] || MIXED_GENRE_LABEL, family === 'unknown' ? 'unknown' : family === 'other' ? 'other' : 'genre'));
         const root = roots.get(family);
         root.indices.push(index);
         if (family === 'unknown') { root.terminal.push(index); return; }

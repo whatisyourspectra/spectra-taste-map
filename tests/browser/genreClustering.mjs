@@ -42,7 +42,7 @@ try {
     const chips = page.locator('.tm-map-tag-chip[data-region]');
     await page.waitForFunction(() => document.querySelectorAll('.tm-map-tag-chip[data-region]').length === 4);
     const names = (await chips.locator('.tm-map-tag-name').allTextContents()).sort();
-    assert.ok(names.includes('장르 정보 없음'));
+    assert.ok(names.includes('Mixed'));
     const frankChip = chips.filter({ hasText: /R&B/ }).first();
     await frankChip.click();
     await page.waitForFunction(() => document.querySelectorAll('.tm-bubble-item.cluster-focus').length === 12);
@@ -102,7 +102,7 @@ try {
     assert.equal(data.genreGroups.length, 15);
     assert.ok(data.assignments.every(id => Number.isInteger(id) && id >= 0 && id < 15));
     assert.equal(data.genreGroups.reduce((sum, group) => sum + group.count, 0), diverse.length);
-    await complete.locator('.tm-map-tag-chip').filter({ hasText: '장르 정보 없음' }).click();
+    await complete.locator('.tm-map-tag-chip').filter({ hasText: 'Mixed' }).click();
     await complete.waitForFunction(() => document.querySelectorAll('.tm-bubble-item.cluster-focus').length === 5);
     assert.ok((await complete.locator('.tm-bubble-item.cluster-focus').evaluateAll(nodes => nodes.map(node => node.dataset.bubbleId))).every(id => id.startsWith('pending-')));
     await complete.screenshot({ path: `${output}/complete-15-tags.png` });

@@ -12,7 +12,7 @@ import { getGenreIdentity, normalizeGenre } from '../taste/genreIdentity';
 import { useTasteData } from '../context/TasteDataContext';
 import { uniqueTracks, getTasteGenres } from '../taste/buildTasteState';
 import { clusterGenreName, rankClusterGenres, representativeClusterGenres } from '../taste/clusterEvidence';
-import { GENRE_PARTITION_VERSION, MAX_GENRE_GROUPS } from '../taste/genreClustering';
+import { GENRE_PARTITION_VERSION, MAX_GENRE_GROUPS, MIXED_GENRE_LABEL } from '../taste/genreClustering';
 import { fetchDesktopRecommendations } from '../taste/desktopDiscovery';
 import DesktopDiscoveryPanel from './DesktopDiscoveryPanel';
 import TasteMapMetroStudio from './TasteMapMetroStudio';
@@ -2014,7 +2014,7 @@ export default function TasteMapPage() {
                 const label = demoUniverse
                     ? { name: translate(demoUniverse.koreanName, [], lang), symbol: demoUniverse.symbol }
                     : isNoiseCluster
-                    ? { name: lang === 'en' ? 'Genre Unknown' : '장르 정보 없음', symbol: 'matrix' }
+                    ? { name: MIXED_GENRE_LABEL, symbol: 'matrix' }
                     : effectiveClusterBasis === 'genre'
                         ? (genreGroups[j] ? { name: genreGroups[j].name, symbol: 'headset' } : getGenreClusterLabel(representativeClusterGenres(members)))
                         : getClusterLabel(displayCentroid);
