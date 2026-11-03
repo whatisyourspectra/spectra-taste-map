@@ -10,8 +10,10 @@ import './AuthPage.css';
 
 function AuthSurface({ children }) {
     return <main className="sa-page"><div className="sa-card">
-        <Link to="/" className="sa-wordmark" aria-label="SPECTRA home"><SpectraLogo decorative /></Link>
-        <LanguageSwitcher />
+        <div className="sa-brand-row">
+            <Link to="/" className="sa-wordmark" aria-label="SPECTRA home"><SpectraLogo decorative /></Link>
+            <LanguageSwitcher />
+        </div>
         {children}
     </div></main>;
 }

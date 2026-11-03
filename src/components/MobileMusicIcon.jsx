@@ -1,4 +1,5 @@
 const paths = {
+    social: <><circle cx="9" cy="8" r="3" /><path d="M3 21v-2a6 6 0 0 1 12 0v2M16 5a3 3 0 0 1 0 6M21 21v-2a6 6 0 0 0-4-5.65" /></>,
     play: <path d="m9 5 10 7-10 7Z" />,
     external: <><path d="M14 4h6v6M20 4l-9 9" /><path d="M10 5H5a1 1 0 0 0-1 1v13a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1v-5" /></>,
     heart: <path d="m12 20-8-7.6a5 5 0 0 1 7-7L12 6.5l1-1.1a5 5 0 0 1 7 7Z" />,

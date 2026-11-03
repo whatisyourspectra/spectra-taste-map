@@ -1,0 +1,35 @@
+{
+  "renders": [
+    {
+      "name": "03-macbook-front-8k",
+      "device": "macbook-front",
+      "width": 1920,
+      "height": 1440,
+      "stats": {
+        "calls": 14,
+        "triangles": 17808
+      }
+    },
+    {
+      "name": "04-macbook-angle-8k",
+      "device": "macbook-angle",
+      "width": 1920,
+      "height": 1440,
+      "stats": {
+        "calls": 14,
+        "triangles": 17808
+      }
+    },
+    {
+      "name": "05-imac-angle-8k",
+      "device": "imac-angle",
+      "width": 1920,
+      "height": 1440,
+      "stats": {
+        "calls": 7,
+        "triangles": 12314
+      }
+    }
+  ],
+  "errors": []
+}

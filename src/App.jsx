@@ -17,6 +17,7 @@ import { DEMO_UNIVERSES, getCombinedDemoTracks } from './taste/demoUniverses';
 import SharedMapPage from './share/SharedMapPage';
 import SharedCardPage from './share/SharedCardPage';
 import MapOnboarding from './onboarding/MapOnboarding';
+import SocialPage from './social/SocialPage';
 import SpectraLogo from './components/SpectraLogo';
 import { isDemoTaste } from './taste/tasteStorage';
 
@@ -56,6 +57,8 @@ function AppInner({ onRestorePersonalMap }) {
         element={hasTaste ? <LegacyMobileTasteRoute /> : emptyMap}
       />
       <Route path="/mobile-start" element={<MobileStart />} />
+      <Route path="/social" element={<SocialPage />} />
+      <Route path="/social/:profileId" element={<SocialPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

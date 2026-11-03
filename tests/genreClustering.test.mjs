@@ -1,13 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildGenreFeatures } from '../src/taste/genreFeatures.js';
-import { clusterGenreProfiles, MIN_GENRE_SIMILARITY } from '../src/taste/genreClustering.js';
+import { partitionGenreTracks, MAX_GENRE_GROUPS } from '../src/taste/genreClustering.js';
 import { representativeClusterGenres, getClusterEvidence, clusterGenreName } from '../src/taste/clusterEvidence.js';
 import { trackGenreTags } from '../src/taste/musicTags.js';
 
 function group(tracks, options) {
     const features = buildGenreFeatures(tracks, options);
-    return { ...features, ...clusterGenreProfiles(tracks, features.points, features.vocab) };
+    return { ...features, ...partitionGenreTracks(tracks) };
 }
 const repeated = (prefix, genres, count = 12) => Array.from({ length: count }, (_, i) => ({ id: `${prefix}-${i}`, genres }));
 const partition = (tracks, labels) => [...new Set(labels.filter(label => label >= 0))]
@@ -24,7 +24,7 @@ test('Frank Ocean artist-tag fixture stays separate from East Asian indie scenes
         ...repeated('western-indie', ['indie pop', 'dream pop', 'pop']),
     ];
     const result = group(tracks);
-    assert.equal(result.clusterCount, 4);
+    assert.ok(result.clusterCount <= MAX_GENRE_GROUPS);
     assert.notEqual(result.labels[0], result.labels[12]);
     assert.notEqual(result.labels[0], result.labels[24]);
     const members = tracks.filter((_, i) => result.labels[i] === result.labels[0]);
@@ -49,10 +49,6 @@ test('bridge tracks cannot transitively merge disjoint genres', () => {
         const common = trackGenreTags(tracks[indices[0]]).filter(genre =>
             indices.every(index => trackGenreTags(tracks[index]).includes(genre)));
         assert.ok(common.length, 'Every cluster has at least one direct genre shared by ALL members');
-        // A fixed observed seed must explain the whole group; pairwise chains
-        // and a moving centroid are not sufficient evidence.
-        assert.ok(indices.some(anchor => indices.every(index =>
-            result.points[anchor].reduce((sum, v, d) => sum + v * result.points[index][d], 0) >= MIN_GENRE_SIMILARITY - 1e-10)));
     }
     const reversed = [...tracks].reverse();
     assert.deepEqual(partition(reversed, group(reversed).labels), partition(tracks, result.labels));
@@ -67,16 +63,19 @@ test('a minority scene tag cannot name the entire cluster, while real scene evid
     assert.deepEqual(representativeClusterGenres([]), []);
 });
 
-test('rare genres survive beyond the old 32-tag limit; untagged and parent-only vectors stay unclassified', () => {
+test('all rare genres are included within 15 tags, independent of embedding vocabulary limits', () => {
     const tracks = Array.from({ length: 80 }, (_, i) => repeated(`genre-${i}`, [`style ${i} house`], 3)).flat();
     tracks.push(...repeated('unknown', ['happy', 'favorites'], 5));
     const result = group(tracks);
-    assert.equal(result.clusterCount, 80);
+    assert.equal(result.clusterCount, 15);
     assert.ok(tracks.slice(0, -5).every((_, i) => result.labels[i] >= 0));
-    assert.ok(result.labels.slice(-5).every(label => label === -1));
+    assert.ok(result.labels.slice(-5).every(label => label === result.noiseClusterId));
+    assert.equal(result.groups.reduce((sum, item) => sum + item.count, 0), tracks.length);
+    assert.equal(result.groups[result.noiseClusterId].kind, 'unknown');
     const capped = group([...repeated('common', ['deep house'], 20), ...repeated('rare', ['tech house'], 3)], { maxGenres: 1, maxParents: 8 });
-    assert.ok(capped.labels.slice(-3).every(label => label === -1), 'Shared broad parents cannot replace missing direct evidence');
-    assert.equal(group([{ genres: ['r&b'] }, { genres: ['taiwanese indie'] }]).clusterCount, 0);
+    assert.ok(capped.labels.slice(-3).every(label => label >= 0), 'Navigation does not discard tags omitted from the embedding');
+    assert.notEqual(capped.labels[0], capped.labels.at(-1));
+    assert.equal(group([{ genres: ['r&b'] }, { genres: ['taiwanese indie'] }]).clusterCount, 2);
 });
 
 test('artist names ending in genre words are not genres, but actual genre names remain valid', () => {
@@ -87,7 +86,7 @@ test('artist names ending in genre words are not genres, but actual genre names 
     assert.equal(clusterGenreName(['alternative r&b']), 'Alternative R&B');
 });
 
-test('actual worker routes unknown tracks to Mixed / Other and never merges two unrelated small libraries', async () => {
+test('actual worker includes an explicit unknown group and keeps unrelated small libraries separate', async () => {
     let output;
     globalThis.self = { postMessage: value => { output = value; } };
     try {
@@ -101,6 +100,35 @@ test('actual worker routes unknown tracks to Mixed / Other and never merges two 
         assert.equal(output.centroids.length, 3);
         assert.ok(output.projection3D.every(point => point.every(Number.isFinite)));
         self.onmessage({ data: { tracks: [tracks[0], tracks[3]], clusterBasis: 'genre' } });
-        assert.ok(output.assignments.every(label => label === output.noiseClusterId));
+        assert.equal(new Set(output.assignments).size, 2);
+        assert.equal(output.noiseClusterId, null);
     } finally { delete globalThis.self; }
+});
+
+test('partition is exhaustive, exclusive, order independent and immutable across 5,000 diverse imports', () => {
+    const styles = ['deep house', 'tech house', 'techno', 'synthpop', 'j-pop', 'k-pop', 'folk', 'indie rock', 'metal', 'punk', 'jazz', 'blues', 'r&b', 'neo soul', 'hip hop', 'trap', 'classical', 'soundtrack', 'reggae', 'ambient', 'afrobeats', 'experimental', 'chill'];
+    const tracks = Array.from({ length: 5000 }, (_, i) => ({ id: `song-${i}`, name: `Song ${i}`, genres: i % 31 ? [styles[i % styles.length], styles[(i * 7) % styles.length]] : [], valence: null, metadataPending: i % 31 === 0 }));
+    const before = JSON.stringify(tracks);
+    const result = partitionGenreTracks(tracks);
+    assert.equal(result.labels.length, tracks.length);
+    assert.ok(result.groups.length <= 15);
+    assert.equal(result.groups.reduce((sum, item) => sum + item.count, 0), tracks.length);
+    result.groups.forEach((group, id) => assert.equal(result.labels.filter(label => label === id).length, group.count));
+    assert.ok(result.labels.every(label => Number.isInteger(label) && label >= 0 && label < result.groups.length));
+    const reversed = [...tracks].reverse().map(track => ({ ...track, genres: [...track.genres].reverse() }));
+    const other = partitionGenreTracks(reversed);
+    assert.deepEqual(other.groups, result.groups);
+    assert.deepEqual(other.labels.reverse(), result.labels);
+    assert.equal(JSON.stringify(tracks), before);
+});
+
+test('empty, single-song and entirely untagged libraries have complete honest partitions', () => {
+    assert.equal(partitionGenreTracks([]).clusterCount, 0);
+    const single = partitionGenreTracks([{ genres: ['jazz'] }]);
+    assert.deepEqual(single.labels, [0]);
+    assert.equal(single.groups[0].name, 'Jazz');
+    const unknown = partitionGenreTracks([{ genres: [] }, { genres: ['happy'] }, { metadataPending: true }]);
+    assert.deepEqual(unknown.labels, [0, 0, 0]);
+    assert.equal(unknown.groups[0].kind, 'unknown');
+    assert.equal(unknown.groups[0].count, 3);
 });

@@ -1,0 +1,105 @@
+{
+  "pass": true,
+  "variants": [
+    {
+      "file": "01-spectra-glow-transparent.svg",
+      "circles": 210,
+      "lines": 74,
+      "png": [
+        4096,
+        4096
+      ],
+      "native_vector": true
+    },
+    {
+      "file": "02-spectra-glow-dark.svg",
+      "circles": 210,
+      "lines": 74,
+      "png": [
+        4096,
+        4096
+      ],
+      "native_vector": true
+    },
+    {
+      "file": "03-spectra-rotation-a.svg",
+      "circles": 210,
+      "lines": 74,
+      "png": [
+        4096,
+        4096
+      ],
+      "native_vector": true
+    },
+    {
+      "file": "04-spectra-rotation-b.svg",
+      "circles": 210,
+      "lines": 74,
+      "png": [
+        4096,
+        4096
+      ],
+      "native_vector": true
+    },
+    {
+      "file": "05-spectra-crisp-color.svg",
+      "circles": 138,
+      "lines": 74,
+      "png": [
+        4096,
+        4096
+      ],
+      "native_vector": true
+    },
+    {
+      "file": "06-spectra-crisp-white.svg",
+      "circles": 69,
+      "lines": 74,
+      "png": [
+        4096,
+        4096
+      ],
+      "native_vector": true
+    },
+    {
+      "file": "07-spectra-stars-only.svg",
+      "circles": 210,
+      "lines": 0,
+      "png": [
+        4096,
+        4096
+      ],
+      "native_vector": true
+    },
+    {
+      "file": "08-spectra-links-only.svg",
+      "circles": 0,
+      "lines": 74,
+      "png": [
+        4096,
+        4096
+      ],
+      "native_vector": true
+    },
+    {
+      "file": "09-spectra-dense-example.svg",
+      "circles": 224,
+      "lines": 74,
+      "png": [
+        4096,
+        4096
+      ],
+      "native_vector": true
+    },
+    {
+      "file": "10-spectra-dense-example-dark.svg",
+      "circles": 224,
+      "lines": 74,
+      "png": [
+        4096,
+        4096
+      ],
+      "native_vector": true
+    }
+  ]
+}

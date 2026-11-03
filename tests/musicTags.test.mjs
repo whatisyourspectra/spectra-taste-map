@@ -38,7 +38,9 @@ test('legacy maps, mobile filters and cluster evidence use the same cleaned genr
     ];
     const before = JSON.stringify(tracks);
     assert.deepEqual(trackGenreTags(tracks[0]), ['jazz', 'hip hop'], 'A song title must not suppress a real genre');
-    assert.deepEqual(buildMobileMapModel(tracks).genres.map(item => item.key), ['hip hop', 'jazz']);
+    const model = buildMobileMapModel(tracks);
+    assert.equal(model.genres.reduce((sum, item) => sum + item.count, 0), tracks.length);
+    assert.ok(model.library.every(track => track.mapGenreKey));
     assert.deepEqual(getClusterEvidence({ members: tracks }).genres, [{ genre: 'hip hop', label: 'Hip Hop', count: 2 }, { genre: 'jazz', label: 'Jazz', count: 1 }]);
     const state = buildTasteState(tracks);
     assert.equal(state.coreGenres.find(item => item.genre === 'hip hop').strength, .75);
@@ -89,8 +91,10 @@ test('actual worker groups spelling variants together and excludes non-genre met
         const diverse = Array.from({ length: 30 }, (_, group) => Array.from({ length: 20 }, (_, index) => ({ id: `${group}-${index}`, genres: [`style ${group} house`] }))).flat();
         self.onmessage({ data: { tracks: diverse, clusterBasis: 'genre' } });
         assert.equal(output.noiseClusterId, null, 'A large vocabulary must not force coherent small groups into noise');
-        assert.equal(new Set(output.assignments).size, 30);
+        assert.equal(new Set(output.assignments).size, 15);
+        assert.equal(output.genreGroups.reduce((sum, item) => sum + item.count, 0), diverse.length);
         self.onmessage({ data: { tracks: [{ genres: [] }, { genres: ['happy'] }], clusterBasis: 'genre' } });
-        assert.equal(output.effectiveClusterBasis, 'audio');
+        assert.equal(output.effectiveClusterBasis, 'genre');
+        assert.equal(output.genreGroups[0].name, 'Genre Unknown');
     } finally { delete globalThis.self; }
 });

@@ -15,7 +15,6 @@ import { useTasteData } from '../context/TasteDataContext';
 import SharedMapCanvas from '../share/SharedMapCanvas';
 import SpectraShareDialog from '../share/SpectraShareDialog';
 import { buildMobileMapModel, mobileDiscoveryQuery } from '../taste/mobileMapModel';
-import { getTasteGenres } from '../taste/buildTasteState';
 import { isDemoTaste } from '../taste/tasteStorage';
 import { loadReflection, reflectionKey } from '../reflection/reflectionStorage';
 import '../share/SharedMapPage.css';
@@ -63,7 +62,8 @@ function MobileMapExplorer({ requestedStar }) {
     const discoveryQuery = useMemo(() => mobileDiscoveryQuery(seed || tracks[0], featuresSource), [seed, tracks, featuresSource]);
     const requestKey = `${discoveryQuery}:${retry}`;
     const model = useMemo(() => buildMobileMapModel(tracks, discovery.key === requestKey ? discovery.tracks : []), [tracks, discovery, requestKey]);
-    const ownTracks = useMemo(() => genre === 'all' ? model.library : model.library.filter(track => getTasteGenres(track).includes(genre)).map(track => ({ ...track, mapGroup: model.genres.find(item => item.key === genre)?.label, mapColor: model.genres.find(item => item.key === genre)?.color })), [model, genre]);
+    const activeGenre = model.genres.some(item => item.key === genre) ? genre : 'all';
+    const ownTracks = useMemo(() => activeGenre === 'all' ? model.library : model.library.filter(track => track.mapGenreKey === activeGenre), [model, activeGenre]);
     const selected = model.library.find(track => track.id === selectedId);
     const currentChoice = decisions.find(item => item.track.id === selectedId)?.action;
     const collection = ownTracks;
@@ -138,7 +138,7 @@ function MobileMapExplorer({ requestedStar }) {
         if (!selected) return;
         try {
             const track = { ...selected };
-            for (const key of ['x', 'y', 'mapColor', 'mapGroup', 'mapRecommended']) delete track[key];
+            for (const key of ['x', 'y', 'mapColor', 'mapGroup', 'mapGenreKey', 'mapRecommended']) delete track[key];
             recordDecision(action, track, 'mobile-map');
             const stored = loadReflection(localStorage, storageKey).decisions;
             setDecisions(stored);
@@ -157,7 +157,7 @@ function MobileMapExplorer({ requestedStar }) {
     const discoveryDecision = (action, track) => {
         try {
             const clean = { ...track };
-            for (const key of ['x', 'y', 'mapColor', 'mapGroup', 'mapRecommended']) delete clean[key];
+            for (const key of ['x', 'y', 'mapColor', 'mapGroup', 'mapGenreKey', 'mapRecommended']) delete clean[key];
             recordDecision(action, clean, 'mobile-discovery');
             const stored = loadReflection(localStorage, storageKey).decisions;
             setDecisions(stored);
@@ -167,7 +167,7 @@ function MobileMapExplorer({ requestedStar }) {
     const switchTab = next => {
         menuRef.current.open = false;
         setFeedback(null);
-        navigate(next === 'map' ? '/taste-map' : `/taste-map?tab=${next}`);
+        navigate(next === 'social' ? '/social' : next === 'map' ? '/taste-map' : `/taste-map?tab=${next}`);
     };
     const closeOverview = () => navigate('/taste-map', { replace: true });
     useEffect(() => {
@@ -182,13 +182,13 @@ function MobileMapExplorer({ requestedStar }) {
         <div className="mtm-map-content" hidden={tab !== 'map'}>
         <section className="mtm-intro"><div className="mtm-intro-heading"><div><span className="public-map-eyebrow">YOUR MUSIC, YOUR MAP</span><h1>{en ? 'My map' : '내 지도'} <span>{model.library.length.toLocaleString()}{en ? ' tracks' : '곡'}</span></h1></div><button className="mtm-share-entry" type="button" aria-label={t('내 취향 지도 공유하기', 'Share my taste map')} aria-haspopup="dialog" onClick={() => setShareChannel('card')} disabled={!model.library.length}><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 15V3m-4 4 4-4 4 4M5 13v7h14v-7" /></svg><span>{t('공유', 'Share')}</span></button></div><p>{status === 'enriching' ? translate("곡 정보를 연결하고 있어요 · {0} / {1}", [progress.done, progress.total]) : t('좋아하는 음악에서, 다음 취향으로.', 'Your favorite music, your next discovery.')}</p></section>
         <div className="mtm-map-shortcuts"><button className="mtm-overview-entry" type="button" aria-haspopup="dialog" onClick={() => navigate('/taste-map?view=immersive')}><span aria-hidden="true">⌁</span>{en ? 'Explore my taste' : '내 취향 둘러보기'}</button><button className="mtm-kakao-entry" type="button" aria-haspopup="dialog" onClick={() => setShareChannel('kakao')} disabled={!model.library.length}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3C6.5 3 2 6.5 2 10.8c0 2.8 1.9 5.2 4.7 6.6l-1.2 4.2 5.3-3.1 1.2.1c5.5 0 10-3.5 10-7.8S17.5 3 12 3Z" fill="currentColor" /></svg>{en ? 'Share on KakaoTalk' : '카카오톡으로 공유하기'}</button></div>
-        <div className="mtm-genres" role="group" aria-label={t('장르 필터', 'Genre filters')}><button type="button" aria-pressed={genre === 'all'} onClick={() => changeGenre('all')}>{t('전체', 'All')}</button>{model.genres.map(item => <button type="button" key={item.key} style={{ '--genre-color': item.color }} aria-pressed={genre === item.key} onClick={() => changeGenre(item.key)}><i />{item.label}<small>{item.count}</small></button>)}</div>
+        <div className="mtm-genres" role="group" aria-label={t('장르 필터', 'Genre filters')}><button type="button" aria-pressed={activeGenre === 'all'} onClick={() => changeGenre('all')}>{t('전체', 'All')}<small>{model.library.length}</small></button>{model.genres.map(item => <button type="button" key={item.key} style={{ '--genre-color': item.color }} aria-pressed={activeGenre === item.key} onClick={() => changeGenre(item.key)}><i />{item.kind === 'unknown' ? t('장르 정보 없음', 'Genre Unknown') : item.label}<small>{item.count}</small></button>)}</div>
         {((pending > 0 && !stats?.backgroundEnriching) || (cloudSaveStatus === 'error' && !demo)) && <div className="mtm-recovery-bar">
             {pending > 0 && !stats?.backgroundEnriching && <button type="button" onClick={retryImportAnalysis}>{pending}{translate("곡 정보 분석 다시 시도 ↻")}</button>}
             {cloudSaveStatus === 'error' && !demo && <button type="button" onClick={retryCloudSync}>{translate("계정 저장 다시 시도 ↻")}</button>}
         </div>}
         <section className="public-map-workspace" aria-label={translate("내 음악 탐색")}>
-            <SharedMapCanvas key={genre} tracks={ownTracks} selected={selected} focusRequest={focusRequest} view={view} onViewChange={setView} onSelect={choose} onSearch={openSearch} scope="personal" showGroups />
+            <SharedMapCanvas key={activeGenre} tracks={ownTracks} selected={selected} focusRequest={focusRequest} view={view} onViewChange={setView} onSelect={choose} onSearch={openSearch} scope="personal" showGroups />
             <div className="mtm-map-caption">{en ? 'Your music, grouped by genre' : '장르별로 모아 놓은 내 음악'}</div>
             <aside className="public-map-inspector" aria-label={translate("내 음악 곡 패널")}>
                 <button ref={handleRef} type="button" className="public-map-sheet-handle" aria-label={expanded ? translate("내 곡 목록 접기") : translate("내 곡 목록 펼치기")} aria-expanded={expanded} aria-controls="mobile-music-library" onClick={() => { if (!swiped.current) setExpanded(value => !value); swiped.current = false; }} onPointerDown={event => { swipe.current = event.clientY; swiped.current = false; event.currentTarget.setPointerCapture(event.pointerId); }} onPointerUp={endSwipe} onPointerCancel={endSwipe}><span /></button>
@@ -199,7 +199,7 @@ function MobileMapExplorer({ requestedStar }) {
                     <div className="public-map-track-navigation"><button type="button" disabled={collection.length < 2} aria-label={t('이전 내 곡', 'Previous song')} onClick={() => move(-1)}><MobileMusicIcon name="previous" /></button><button type="button" onClick={() => setExpanded(true)}><span className="mtm-track-position">{selectedIndex >= 0 ? `${selectedIndex + 1} / ${collection.length.toLocaleString()}` : t('곡 목록', 'Songs')}</span><span>{t('목록 보기', 'See all')}</span></button><button type="button" disabled={collection.length < 2} aria-label={t('다음 내 곡', 'Next song')} onClick={() => move(1)}><MobileMusicIcon name="next" /></button></div>
                 </section> : <div className="public-map-welcome"><div className="public-map-welcome-heading"><div><span className="public-map-eyebrow">MY MUSIC</span><h2>{en ? 'Which song shall we start with?' : '어떤 곡부터 들어볼까요?'}</h2></div><button className="public-map-browse" type="button" onClick={() => setExpanded(true)} aria-controls="mobile-music-library" aria-expanded={expanded}>{t('곡 목록 ↗', 'Songs ↗')}</button></div><div className="public-map-peek-tracks">{collection.slice(0, 4).map(track => <button type="button" key={track.id} onClick={() => choose(track)}><Cover track={track} /><span><strong>{track.name}</strong><small>{track.artists}</small></span></button>)}</div></div>}
                 <section id="mobile-music-library" className="public-map-library" aria-label={en ? 'My music library' : '내 음악 곡 목록'}>
-                    <div className="public-map-library-heading"><h2>{genre === 'all' ? (en ? 'My music' : '내 음악') : model.genres.find(item => item.key === genre)?.label}<span>{collection.length.toLocaleString()}</span></h2><button className="public-map-library-close" type="button" aria-label={t('내 곡 목록 닫기', 'Close song list')} onClick={closeList}>×</button></div>
+                    <div className="public-map-library-heading"><h2>{activeGenre === 'all' ? (en ? 'My music' : '내 음악') : model.genres.find(item => item.key === activeGenre)?.label}<span>{collection.length.toLocaleString()}</span></h2><button className="public-map-library-close" type="button" aria-label={t('내 곡 목록 닫기', 'Close song list')} onClick={closeList}>×</button></div>
                     <div className="public-map-search"><MobileMusicIcon name="search" /><input ref={searchRef} type="search" aria-label={t('내 곡 또는 아티스트 검색', 'Search my songs or artists')} placeholder={en ? 'Find a song or artist' : '곡 또는 아티스트 찾기'} enterKeyHint="search" value={search} onChange={event => { setSearch(event.target.value); setLimit(50); }} />{search && <button type="button" aria-label={t('내 음악 검색어 지우기', 'Clear search')} onClick={() => { setSearch(''); searchRef.current?.focus(); }}><MobileMusicIcon name="close" /></button>}</div>
                     <div className="public-map-library-scroll" tabIndex={0} aria-label={t('내 음악 목록 스크롤', 'Scroll my music')}>
                             {search && <p className="public-map-results-count" role="status">{translate("검색 결과")} {matches.length.toLocaleString()}{translate("곡")}</p>}
@@ -216,6 +216,7 @@ function MobileMapExplorer({ requestedStar }) {
             { id: 'map', label: en ? 'My map' : '내 지도', icon: 'map' },
             { id: 'discover', label: en ? 'Discover' : '발견', icon: 'compass' },
             { id: 'today', label: en ? 'Today' : '오늘', icon: 'today' },
+            { id: 'social', label: 'Social', icon: 'social' },
         ].map(item => <button key={item.id} type="button" aria-current={tab === item.id ? 'page' : undefined} onClick={() => switchTab(item.id)}><MobileMusicIcon name={item.icon} />{item.label}</button>)}</nav>
         <span className="public-map-sr-only" role="status" aria-live="polite">{selected ? translate("{0}, {1} 선택됨", [selected.name, selected.artists]) : ''}</span>
         {shareChannel && <SpectraShareDialog tracks={model.library} lang={lang} initialChannel={shareChannel} onClose={() => setShareChannel(null)} />}

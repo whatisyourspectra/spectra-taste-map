@@ -1,5 +1,7 @@
 {
   "rewrites": [
+    { "source": "/social", "destination": "/index.html" },
+    { "source": "/social/(.*)", "destination": "/index.html" },
     {
       "source": "/share/map/(.*)",
       "destination": "/index.html"

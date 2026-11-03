@@ -1,0 +1,126 @@
+.social-page { min-height: 100dvh; background: radial-gradient(ellipse at 70% 0%, #35244b30, transparent 45%), #080b13; color: #e7edf8; font-family: inherit; }
+.social-page * { box-sizing: border-box; }
+.social-page a { color: inherit; text-decoration: none; }
+.social-page button, .social-page input, .social-page textarea { font: inherit; }
+.social-page button, .social-page a { -webkit-tap-highlight-color: transparent; }
+.social-page button { cursor: pointer; }
+.social-page button:disabled { cursor: default; opacity: .45; }
+.social-page :is(a, button, input, textarea):focus-visible { outline: 2px solid #a8bbff; outline-offset: 4px; }
+.social-header { height: 92px; max-width: 1440px; margin: auto; padding: 0 48px; display: flex; align-items: center; gap: 52px; border-bottom: 1px solid #a7bce316; }
+.social-header .spectra-logo { width: 170px; }
+.social-header > nav { display: flex; align-self: stretch; gap: 32px; }
+.social-header > nav a { position: relative; display: flex; align-items: center; gap: 7px; color: #97a8c1; font-size: 14px; }
+.social-header > nav a[aria-current] { color: #e2dbff; }
+.social-header > nav a[aria-current]::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 2px; background: #c1a2ff; }
+.social-header > nav span { width: 5px; height: 5px; border-radius: 50%; background: #c1a2ff; }
+.social-header > div { display: flex; align-items: center; gap: 20px; margin-left: auto; }
+.social-shell { max-width: 1320px; margin: 0 auto; padding: 42px 32px 88px; display: grid; grid-template-columns: minmax(0, 1fr) 310px; gap: 38px; align-items: start; }
+.social-main, .social-sidebar { min-width: 0; }
+.social-sidebar { scroll-margin-top: 24px; }
+.social-publish-shortcut { position: relative; z-index: 1; display: inline-flex; align-items: center; min-height: 44px; color: #c9b7ec !important; font-size: 12px; }
+.social-hero { position: relative; min-height: 280px; padding: 22px 0 36px; overflow: hidden; }
+.social-section-kicker { color: #a89bbc; font-size: 10px; font-weight: 600; letter-spacing: .18em; line-height: 1.6; }
+.social-hero h1 { position: relative; z-index: 1; margin: 22px 0 18px; font-size: clamp(36px, 3.4vw, 52px); line-height: 1.26; font-weight: 600; letter-spacing: -.055em; }
+.social-hero h1 > span { color: #c2b0e7; }
+.social-hero > p { position: relative; z-index: 1; max-width: 390px; color: #93a1b8; font-size: 13px; line-height: 1.8; word-break: keep-all; }
+.social-hero-orbits { position: absolute; width: 260px; height: 260px; right: -20px; top: 10px; opacity: .65; }
+.social-hero-orbits i { position: absolute; inset: 25px 0; border: 1px solid #b697fa38; border-radius: 50%; transform: rotate(-35deg) scaleX(.6); }
+.social-hero-orbits i:nth-child(2) { transform: rotate(30deg) scaleX(.6); border-color: #68d2fb44; }
+.social-hero-orbits i:nth-child(3) { transform: rotate(90deg) scaleX(.6); border-color: #f383bf44; }
+.social-hero-orbits > span { position: absolute; top: 65px; left: 90px; color: #b49be4; font-size: 90px; line-height: 1; text-shadow: 0 0 65px #af8aff66; }
+.social-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 18px 0; }
+.social-page h2 { margin: 0; font-size: 18px; font-weight: 550; letter-spacing: -.03em; }
+.social-text-button { min-height: 44px; border: 0; background: none; color: #a9b9d4; font-size: 12px !important; }
+.social-feed { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.social-profile-card { display: block; min-width: 0; border: 1px solid #b5b6df22; border-radius: 20px; background: #111623; overflow: hidden; transition: border-color .2s, transform .2s; }
+.social-profile-card:hover { border-color: #c1a2ff66; transform: translateY(-3px); }
+.social-card-art { position: relative; background: radial-gradient(ellipse at 50% 50%, #725d9b22, transparent 70%), #0c101b; border-bottom: 1px solid #c5c3e412; }
+.social-constellation { width: 100%; height: auto; display: block; }
+.social-card-open { position: absolute; right: 16px; top: 12px; color: #9b98b8; font-size: 20px; }
+.social-card-copy { padding: 19px; }
+.social-card-person { display: flex; gap: 9px; align-items: center; min-width: 0; }
+.social-card-person > i, .social-comment-meta > i { display: grid; place-items: center; width: 28px; height: 28px; flex-shrink: 0; border-radius: 50%; color: #cbbbe7; background: #b59af51a; font-size: 12px; font-style: normal; }
+.social-card-person > strong { font-size: 14px; font-weight: 550; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.social-card-person > span { margin-left: auto; flex-shrink: 0; color: #8390aa; font-size: 10px; }
+.social-card-copy > p { min-height: 42px; margin: 13px 0; color: #a1abc0; font-size: 12px; line-height: 1.8; overflow-wrap: anywhere; }
+.social-genres { display: flex; flex-wrap: wrap; gap: 5px; }
+.social-genres > span { max-width: 100%; padding: 5px 9px; border: 1px solid #b3add724; border-radius: 99px; color: #bbb4cd; background: #aea0d409; font-size: 10px; overflow-wrap: anywhere; }
+.social-card-footer { display: flex; justify-content: space-between; gap: 10px; padding-top: 18px; margin-top: 18px; border-top: 1px solid #b3add714; color: #8796b1; font-size: 11px; }
+.social-publish { padding: 25px; border: 1px solid #c1acd72a; border-radius: 22px; background: linear-gradient(150deg, #201d31, #121724 75%); }
+.social-publish h2 { margin-top: 13px; font-size: 21px; }
+.social-publish > p, .social-empty-inline p { color: #96a3bb; font-size: 12px; line-height: 1.8; }
+.social-publish form { margin-top: 22px; }
+.social-publication-state { display: flex; align-items: center; gap: 7px; margin-bottom: 20px; color: #94a3bb; font-size: 11px; }
+.social-publication-state i { width: 5px; height: 5px; background: #8b8ca8; border-radius: 50%; }
+.social-publication-state.is-public { color: #a2d9c5; }
+.social-publication-state.is-public i { background: #a2d9c5; box-shadow: 0 0 8px #a2d9c544; }
+.social-page label { display: flex; flex-direction: column; gap: 9px; margin: 16px 0; color: #b8bfd0; font-size: 12px; }
+.social-page :is(input:not([type=checkbox]), textarea) { width: 100%; padding: 12px; border: 1px solid #c0bbde26; border-radius: 10px; background: #080d1880; color: #e0e6f2; font-size: 13px; line-height: 1.6; resize: vertical; }
+.social-page textarea::placeholder { color: #697992; }
+.social-page label > small { margin-top: -4px; text-align: right; color: #7c89a3; font-size: 10px; }
+.social-page .social-checkbox { flex-direction: row; align-items: center; gap: 9px; min-height: 44px; margin: 8px 0; font-size: 12px; cursor: pointer; }
+.social-checkbox input { width: 16px; height: 16px; accent-color: #b39ae8; }
+.social-preview { padding: 12px; margin-top: 22px; border: 1px dashed #ac9ac62c; border-radius: 12px; background: #0b111c70; }
+.social-preview > span { color: #8c93aa; font-size: 10px; }
+.social-preview > p { margin-bottom: 0; color: #8794ac; font-size: 10px; }
+.social-disclosure { color: #91a0b8; font-size: 11px; line-height: 1.85; word-break: keep-all; }
+.social-primary, .social-secondary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 12px 18px; border: 1px solid transparent; border-radius: 11px; font-size: 12px !important; font-weight: 550; line-height: 1.4; }
+.social-page .social-primary { color: #191326; background: #c9b7ec; }
+.social-page .social-secondary { color: #b8c2d6; border-color: #b8c2d62b; background: #9fb6d008; }
+.social-publish :is(.social-primary, .social-secondary) { width: 100%; margin-top: 10px; }
+.social-own-link { display: block; padding: 16px 0 0; text-align: center; color: #c0aedf !important; font-size: 11px; }
+.social-inline-notice { padding: 10px; border-radius: 8px; background: #d3ad6b0b; color: #d4bf9f; font-size: 11px; line-height: 1.8; }
+.social-inline-notice a { text-decoration: underline; }
+.social-error { padding: 13px; border: 1px solid #e3ae7c2e; border-radius: 10px; background: #e3ae7c09; color: #e7c6a3 !important; font-size: 12px; line-height: 1.8; }
+.social-error button { color: inherit; background: none; border: 0; text-decoration: underline; min-height: 44px; }
+.social-success { color: #a2d9c5; font-size: 12px; line-height: 1.8; }
+.social-empty { padding: 60px 24px; border: 1px dashed #b6b0d82a; border-radius: 20px; text-align: center; }
+.social-empty > span { display: block; margin-bottom: 18px; color: #b0a0d2; font-size: 40px; }
+.social-empty p { color: #8a9ab3; font-size: 13px; line-height: 1.8; }
+.social-empty a { color: #c9b7ec; font-size: 13px; }
+.social-loading { padding: 44px; text-align: center; color: #9caccc; font-size: 13px; }
+.social-load-more { width: 100%; margin-top: 24px; }
+.social-back { display: inline-flex; align-items: center; min-height: 44px; margin: -10px 0 12px; color: #a6b3cb !important; font-size: 13px; }
+.social-detail { overflow: hidden; border: 1px solid #b6b0d826; border-radius: 24px; background: #111623; }
+.social-detail[role=status] { padding: 32px; }
+.social-detail-visual { position: relative; background: radial-gradient(ellipse at 50% 40%, #6d4d9226, transparent 65%), #0c101b; }
+.social-detail-visual > span { display: block; padding-bottom: 28px; text-align: center; color: #8f809f; font-size: 9px; letter-spacing: .2em; }
+.social-detail-copy { padding: 30px; }
+.social-detail h1 { margin: 14px 0; font-size: 29px; font-weight: 550; letter-spacing: -.045em; overflow-wrap: anywhere; }
+.social-headline { color: #b1bad0; font-size: 14px; line-height: 1.8; overflow-wrap: anywhere; white-space: pre-wrap; }
+.social-data-caption { color: #7f8eaa; font-size: 11px; line-height: 1.8; }
+.social-tracks { margin: 30px 0; padding-top: 26px; border-top: 1px solid #b0bdd31a; }
+.social-tracks ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin: 20px 0 0; padding: 0; list-style: none; }
+.social-tracks li { display: flex; align-items: center; min-width: 0; gap: 10px; }
+.social-track-art { position: relative; display: grid; place-items: center; flex-shrink: 0; width: 42px; height: 42px; border-radius: 8px; overflow: hidden; background: #b4a1d317; color: #b6a6d0; }
+.social-track-art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.social-tracks li > span:nth-child(2) { display: grid; gap: 4px; min-width: 0; }
+.social-tracks strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 500; }
+.social-tracks small { color: #8c9bb4; font-size: 11px; }
+.social-tracks a { display: grid; place-items: center; flex-shrink: 0; width: 36px; height: 44px; margin-left: auto; color: #b8b1d2; }
+.social-comments { padding-top: 22px; border-top: 1px solid #b0bdd31a; }
+.social-comments > p { color: #92a3bf; font-size: 12px; line-height: 1.8; }
+.social-comments .social-section-heading { margin-bottom: 4px; }
+.social-comment-form { margin-top: 22px; }
+.social-comment-form > div { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.social-comment-form small { font-size: 10px; color: #7c89a3; }
+.social-comment-list { padding: 0; margin: 24px 0 0; list-style: none; }
+.social-comment-list > li { padding: 22px 0; border-top: 1px solid #b0bdd314; }
+.social-comment-meta { display: flex; align-items: center; gap: 9px; }
+.social-comment-meta strong { font-size: 12px; font-weight: 550; overflow-wrap: anywhere; }
+.social-comment-meta time { margin-left: auto; color: #7f8fa9; font-size: 10px; white-space: nowrap; }
+.social-comment-meta button { min-height: 44px; padding: 0 6px; border: 0; background: none; color: #8b9ab5; font-size: 11px; }
+.social-comment-list li > p { margin: 12px 0 0 37px; color: #b8c3d8; font-size: 13px; line-height: 1.9; white-space: pre-wrap; overflow-wrap: anywhere; }
+.social-login-note { padding: 20px; margin-top: 24px; border: 1px solid #b0bdd31a; border-radius: 12px; }
+.social-mobile-nav { display: none; }
+@media (max-width: 1100px) { .social-shell { gap: 24px; padding: 26px 24px 80px; grid-template-columns: minmax(0, 1fr) 280px; } .social-header { padding: 0 24px; } .social-feed { gap: 12px; } .social-card-copy { padding: 15px; } .social-hero-orbits { opacity: .3; right: -85px; } }
+@media (max-width: 760px) {
+ .social-header { height: 76px; gap: 22px; padding: 0 18px; } .social-header .spectra-logo { width: 115px; } .social-header > nav { gap: 16px; } .social-header > nav a { font-size: 12px; } .social-header > div { gap: 10px; } .social-header .language-switcher { display: none; }
+ .social-header .sa-account-button { width: 40px; height: 40px; min-height: 40px; padding: 0; display: grid; place-items: center; } .social-header .sa-account-button > span:last-child { display: none; } .social-header .sa-account-initial { margin: 0; }
+ .social-shell { display: flex; flex-direction: column; padding: 20px 18px 135px; gap: 32px; } .social-main, .social-sidebar { width: 100%; } .social-hero { min-height: 260px; padding-top: 16px; } .social-hero h1 { font-size: 38px; } .social-hero > p { max-width: 300px; } .social-hero-orbits { right: -85px; top: 20px; }
+ .social-feed { grid-template-columns: 1fr; gap: 18px; } .social-card-art .social-constellation { max-height: 210px; } .social-card-copy { padding: 22px; } .social-card-copy > p { min-height: auto; } .social-publish { padding: 24px; } .social-detail-copy { padding: 22px; } .social-detail h1 { font-size: 25px; } .social-tracks ul { grid-template-columns: 1fr; }
+ .social-mobile-nav { position: fixed; z-index: 80; bottom: max(14px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); display: grid; grid-template-columns: repeat(4, 1fr); width: min(380px, calc(100% - 36px)); padding: 5px; border: 1px solid #c2cdee26; border-radius: 999px; background: #141e2ef5; box-shadow: 0 10px 30px #0005; backdrop-filter: blur(20px); }
+ .social-mobile-nav > a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 52px; color: #91a2be; font-size: 11px; } .social-mobile-nav .mtm-icon { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; } .social-mobile-nav > a[aria-current] { color: #dfd9fa; border-radius: 999px; background: #c2c9ef15; }
+ body:has(.social-page) .help-center-trigger { bottom: 100px; }
+}
+@media (prefers-reduced-motion: reduce) { .social-profile-card { transition: none; } }

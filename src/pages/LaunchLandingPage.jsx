@@ -195,6 +195,7 @@ export default function LaunchLandingPage({
           </div>
 
           <div className="llp-nav-links">
+            <button type="button" className="llp-nav-link" onClick={() => navigate('/social')}>Social</button>
             <button type="button" className="llp-nav-link" onClick={() => scrollToSection('demo')}> {translate('데모 지도')} </button>
             <button type="button" className="llp-nav-link" onClick={() => scrollToSection('features')}> {translate('지도 작동 방식')} </button>
             <button type="button" className="llp-nav-link" onClick={() => scrollToSection('import')}> {translate("음악 가져오기")} </button>

@@ -1,0 +1,81 @@
+SPECTRA — Your Music Taste Map
+
+01. Introduction with Poster — 0:00–1:40
+
+
+Hello, professors. My graduation project is SPECTRA: Your Music Taste Map.
+
+As we keep saving music, our collections grow. But a long list of songs tells us very little about how those songs relate to each other, or what connects them to our taste.
+
+I started with this question: How can we turn a music collection into something people can explore and understand?
+
+SPECTRA is a working web service that transforms an imported song collection into a personal, interactive map.
+
+The experience follows three actions: Understand, Cluster, and Expand.
+
+Understand helps users see the shape of their collection. Cluster makes its different areas readable. Expand lets users choose a starting point and explore new music from there.
+
+During development, I also focused on what happens after that first exploration. The project now includes a mobile experience for everyday listening and reflection, and a first Social prototype for sharing taste and starting conversations.
+
+The goal is to make accumulated music feel like a personal space that users can return to, navigate, and gradually develop.
+
+02. Main Page Walkthrough — 1:40–3:50
+
+
+Users can begin by pasting song titles and artists, or uploading a CSV or text file. Demo maps let them try the experience first. Signing in allows them to keep their personal map in their account.
+
+In the Taste Field, each bubble is a song. Users can move through the map, zoom into an area, select tracks, and listen.
+
+The current system uses available genre tags from Last.fm and Spotify. These are metadata-based clues for exploration, and their quality can vary.
+
+One important design update was making the genre filters cover the entire collection. There are now at most fifteen groups. Every imported song belongs to one representative group, and the counts add up to the full collection.
+
+When there are too many small genres, related ones share a broader category. Songs with insufficient information remain visible in an explicit unknown category. This keeps the filters manageable while making every song accessible.
+
+Users can also view songs as a constellation and follow a listening route between them. The connecting lines support navigation through the collection.
+
+To expand their taste, users choose a song and request related music. They can explore the results and decide which tracks to add to their map.
+
+This creates a cycle: explore my collection, find something new, and bring it back into my own space.
+
+03. Live Demo — 3:50–6:30
+
+A. My map and genre groups
+
+
+Let me show that cycle with my own map.
+
+Here is the collection I imported. I’ll select one of the genre tags. Its count tells me how many songs belong to this area, and I can return to the complete map at any time.
+
+B. Constellation and discovery
+
+
+Now I’ll select a song, open its details, and switch to the constellation view. I can follow the route and choose another song from the play queue.
+
+
+From this song, I’ll open discovery. I can request related tracks, keep browsing the results, and add a track I want to keep. It becomes part of my collection.
+
+C. Mobile: everyday exploration and reflection
+
+
+On mobile, I’ve made the experience more suited to short, everyday visits.
+
+In My Map, I can browse songs or open an immersive overview of my Spectra. In Discover, I can add a song to my music, mark it as interesting, or skip it.
+
+The Today tab lets me choose a listening mood, select a song, and save the moment in a calendar.
+
+D. Social: a first prototype
+
+
+Finally, this is the first Social prototype. Users can publish a chosen snapshot of their taste, including a genre profile and optional representative songs. Other signed-in users can leave comments. The owner can update the snapshot or make it private again.
+
+This adds a social layer while letting users decide what they share.
+
+04. Closing — 6:30–7:00
+
+
+SPECTRA brings Understand, Cluster, and Expand into one experience, connecting music exploration with everyday reflection and conversation.
+
+My next step is to develop taste comparison: helping two people see where their music overlaps and where it differs. I also want to evaluate the genre groupings with more real collections.
+
+Thank you.

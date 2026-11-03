@@ -1,0 +1,92 @@
+[
+  {
+    "name": "01-macbook-studio-ai.png",
+    "size": [
+      1536,
+      1024
+    ],
+    "alpha_extrema": [
+      0,
+      254
+    ],
+    "content_bounds": [
+      38,
+      60,
+      1500,
+      984
+    ],
+    "MiB": 1.57
+  },
+  {
+    "name": "02-imac-studio-ai.png",
+    "size": [
+      1536,
+      1024
+    ],
+    "alpha_extrema": [
+      0,
+      254
+    ],
+    "content_bounds": [
+      193,
+      2,
+      1381,
+      1005
+    ],
+    "MiB": 1.56
+  },
+  {
+    "name": "03-macbook-front-8k.png",
+    "size": [
+      7680,
+      5760
+    ],
+    "alpha_extrema": [
+      0,
+      255
+    ],
+    "content_bounds": [
+      633,
+      1188,
+      7012,
+      4927
+    ],
+    "MiB": 12.97
+  },
+  {
+    "name": "04-macbook-angle-8k.png",
+    "size": [
+      7680,
+      5760
+    ],
+    "alpha_extrema": [
+      0,
+      255
+    ],
+    "content_bounds": [
+      377,
+      767,
+      6877,
+      5453
+    ],
+    "MiB": 15.74
+  },
+  {
+    "name": "05-imac-angle-8k.png",
+    "size": [
+      7680,
+      5760
+    ],
+    "alpha_extrema": [
+      0,
+      255
+    ],
+    "content_bounds": [
+      1318,
+      621,
+      6557,
+      5230
+    ],
+    "MiB": 15.49
+  }
+]

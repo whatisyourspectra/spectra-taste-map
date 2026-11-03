@@ -1706,6 +1706,7 @@
     flex: 0 0 auto;
     white-space: nowrap;
 }
+.tm-map-tag-count { font-size: .8em; opacity: .7; font-variant-numeric: tabular-nums; }
 
 .tm-map-overlay-controls {
     display: inline-flex;

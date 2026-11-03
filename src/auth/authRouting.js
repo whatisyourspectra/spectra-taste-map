@@ -7,7 +7,9 @@ export function safeReturnTo(value) {
         || value.includes('\\') || [...value].some((char) => char.charCodeAt(0) < 32)) return '/taste-map';
     try {
         const url = new URL(value, APP_ORIGIN);
-        if (url.origin !== APP_ORIGIN || !['/', '/taste-map', '/taste-map/mobile'].includes(url.pathname)) return '/taste-map';
+        const social = /^\/social(?:\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})?$/i.test(url.pathname);
+        if (url.origin !== APP_ORIGIN || (!social && !['/', '/taste-map', '/taste-map/mobile'].includes(url.pathname))) return '/taste-map';
+        if (social) return url.pathname;
         if (url.pathname === '/') return '/taste-map';
         if (url.pathname === '/taste-map') {
             const tab = url.searchParams.get('tab');

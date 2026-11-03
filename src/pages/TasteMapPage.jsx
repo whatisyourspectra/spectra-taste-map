@@ -12,6 +12,7 @@ import { getGenreIdentity, normalizeGenre } from '../taste/genreIdentity';
 import { useTasteData } from '../context/TasteDataContext';
 import { uniqueTracks, getTasteGenres } from '../taste/buildTasteState';
 import { clusterGenreName, rankClusterGenres, representativeClusterGenres } from '../taste/clusterEvidence';
+import { GENRE_PARTITION_VERSION, MAX_GENRE_GROUPS } from '../taste/genreClustering';
 import { fetchDesktopRecommendations } from '../taste/desktopDiscovery';
 import DesktopDiscoveryPanel from './DesktopDiscoveryPanel';
 import TasteMapMetroStudio from './TasteMapMetroStudio';
@@ -38,7 +39,7 @@ const TM_FETCH_CACHE_TTL_MS = 10 * 60 * 1000;
 const TM_CLUSTER_CACHE_TTL_MS = 10 * 60 * 1000;
 const TM_LIBRARY_CACHE_TTL_MS = 10 * 60 * 1000;
 const TM_FETCH_CACHE_PREFIX = 'taste-map-fetch-v7';
-const TM_CLUSTER_CACHE_PREFIX = 'taste-map-cluster-v5';
+const TM_CLUSTER_CACHE_PREFIX = 'taste-map-cluster-v6';
 const TM_LIBRARY_CACHE_PREFIX = 'taste-map-library-v1';
 
 const TM_THEME_STORAGE_KEY = 'spectra-tastemap-theme-v1';
@@ -1613,6 +1614,7 @@ export default function TasteMapPage() {
     const [zAxis, setZAxis] = useState('danceability');
     const axisPreset = resolveAxisPreset(xAxis, yAxis)?.key || 'custom';
     const [genreVocab, setGenreVocab] = useState([]);
+    const [genreGroups, setGenreGroups] = useState([]);
     const cacheUserId = mapId || 'guest';
     const cacheReady = true;
 
@@ -1840,9 +1842,8 @@ export default function TasteMapPage() {
                 featuresSource: 'spotify-genres',
             };
         });
-        const usable = mapped.filter(
-            (t) => t.valence !== null && t.valence !== undefined,
-        );
+        // Pending metadata must remain part of the exhaustive genre partition.
+        const usable = mapped;
         return {
             tracks: usable,
             source: activeMapView === 'spotify' ? 'spotify' : 'lastfm',
@@ -1882,11 +1883,12 @@ export default function TasteMapPage() {
             setClusterLoading(false);
             return;
         }
-        if (tracks.length < 2) {
+        if (tracks.length === 0) {
             setAssignments([]);
             setCentroids([]);
             setClusterVectors([]);
             setGenreVocab([]);
+            setGenreGroups([]);
             setNoiseClusterId(null);
             setEffectiveClusterBasis('audio');
             setClusterLoading(false);
@@ -1904,6 +1906,7 @@ export default function TasteMapPage() {
             });
             setClusterVectors(points);
             setAssignments(demoGroups);
+            setGenreGroups([]);
             setCentroids(centers);
             setGenreVocab([]);
             setNoiseClusterId(null);
@@ -1918,14 +1921,19 @@ export default function TasteMapPage() {
             const fv = FEATURE_KEYS.map((key) => Math.round(getTrackFeature(track, key) * 1000)).join(',');
             return `${track.id}:${fv}`;
         }).join('|'))}`;
-        const clusterCacheKey = `${TM_CLUSTER_CACHE_PREFIX}|u:${cacheUserId}|s:${source}|b:${clusterBasis}|alg:genre-anchor-v1|sig:${trackSignature}`;
+        const clusterCacheKey = `${TM_CLUSTER_CACHE_PREFIX}|u:${cacheUserId}|s:${source}|b:${clusterBasis}|alg:genre-partition-v${GENRE_PARTITION_VERSION}|sig:${trackSignature}`;
         const clusterHit = readSessionCache(clusterCacheKey, TM_CLUSTER_CACHE_TTL_MS);
-        if (clusterHit && Array.isArray(clusterHit.assignments) && Array.isArray(clusterHit.centroids)) {
+        if (clusterHit && Array.isArray(clusterHit.assignments) && Array.isArray(clusterHit.centroids)
+            && clusterHit.assignments.length === tracks.length
+            && clusterHit.centroids.length > 0 && clusterHit.centroids.length <= MAX_GENRE_GROUPS
+            && clusterHit.genreGroups?.length === clusterHit.centroids.length
+            && clusterHit.assignments.every(id => Number.isInteger(id) && id >= 0 && id < clusterHit.centroids.length)) {
             // Genre centroids and member distances must use the same embedding.
             setClusterVectors(Array.isArray(clusterHit.points) ? clusterHit.points : tracks.map(getTrackVector));
             setAssignments(clusterHit.assignments);
             setCentroids(clusterHit.centroids);
             setGenreVocab(Array.isArray(clusterHit.genreVocab) ? clusterHit.genreVocab : []);
+            setGenreGroups(Array.isArray(clusterHit.genreGroups) ? clusterHit.genreGroups : []);
             setNoiseClusterId(Number.isInteger(clusterHit.noiseClusterId) ? clusterHit.noiseClusterId : null);
             setEffectiveClusterBasis(clusterHit.effectiveClusterBasis === 'genre' ? 'genre' : 'audio');
             setClusterLoading(false);
@@ -1945,12 +1953,14 @@ export default function TasteMapPage() {
             setCentroids(data.centroids);
             setEffectiveClusterBasis(data.effectiveClusterBasis);
             setGenreVocab(data.genreVocab);
+            setGenreGroups(data.genreGroups || []);
             setNoiseClusterId(Number.isInteger(data.noiseClusterId) ? data.noiseClusterId : null);
             writeSessionCache(clusterCacheKey, {
                 points: data.points,
                 assignments: data.assignments,
                 centroids: data.centroids,
                 genreVocab: data.genreVocab,
+                genreGroups: data.genreGroups,
                 noiseClusterId: Number.isInteger(data.noiseClusterId) ? data.noiseClusterId : null,
                 effectiveClusterBasis: data.effectiveClusterBasis,
             });
@@ -2004,9 +2014,9 @@ export default function TasteMapPage() {
                 const label = demoUniverse
                     ? { name: translate(demoUniverse.koreanName, [], lang), symbol: demoUniverse.symbol }
                     : isNoiseCluster
-                    ? { name: 'Mixed / Other', symbol: 'matrix' }
+                    ? { name: lang === 'en' ? 'Genre Unknown' : '장르 정보 없음', symbol: 'matrix' }
                     : effectiveClusterBasis === 'genre'
-                        ? getGenreClusterLabel(representativeClusterGenres(members))
+                        ? (genreGroups[j] ? { name: genreGroups[j].name, symbol: 'headset' } : getGenreClusterLabel(representativeClusterGenres(members)))
                         : getClusterLabel(displayCentroid);
                 return {
                     j,
@@ -2022,7 +2032,7 @@ export default function TasteMapPage() {
             .sort((a, b) => b.count - a.count);
 
         return deduplicateClusterLabels(sorted);
-    }, [tracks, assignments, centroids, clusterVectors, effectiveClusterBasis, noiseClusterId, lang]);
+    }, [tracks, assignments, centroids, clusterVectors, effectiveClusterBasis, noiseClusterId, genreGroups, lang]);
 
     useEffect(() => {
         if (selectedCluster !== null && !clusterStats.some((cluster) => cluster.j === selectedCluster)) {
@@ -3648,7 +3658,7 @@ export default function TasteMapPage() {
             entry.count += 1;
         }
         const labels = [];
-        for (const cluster of clusterStats.slice(0, 8)) {
+        for (const cluster of clusterStats) {
             const entry = centroids.get(cluster.j);
             if (!entry || entry.count < 3 || !entry.weight) continue;
             labels.push({
@@ -4132,7 +4142,7 @@ export default function TasteMapPage() {
         });
 
         const clampRange = (value, min, max) => Math.min(max, Math.max(min, value));
-        const topClusters = clusterStats.slice(0, 7);
+        const topClusters = clusterStats;
         const regions = topClusters
             .map((cluster) => {
                 const pts = pointsByCluster.get(cluster.j) || [];
@@ -4186,7 +4196,7 @@ export default function TasteMapPage() {
 
     const overviewClusterBreakdown = useMemo(() => {
         if (!clusterStats.length || tracks.length === 0) return [];
-        return clusterStats.slice(0, 6).map((cluster) => ({
+        return clusterStats.map((cluster) => ({
             id: cluster.j,
             name: cluster.label.name,
             symbol: cluster.label.symbol || 'headset',
@@ -5193,6 +5203,7 @@ export default function TasteMapPage() {
                     </div>
                 </div>
                 <div className="tm-header-side">
+                    <button type="button" className="tm-nav-home-btn" onClick={() => navigate('/social')}>Social ↗</button>
                     <button
                         type="button"
                         className="tm-nav-home-btn"
@@ -5766,7 +5777,7 @@ export default function TasteMapPage() {
                                         <span className="tm-all-chip-mark" aria-hidden>⊙</span>
                                         <span>{lang === 'en' ? 'All' : '전체'}</span>
                                     </button>
-                                    {clusterStats.slice(0, 6).map((cluster) => (
+                                    {clusterStats.map((cluster) => (
                                         <button
                                             key={`map-chip-${cluster.j}`}
                                             type="button"
@@ -5784,7 +5795,7 @@ export default function TasteMapPage() {
                                             onBlur={clearEmotionRegionFocus}
                                         >
                                             <SpectraSymbol symbol={cluster.label.symbol || 'headset'} className="tm-symbol-inline" />
-                                            <span>{cluster.label.name}</span>
+                                            <span className="tm-map-tag-name">{cluster.label.name}</span><small className="tm-map-tag-count">{cluster.count}</small>
                                         </button>
                                     ))}
                                 </div>
@@ -6347,7 +6358,7 @@ export default function TasteMapPage() {
                                 className="tm-inspector-clusters tm-region-cloud tm-region-cloud-emotion"
                                 data-active-region={activeEmotionRegion || undefined}
                             >
-                                {clusterStats.slice(0, 8).map((cluster) => (
+                                {clusterStats.map((cluster) => (
                                     <button
                                         key={`ins-chip-${cluster.j}`}
                                         type="button"

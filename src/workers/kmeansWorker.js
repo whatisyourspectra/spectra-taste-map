@@ -1,6 +1,6 @@
-// Genre profiles use bounded seed similarity; audio features use DBSCAN.
+// Genre navigation partitions every track into at most 15 groups; audio uses DBSCAN.
 import { buildGenreFeatures } from '../taste/genreFeatures.js';
-import { clusterGenreProfiles } from '../taste/genreClustering.js';
+import { partitionGenreTracks } from '../taste/genreClustering.js';
 const FEATURE_KEYS = ['valence', 'energy', 'danceability', 'acousticness', 'instrumentalness'];
 const FEATURE_META = {
     valence:          { fallback: 0.5 },
@@ -234,7 +234,7 @@ function buildGenreProjections(points) {
     const n = points.length;
     const d = points[0]?.length || 0;
     if (n === 0 || d === 0) {
-        return { projection2D: [], projection3D: [] };
+        return { projection2D: points.map(() => [.5, .5]), projection3D: points.map(() => [0, 0, 0]) };
     }
 
     const means = Array(d).fill(0);
@@ -313,6 +313,7 @@ self.onmessage = ({ data }) => {
             points: [],
             effectiveClusterBasis: 'audio',
             genreVocab: [],
+            genreGroups: [],
             noiseClusterId: null,
             projection2D: null,
             projection3D: null,
@@ -326,11 +327,9 @@ self.onmessage = ({ data }) => {
 
     if (clusterBasis === 'genre') {
         const features = buildGenreFeatures(tracks);
-        if (features.vocab.length) {
-            points = features.points;
-            usingGenre = true;
-            derivedGenreVocab = features.vocab;
-        }
+        points = features.points;
+        usingGenre = true;
+        derivedGenreVocab = features.vocab;
     }
 
     if (!usingGenre && points.length < 3) {
@@ -349,7 +348,7 @@ self.onmessage = ({ data }) => {
 
     let best;
     if (usingGenre) {
-        best = clusterGenreProfiles(tracks, points, derivedGenreVocab);
+        best = partitionGenreTracks(tracks);
     } else {
         const { minPts, eps } = estimateDbscanParams(points);
         const tight = dbscan(points, eps * 0.88, Math.max(3, minPts - 1));
@@ -384,7 +383,7 @@ self.onmessage = ({ data }) => {
     assignments.forEach((label, idx) => {
         if (label < 0) noiseIdx.push(idx);
     });
-    let noiseClusterId = null;
+    let noiseClusterId = usingGenre ? best.noiseClusterId : null;
     if (noiseIdx.length > 0) {
         const uniqueClusters = uniqueSortedValues(assignments.filter((label) => label >= 0));
         noiseClusterId = uniqueClusters.length;
@@ -402,6 +401,7 @@ self.onmessage = ({ data }) => {
         points,
         effectiveClusterBasis: usingGenre ? 'genre' : 'audio',
         genreVocab: usingGenre ? derivedGenreVocab : [],
+        genreGroups: usingGenre ? best.groups : [],
         noiseClusterId,
         projection2D: projection.projection2D,
         projection3D: projection.projection3D,

@@ -28,7 +28,7 @@ try {
         await page.goto(base + '/taste-map');
         const nav = page.getByRole('navigation', { name: '모바일 음악 메뉴' });
         await nav.waitFor();
-        assert.deepEqual(await nav.getByRole('button').allTextContents(), ['내 지도', '발견', '오늘']);
+        assert.deepEqual(await nav.getByRole('button').allTextContents(), ['내 지도', '발견', '오늘', 'Social']);
         assert.equal(calls.length, 0);
         await inside(page.getByRole('button', { name: '카카오톡으로 공유하기', exact: true }), viewport.height);
         assert.equal(await page.locator('.help-center-trigger').isVisible(), false);
@@ -93,7 +93,7 @@ try {
         await page.getByLabel('더 보기', { exact: true }).click();
         await page.getByRole('button', { name: 'English', exact: true }).click();
         const englishNav = page.getByRole('navigation', { name: 'Mobile music menu' });
-        assert.deepEqual(await englishNav.getByRole('button').allTextContents(), ['My map', 'Discover', 'Today']);
+        assert.deepEqual(await englishNav.getByRole('button').allTextContents(), ['My map', 'Discover', 'Today', 'Social']);
         await englishNav.getByRole('button', { name: 'My map', exact: true }).click();
         await page.getByRole('heading', { name: /My map/ }).waitFor();
         await page.getByLabel('More options', { exact: true }).click();
@@ -102,7 +102,7 @@ try {
         await page.goto(base + '/taste-map/mobile?oracle=1');
         await today.waitFor();
         assert.ok(page.url().endsWith('/taste-map?tab=today'));
-        findings.push({ viewport, threeTabs: true, directKakao: true, discoveryChoicesSaved: true, mapSelectionPreserved: true, todayDraftPreserved: true, legacyLink: true });
+        findings.push({ viewport, fourTabs: true, directKakao: true, discoveryChoicesSaved: true, mapSelectionPreserved: true, todayDraftPreserved: true, legacyLink: true });
         await page.close();
     }
     assert.deepEqual(errors, []);
