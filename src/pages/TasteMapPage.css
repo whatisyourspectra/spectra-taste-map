@@ -4003,34 +4003,6 @@
     margin-bottom: 4px;
 }
 
-.tm-back-home-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 3px 9px;
-    border-radius: 999px;
-    background: rgba(112, 214, 255, 0.12);
-    border: 1px solid rgba(112, 214, 255, 0.32);
-    color: #70d6ff;
-    font-size: 11px;
-    font-weight: 700;
-    cursor: pointer;
-    letter-spacing: 0.02em;
-    transition: all 0.2s ease;
-}
-
-.tm-back-home-btn:hover {
-    background: rgba(112, 214, 255, 0.25);
-    border-color: #70d6ff;
-    color: #ffffff;
-    transform: translateX(-2px);
-    box-shadow: 0 0 12px rgba(112, 214, 255, 0.3);
-}
-
-.tm-back-arrow {
-    font-size: 12px;
-}
-
 .tm-demo-badge {
     display: inline-flex;
     align-items: center;
@@ -4075,13 +4047,21 @@
 
 .tm-header-live {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 9px;
+    gap: 6px 9px;
     margin-top: 7px;
     color: rgba(222, 230, 246, 0.48);
     font-size: 11px;
     font-weight: 600;
     letter-spacing: 0;
+}
+
+.tm-header-live > span {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    white-space: nowrap;
 }
 
 .tm-header-live > span + span::before {

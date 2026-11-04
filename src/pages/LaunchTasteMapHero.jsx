@@ -18,6 +18,7 @@ export default function LaunchTasteMapHero({ onPulse }) {
     if (!context) return undefined;
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
     let width = 1, height = 1, frame = 0, last = 0, clock = 0;
+    let copyBottom = 0;
     let visible = true, dirty = true, blend = 0, scroll = 0;
     let dragRotation = 0, velocity = 0, waves = [];
     const drag = { active: false, id: null, lastX: 0, startX: 0, startY: 0 };
@@ -32,6 +33,12 @@ export default function LaunchTasteMapHero({ onPulse }) {
       dirty = true;
     });
     resize.observe(canvas);
+    const copy = canvas.closest('.llp-root')?.querySelector('.llp-hero-copy');
+    const copySize = new ResizeObserver(() => {
+      copyBottom = copy.getBoundingClientRect().bottom + window.scrollY;
+      dirty = true;
+    });
+    if (copy) copySize.observe(copy);
     const observer = new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; dirty = true; });
     observer.observe(canvas);
     const move = (event) => {
@@ -109,8 +116,9 @@ export default function LaunchTasteMapHero({ onPulse }) {
       context.clearRect(0, 0, width, height);
       const mobile = width < 700;
       const cx = width * (mobile ? 0.53 : 0.68);
-      const cy = height * (mobile ? 0.66 : 0.49);
       const scale = Math.min(width * (mobile ? 0.235 : 0.195), height * 0.32);
+      // Leave space for the file CTA, including translated copy.
+      const cy = mobile ? Math.max(height * 0.66, copyBottom - window.scrollY + scale * 1.9 + 24) : height * 0.49;
       const rotation = -0.38 + pointer.x * 0.9 + scroll * 0.75 + dragRotation + Math.sin(clock * 0.4) * 0.3;
       const tilt = 0.8 + pointer.y * 0.65 + Math.sin(clock * 0.65) * 0.2;
       const project = (x, y, z) => {
@@ -194,7 +202,7 @@ export default function LaunchTasteMapHero({ onPulse }) {
     frame = requestAnimationFrame(draw);
     return () => {
       cancelAnimationFrame(frame);
-      resize.disconnect(); observer.disconnect();
+      resize.disconnect(); copySize.disconnect(); observer.disconnect();
       canvas.removeEventListener('dblclick', toggleShape);
       canvas.removeEventListener('keydown', keydown);
       canvas.removeEventListener('pointermove', move);

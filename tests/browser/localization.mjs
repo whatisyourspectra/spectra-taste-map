@@ -96,7 +96,7 @@ try {
         assert.deepEqual((await koreanText(page)).filter(text => /[가-힣]/.test(text.replaceAll('밤편지', '').replaceAll('아이유', ''))), []);
         await page.unroute(/\/src\/share\/sharedMapStorage\.js(?:\?.*)?$/);
         await page.goto(base);
-        await page.locator(width > 900 ? '.llp-nav-demo-btn' : '.llp-hero-cta-group .llp-btn-primary').click();
+        await page.locator(width > 900 ? '.llp-nav-demo-btn' : '.llp-hero-cta-group .llp-btn-secondary').click();
         await page.waitForURL('**/taste-map');
         await page.waitForSelector(width > 900 ? '.tm-bubble-item' : '.mtm-intro');
         await page.waitForTimeout(700);

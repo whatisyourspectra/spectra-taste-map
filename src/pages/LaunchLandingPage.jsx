@@ -59,7 +59,7 @@ export default function LaunchLandingPage({
     onScroll();
     return () => { cancelAnimationFrame(frame); reveal.disconnect(); heroSize.disconnect(); window.removeEventListener('scroll', onScroll); window.removeEventListener('resize', onScroll); };
   }, []);
-  const [activeTab, setActiveTab] = useState('paste');
+  const [activeTab, setActiveTab] = useState('file');
   const [rawText, setRawText] = useState('');
   const [fileName, setFileName] = useState('');
   const [parseInfo, setParseInfo] = useState(null);
@@ -92,8 +92,13 @@ export default function LaunchLandingPage({
     if (!file) return;
     setFileName(file.name);
     try { updateFromText(await readTrackFile(file)); }
-    catch (error) { setParseInfo({count:0, tracks:[], warnings:[error.message]}); }
+    catch (error) { setRawText(''); setParseInfo({count:0, tracks:[], warnings:[error.message]}); }
   }, [updateFromText]);
+
+  const chooseFile = () => {
+    setActiveTab('file');
+    fileInputRef.current?.click();
+  };
 
   const handleDragEnter = useCallback((e) => {
     e.preventDefault();
@@ -259,10 +264,10 @@ export default function LaunchLandingPage({
             </h1>
             <p className="llp-hero-desc">{translate('좋아하는 음악을 장르별 지도로 펼치고, 새로 발견한 곡도 내 SPECTRA 지도에 모아보세요.')}</p>
             <div className="llp-hero-cta-group">
-              <button type="button" className="llp-btn-primary" onClick={openPrimaryMap} disabled={busy}>
-                <span>{translate(primaryLabel)}</span><span aria-hidden="true">↗</span>
+              <button type="button" className="llp-btn-primary" onClick={() => scrollToSection('import')} disabled={busy}>
+                <span>{translate('내 음악 파일 가져오기')}</span><span aria-hidden="true">↓</span>
               </button>
-              <button type="button" className="llp-btn-secondary" onClick={() => scrollToSection('import')}>{translate("음악 가져오기")}</button>
+              <button type="button" className="llp-btn-secondary" onClick={openPrimaryMap} disabled={busy}>{translate(primaryLabel)}</button>
             </div>
           </div>
           <div className="llp-hero-footnote"><span>EVERY SONG HAS A PLACE.</span><button type="button" onClick={() => scrollToSection('features')}>SCROLL TO EXPLORE <span aria-hidden="true">↓</span></button></div>
@@ -327,7 +332,7 @@ export default function LaunchLandingPage({
               <span className="llp-title-chunk">{translate("당신의 음악을")}</span>{' '}
               <span className="llp-title-chunk">{translate("하나의 지도로")}</span>
             </h2>
-            <p className="llp-section-sub">{translate('좋아하는 곡 몇 개로도 시작할 수 있어요. 곡 목록을 붙여넣거나 가지고 있는 파일을 올려보세요.')}</p>
+            <p className="llp-section-sub">{translate('Spotify, Apple Music, YouTube Music에서 모아 온 음악. 플레이리스트를 파일로 내보내 나만의 지도로 펼쳐보세요.')}</p>
             <p className="llp-save-note">{translate('지도는 이 브라우저에 저장되고, 로그인하면 계정에도 저장돼요.')}</p>
           </div>
 
@@ -336,14 +341,22 @@ export default function LaunchLandingPage({
             else landingRef.current.querySelector('.llp-textarea')?.focus();
           }} />
           <div className={`llp-import-box${dragActive ? ' is-receiving' : ''}${parseInfo ? ' has-music' : ''}`}>
+            <PlaylistExportHelp onChooseFile={chooseFile} />
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv,.txt,.tsv,.json,text/csv,text/plain,application/json"
+              style={{ display: 'none' }}
+              onChange={(e) => { handleFile(e.target.files?.[0]); e.target.value = ''; }}
+            />
 
             {/* Input Mode Selector */}
             <div className="llp-tabs" role="group" aria-label={translate('음악 가져오기 방식')}>
-              <button type="button" className={`llp-tab${activeTab === 'paste' ? ' active' : ''}`} aria-pressed={activeTab === 'paste'} onClick={() => setActiveTab('paste')}>
-                <span>{translate('텍스트 직접 붙여넣기')}</span>
-              </button>
               <button type="button" className={`llp-tab${activeTab === 'file' ? ' active' : ''}`} aria-pressed={activeTab === 'file'} onClick={() => setActiveTab('file')}>
                 <span>{translate('파일 업로드 (CSV / TXT)')}</span>
+              </button>
+              <button type="button" className={`llp-tab${activeTab === 'paste' ? ' active' : ''}`} aria-pressed={activeTab === 'paste'} onClick={() => setActiveTab('paste')}>
+                <span>{translate('텍스트 직접 붙여넣기')}</span>
               </button>
             </div>
 
@@ -359,19 +372,12 @@ export default function LaunchLandingPage({
                 role="button"
                 tabIndex={0}
               >
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".csv,.txt,.tsv,.json,text/csv,text/plain,application/json"
-                  style={{ display: 'none' }}
-                  onChange={(e) => handleFile(e.target.files?.[0])}
-                />
-                <div className="llp-dropzone-icon">⤓</div>
+                <div className="llp-dropzone-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 16V3m-5 5 5-5 5 5M4 15v5a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-5" /></svg></div>
                 <div className="llp-dropzone-text">
                   {fileName ? (
                     <strong className="llp-file-name">{fileName}</strong>
                   ) : (
-                    <span>{translate("다운로드한 파일 선택")}</span>
+                    <span>{translate('플레이리스트 파일 선택')}</span>
                   )}
                 </div>
                 <div className="llp-dropzone-hint">
@@ -427,13 +433,12 @@ export default function LaunchLandingPage({
                 ? (parseInfo.count > MAX_IMPORT_TRACKS
                   ? translate("앞의 {0}곡으로 나의 taste맵 생성하기", [MAX_IMPORT_TRACKS.toLocaleString()])
                   : translate("{0}곡으로 나의 taste맵 생성하기", [parseInfo.count.toLocaleString()]))
-                : translate("곡 목록을 입력하거나 파일을 선택하세요")}
+                : translate(activeTab === 'file' ? '파일을 선택하면 지도를 만들 수 있어요' : '곡 목록을 입력하거나 파일을 선택하세요')}
             </button>
 
             {error && <div className="llp-import-error">{translate(error)}</div>}
 
-            <PlaylistExportHelp onChooseFile={() => { setActiveTab('file'); requestAnimationFrame(() => fileInputRef.current?.click()); }} />
-            <p className="llp-map-destination">{translate('새로 찾은 곡은 SPECTRA 지도에 추가돼요. Spotify·Apple Music 플레이리스트로 내보내기는 아직 지원하지 않아요.')}</p>
+            <p className="llp-map-destination">{translate('음원 파일 대신 곡 제목과 아티스트가 담긴 목록을 올려주세요. 가져온 음악으로 SPECTRA 지도를 만들어요.')}</p>
             <p className="llp-privacy-note"> {translate("🔒 파일을 가져올 때 스트리밍 계정을 연결할 필요가 없습니다.")} </p>
           </div>
         </section>

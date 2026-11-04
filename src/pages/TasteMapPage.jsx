@@ -5145,15 +5145,6 @@ export default function TasteMapPage() {
             <header className="tm-header">
                 <div className="tm-header-main">
                     <div className="tm-header-nav-row">
-                        <button
-                            type="button"
-                            className="tm-back-home-btn"
-                            onClick={handleGoHome}
-                            title={lang === 'en' ? 'Return to Launch Home (Pick other demo or import music)' : '런칭 홈으로 돌아가기 (다른 taste맵 선택 및 음악 가져오기)'}
-                        >
-                            <span className="tm-back-arrow">←</span>
-                            <span>{lang === 'en' ? 'Launch Home' : '런칭 홈'}</span>
-                        </button>
                         <span
                             className="tm-pill"
                             onClick={handleGoHome}
@@ -5196,7 +5187,7 @@ export default function TasteMapPage() {
                         {importStatus === 'ready' && Number(importedStats?.failedCount) > 0 && (
                             <span>
                                 {lang === 'en'
-                                    ? `${importedStats.failedCount} tracks awaiting analysis`
+                                    ? `${importedStats.failedCount} ${Number(importedStats.failedCount) === 1 ? 'track' : 'tracks'} awaiting analysis`
                                     : `${importedStats.failedCount}곡 분석 대기`}
                             </span>
                         )}

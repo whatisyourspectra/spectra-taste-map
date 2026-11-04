@@ -84,14 +84,14 @@ try {
         await primary.click();
         await assertPersonalMap(page, hasSongs);
 
-        // An explicit demo remains available; the main action must restore the account map.
+        // An explicit demo remains available; the map action must restore the account map.
         await page.goto(`${base}/?lang=${lang}`);
         await page.locator('.llp-demo-launch-btn').first().click();
         await page.waitForURL('**/taste-map');
         await page.waitForFunction(() => Boolean(sessionStorage.getItem('spectra:taste:v5:demo:fixture-user')));
         // Return via SPA navigation to retain the currently open demo in the provider.
         await page.evaluate(() => { history.pushState({}, '', '/'); dispatchEvent(new PopStateEvent('popstate')); });
-        await page.locator('.llp-hero-cta-group .llp-btn-primary').click();
+        await page.locator('.llp-hero-cta-group .llp-btn-secondary').click();
         // Old preview cache is allowed; the displayed map must be personal or empty.
         await page.waitForURL('**/taste-map');
         if (hasSongs) await assertPersonalMap(page, true);

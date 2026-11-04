@@ -19,7 +19,7 @@ try {
         const errors = [];
         page.on('pageerror', error => errors.push(error.message));
         await page.goto(`${base}/?lang=${lang}`, { waitUntil: 'domcontentloaded' });
-        await page.locator('.llp-textarea').waitFor({ state: 'attached' });
+        await page.locator('.llp-dropzone').waitFor({ state: 'attached' });
         assert.equal(await page.locator('.llp-export-help').getAttribute('open'), null);
         assert.equal(await page.locator('.llp-tabs button').first().getAttribute('aria-pressed'), 'true');
         assert.equal(await page.locator('.lj-step-number').count(), 0);
@@ -30,29 +30,53 @@ try {
             assert.equal(await page.locator('.llp-chapter-nav button').nth(index).locator('span').first().textContent(), `0${index + 1}`);
         }
         const demoName = lang === 'en' ? 'Try the demo map' : '데모 지도 체험하기';
-        for (const button of await page.locator('.llp-nav-demo-btn, .llp-hero-cta-group .llp-btn-primary, .llp-demo-launch-btn, .lj-track-detail button').all()) {
+        for (const button of await page.locator('.llp-nav-demo-btn, .llp-hero-cta-group .llp-btn-secondary, .llp-demo-launch-btn, .lj-track-detail button').all()) {
             assert.equal((await button.innerText()).replace('↗', '').replace('→', '').trim(), demoName);
         }
         if (lang === 'en') {
             assert.ok((await page.locator('#demo .llp-section-eyebrow').innerText()).includes('Before you explore your taste'));
-            assert.ok((await page.locator('.llp-map-destination').innerText()).includes('added to your SPECTRA map'));
+            assert.ok((await page.locator('.llp-map-destination').innerText()).includes('track list with song titles and artists'));
             assert.ok((await page.locator('.lj-method-note').innerText()).includes('Last.fm'));
             assert.ok((await page.locator('.lj-method-note').innerText()).includes('estimates from tags'));
         }
         const assertAccountFits = async () => { const box = await page.locator('.llp-nav-auth .sa-account-button').boundingBox(); assert.ok(box.x >= 0 && box.x + box.width <= width, 'Account entry fits the screen'); };
         await assertAccountFits();
         await page.screenshot({ path: `output/landing-feedback-review/${lang}-${width}-hero.png` });
-        await page.locator('.llp-textarea').fill('Daft Punk - Get Lucky\nBeach House - Space Song');
+        await page.locator('.llp-hero-cta-group .llp-btn-primary').click();
+        await page.waitForFunction(() => document.querySelector('#import').getBoundingClientRect().top < 120);
+        assert.ok(new URL(page.url()).pathname === '/', 'Primary action opens import without opening a demo');
+        assert.deepEqual(await page.locator('.llp-platform-chip').allTextContents(), ['Spotify', 'Apple Music', 'YouTube Music']);
+        for (const service of ['Spotify', 'Apple Music', 'YouTube Music']) {
+            await page.locator('.llp-platform-chip').filter({ hasText: service }).click();
+            assert.notEqual(await page.locator('.llp-export-help').getAttribute('open'), null);
+            assert.ok((await page.locator('.llp-export-link').innerText()).includes(service));
+            await page.locator('.llp-export-help > summary').click();
+        }
+        await page.locator('.llp-import-box').screenshot({ path: `output/landing-feedback-review/${lang}-${width}-import.png` });
         const createName = lang === 'en' ? 'Create my map with 2 songs' : '2곡으로 나의 taste맵 생성하기';
-        await page.getByRole('button', { name: createName, exact: true }).waitFor();
+        // Service selection only changes the guide. All files go through the same real parser.
+        for (const [name, content] of [
+            ['spotify.csv', 'Track name,Artist name\nGet Lucky,Daft Punk\nSpace Song,Beach House'],
+            ['apple-music.txt', 'Name\tArtist\tAlbum\nGet Lucky\tDaft Punk\tRAM\nSpace Song\tBeach House\tDepression Cherry'],
+            ['youtube-music.txt', 'Daft Punk - Get Lucky\nBeach House - Space Song'],
+        ]) {
+            await page.locator('input[type=file]').setInputFiles({ name, mimeType: 'text/plain', buffer: Buffer.from(content) });
+            await page.getByRole('button', { name: createName, exact: true }).waitFor();
+            assert.equal(await page.locator('.llp-file-name').innerText(), name);
+        }
         await page.locator('.llp-tabs button').nth(1).click();
-        await page.locator('.llp-dropzone').waitFor();
+        await page.locator('.llp-textarea').fill('Daft Punk - Get Lucky\nBeach House - Space Song');
+        await page.getByRole('button', { name: createName, exact: true }).waitFor();
         await page.locator('.llp-tabs button').first().click();
+        await page.locator('.llp-dropzone').waitFor();
+        await page.locator('.llp-tabs button').nth(1).click();
         assert.ok((await page.locator('.llp-textarea').inputValue()).includes('Get Lucky'));
         assert.equal(imports.length, 0);
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
         for (const button of await page.locator('.llp-chapter-nav button').all()) { const box = await button.boundingBox(); assert.ok(box.x >= 0 && box.x + box.width <= width, 'Section navigation fits the screen'); }
         await page.screenshot({ path: `output/landing-feedback-review/${lang}-${width}-paste.png` });
+        await page.locator('.llp-tabs button').first().click();
+        await page.locator('input[type=file]').setInputFiles({ name: 'my-playlist.csv', mimeType: 'text/csv', buffer: Buffer.from('Track name,Artist name\nGet Lucky,Daft Punk\nSpace Song,Beach House') });
         await page.getByRole('button', { name: createName, exact: true }).click();
         await page.waitForURL('**/taste-map');
         await page.waitForSelector(width > 900 ? '.tm-bubble-item' : '.mtm-intro');
@@ -63,11 +87,11 @@ try {
         // A demo CTA must open a demo, rather than only scrolling to a preview.
         await page.goto(`${base}/?lang=${lang}`, { waitUntil: 'domcontentloaded' });
         await assertAccountFits();
-        await page.locator('.llp-hero-cta-group .llp-btn-primary').click();
+        await page.locator('.llp-hero-cta-group .llp-btn-secondary').click();
         await page.waitForURL('**/taste-map');
         await page.waitForFunction(() => JSON.parse(sessionStorage.getItem('spectra:taste:v5:demo:guest') || '{}').tracks?.length > 2);
         assert.deepEqual(errors, []);
-        console.log(`${lang} ${width}px: consistent demo actions, section sequence, direct paste import and preserved draft passed`);
+        console.log(`${lang} ${width}px: file-first entry, three service guides, CSV/TSV/TXT parsing, paste draft, actual import and demo passed`);
         await context.close();
     }
 } finally { await browser.close(); }

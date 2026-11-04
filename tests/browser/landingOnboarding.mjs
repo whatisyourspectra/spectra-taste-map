@@ -23,7 +23,7 @@ try {
    await page.goto(`${baseUrl}/mobile-start`);
    await page.waitForURL('**/taste-map/mobile');
   } else {
-   await page.locator('.llp-hero-cta-group .llp-btn-primary').click();
+   await page.locator('.llp-hero-cta-group .llp-btn-secondary').click();
    await page.waitForURL('**/taste-map');
   }
   await page.locator('.map-guide-panel').waitFor();

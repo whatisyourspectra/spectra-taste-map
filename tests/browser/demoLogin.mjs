@@ -31,7 +31,7 @@ try {
         }));
         await page.route('**/api/**', route => route.fulfill({ json: { tracks: [] } }));
         await page.goto(`${process.env.BASE_URL || 'http://127.0.0.1:5188'}/`);
-        await page.locator('.llp-hero-cta-group .llp-btn-primary').click();
+        await page.locator('.llp-hero-cta-group .llp-btn-secondary').click();
         await page.locator('.tm-demo-badge').waitFor();
         await page.evaluate(() => window.testSignIn());
         if (savedMap) {

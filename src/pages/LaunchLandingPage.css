@@ -790,6 +790,23 @@
   color: #94a3b8;
 }
 
+.music-service-icon { width: 22px; height: 22px; flex: 0 0 22px; }
+.music-service-icon--spotify { color: #1ed760; }
+.music-service-icon--apple { color: #fa526d; }
+.music-service-icon--youtube { color: #ff3849; }
+.llp-import-sources { margin-bottom: 28px; padding-bottom: 24px; border-bottom: 1px solid #9bb4de24; }
+.llp-import-sources h3 { margin: 0 0 10px; color: #f1f5ff; font-size: clamp(20px, 2.5vw, 26px); line-height: 1.35; font-weight: 600; letter-spacing: -.03em; word-break: keep-all; text-wrap: balance; }
+.llp-import-sources > p { margin: 0 0 20px; color: #a0aec5; font-size: 14px; line-height: 1.7; word-break: keep-all; }
+.llp-import-sources .llp-platform-strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 0; }
+.llp-import-sources button.llp-platform-chip { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 58px; padding: 10px 8px; color: #dce6f7; border-radius: 12px; white-space: nowrap; }
+.llp-platform-chip:hover { background: #9bb4de14; border-color: #9bb4de66; }
+.llp-platform-chip:focus-visible, .llp-dropzone:focus-visible, .llp-tab:focus-visible { outline: 2px solid #70d6ff; outline-offset: 4px; }
+.llp-import-sources .llp-export-help { margin-top: 14px; }
+@media (max-width: 599px) {
+  .llp-import-sources .llp-platform-strip { grid-template-columns: 1fr; gap: 8px; }
+  .llp-import-sources button.llp-platform-chip { justify-content: flex-start; padding-inline: 16px; min-height: 48px; }
+}
+
 /* Accordion Guide */
 .llp-guide-accordion {
   background: rgba(255, 255, 255, 0.02);
@@ -895,6 +912,7 @@
   color: #38bdf8;
   margin-bottom: 12px;
 }
+.llp-dropzone-icon svg { display: block; width: 32px; height: 32px; margin: 0 auto; }
 
 .llp-dropzone-text {
   font-size: 15px;
@@ -904,6 +922,7 @@
 
 .llp-file-name {
   color: #70d6ff;
+  overflow-wrap: anywhere;
 }
 
 .llp-dropzone-hint {
@@ -1265,7 +1284,7 @@ html:has(.llp-root), body:has(.llp-root) {
   background-color: #050812;
 }
 
-/* Keep the result and the shortest import path visible before optional export help. */
+/* File import is the default; playlist export instructions stay optional. */
 .llp-save-note { max-width: 530px; margin: 0; color: #93a6c2; font-size: 13px; line-height: 1.7; }
 .llp-paste-label { display: block; margin: 8px 0 12px; color: #c4d2e6; font-size: 14px; line-height: 1.6; }
 .llp-export-help { margin-top: 24px; border: 1px solid #9bb4de30; border-radius: 12px; padding: 0 18px 14px; text-align: left; }
