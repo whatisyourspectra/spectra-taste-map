@@ -1,0 +1,27 @@
+Use case: ads-marketing.
+Asset type: ONE finished, high-fidelity 16:9 landscape desktop welcome wallpaper for the SPECTRA graduation-design exhibition, viewed by first-time visitors. Use the highest available native resolution. Flat editorial graphic design, not a photo of a poster or screen.
+Reference 1 is the user's actual sub_poster.pdf rendered as an image. This is the PRIMARY visual reference: match its warm off-white paper background, huge jet-black horizontally extended SPECTRA logotype, lavender pill tagline, lime-yellow PRESS PLAY starburst sticker, black halftone record/torus, crisp orbital line, pink/lavender/cyan node networks, black diagonal typography ribbon with sawtooth edges and a narrow checker strip. Reference 2 is the user's actual main exhibition poster: draw on its outline display lettering, numbered UNDERSTAND / CLUSTER / EXPAND structure, and friendly music graphic sensibility. These two references define the user's existing brand, NOT generic futuristic SaaS styling.
+Redesign freely into a carefully composed LANDSCAPE wallpaper. Do not simply crop or stretch the portrait posters. Preserve the recognizable wordmark's very wide geometric letterforms. Do NOT use the earlier glossy dark navy wallpaper, cards, glass panels, screen mockups, album-cover-photo collages, glowing meshes or gradients.
+Art direction: striking Swiss/editorial poster meets contemporary music zine. Warm ivory #F6F3EE fills the entire canvas, rich near-black #171717 typography. Secondary flat accents dusty lavender #CBC0E4, pink #E56DB5, cyan #70D1EA, acid lemon #ECF05C. Authentic crisp halftone dots with measured density and clean negative spaces. Strong typographic hierarchy readable across a room. Professional asymmetry, precise alignment, generous safe margins.
+Layout:
+- A tiny uppercase exhibition identifier and thin horizontal rule along the top.
+- Huge black SPECTRA wordmark dominates almost the whole width across the upper quarter, faithful to the primary reference.
+- Immediately below, a lavender rounded pill holding YOUR MUSIC TASTE MAP, left aligned.
+- Middle-left: the short Korean headline in two large bold lines, with comfortable leading and no illustration behind it.
+- Right half: a bold large tilted vinyl-like torus made of discrete black halftone dots, crossed by one thin black elliptical orbit. Overlay three simple elegant constellation networks in flat pink, lavender and cyan; solid circles of varied sizes with precise thin connecting lines. The graph is illustrative and must look like reference 1's colored node constellations, not scientific atoms. One simple four-point pink sparkle.
+- Near the upper right of the visual, one flat acid-yellow sawtooth starburst sticker with PRESS PLAY in black extended type and a small northeast arrow.
+- Lower part: a sharply composed black diagonal ribbon passing in front of the lower edge of the record, sweeping up toward the right, with a thin checker strip and white LISTEN + DISCOVER lettering, like the primary reference. Keep the ribbon from covering the main headline.
+- Footer: three equally spaced minimal numbered feature labels, with the English verbs in clean outline display lettering if possible, and short Korean phrases below. No boxes. A small service website at the bottom edge.
+Exact text only, reproduce all words and Korean accurately and add nothing:
+Top identifier: "SPECTRA / GRADUATION DESIGN STUDIO 2026"
+Main wordmark: "SPECTRA"
+Lavender pill: "YOUR MUSIC TASTE MAP"
+Main Korean headline, two lines: "음악으로 발견하는" / "나의 스펙트라"
+Small supporting text below headline: "좋아하는 음악을 나만의 지도로 만나보세요."
+Starburst: "PRESS" / "PLAY" / "↗"
+Ribbon, at most twice: "LISTEN + DISCOVER"
+Footer feature 1: "01 UNDERSTAND" / "나의 취향을 이해하고"
+Footer feature 2: "02 CLUSTER" / "닮은 음악을 모으고"
+Footer feature 3: "03 EXPAND" / "새로운 음악으로 확장하세요"
+Website: "www.spectra-music.org"
+Constraints: no invented QR codes, no interface buttons, no card grid, no unnecessary microcopy, no 3D chrome, no glow, no gradients. This should immediately feel like a landscape extension of the user's off-white SPECTRA exhibition poster, not a new unrelated brand. A single polished, presentation-ready welcome wallpaper.

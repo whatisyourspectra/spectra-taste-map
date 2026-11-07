@@ -1,0 +1,20 @@
+Use case: ads-marketing.
+Asset type: a finished high-fidelity landscape welcome wallpaper for a Korean graduation-design exhibition booth, shown full screen to first-time visitors arriving to try SPECTRA. Create ONE cohesive flat digital artwork, 16:9 aspect ratio, ideally 3840 x 2160 pixels at the highest available resolution. Not a photograph of a display.
+Reference image 1 is the existing SPECTRA brand wordmark: preserve its very wide, horizontally extended geometric letterforms and pink-to-lavender-to-cyan color progression. Reference image 2 is visual language only: song-cover circles, softly tinted genre clusters, fine cyan connections on near-black. Create a NEW premium composition, not a copy of the reference sheet.
+Art direction: sophisticated exhibition identity, graphic-design precision, generous negative space, very crisp Korean sans-serif typography, elegant editorial hierarchy, subtle translucent dark navy panels with hairline borders. Colors: almost black #060910, white #EDF1FB, pink #EA69B6, violet #A785FF, cyan #70D6FF. Restrained soft light, no cheap chrome, no heavy glow.
+Composition: upper left a prominent faithful SPECTRA wordmark with small widely spaced tagline underneath; big left-aligned Korean headline in the upper-middle. A striking fine-line flowing three-dimensional orbital/wire-mesh sculpture occupies the right half, pink/lilac/cyan strands forming a flowing musical constellation; about 35 small circular abstract album-art nodes gather in 3 airy clusters and delicate connecting lines. Preserve text contrast and breathing room. Bottom third contains two generous well-aligned orientation panels, first wider than the second, low-density and instantly scannable. Tiny calm footer aligned along the bottom. Use a consistent grid and 6% safe margins. No mockup bezel, laptop, phones, browser chrome, cursor, QR code, fake controls, fake charts or invented metrics.
+Exact text only, render Korean carefully and verbatim. Do not add any other words:
+Top wordmark: "SPECTRA"
+Tagline: "YOUR MUSIC TASTE MAP"
+Large headline, two lines: "당신의 음악," / "하나의 취향 지도."
+Supporting line: "좋아하는 곡들의 장르와 연결을 따라 내 취향을 탐색해보세요."
+First panel small number: "01"
+First panel title: "내 음악으로 시작하기"
+First panel source names with understated colored music-service marks: "Spotify   Apple Music   YouTube Music"
+First panel instruction, legible: "플레이리스트 내보내기 → CSV·TXT 올리기 → 내 지도 탐색"
+Second panel small number: "02"
+Second panel title: "파일 없이 먼저 체험하기"
+Second panel instruction: "데모 지도로 SPECTRA를 둘러보세요."
+Footer left: "UNDERSTAND · CLUSTER · EXPAND"
+Footer right: "www.spectra-music.org"
+This is a high-end finished wallpaper with beautifully readable type, deliberate alignment and quiet cinematic dimensionality, not a dense infographic.

@@ -1,0 +1,40 @@
+.playlist-import-guide { margin: 20px 0 0; color: #b5c3d9; font-size: 14px; line-height: 1.75; }
+.playlist-import-guide h4 { margin: 0 0 10px; color: #edf1fb; font-size: 18px; line-height: 1.5; font-weight: 600; letter-spacing: -.02em; word-break: keep-all; }
+.playlist-import-guide p { margin: 10px 0; word-break: keep-all; overflow-wrap: anywhere; }
+.pi-guide-eyebrow { display: block; color: var(--import-accent); font-size: 11px; letter-spacing: .13em; margin-bottom: 12px; }
+.pi-guide-intro { margin-bottom: 20px; }
+.pi-guide-handoff { color: #91a4c0; font-size: 12px; }
+.pi-guide-steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; padding: 0; margin: 24px 0 0; list-style: none; }
+.playlist-import-guide button { font: inherit; cursor: pointer; }
+.pi-guide-steps button { width: 100%; min-height: 70px; text-align: left; padding: 10px 8px; border: 0; border-bottom: 2px solid #9bb4de30; background: transparent; color: #9aaecb; line-height: 1.5; }
+.pi-guide-steps button span { display: block; font-size: 12px; color: #a6b6d1; margin-bottom: 4px; }
+.pi-guide-steps button[aria-current] { color: #edf1fb; border-color: var(--import-accent); background: color-mix(in srgb, var(--import-accent) 5%, transparent); }
+.pi-guide-panel { padding: 24px 0 0; }
+.pi-guide-checklist { margin: 12px 0; padding-left: 22px; }
+.pi-guide-checklist li { padding-left: 4px; margin-bottom: 12px; word-break: keep-all; overflow-wrap: anywhere; }
+.playlist-import-guide .pi-guide-callout { padding: 12px 14px; border-left: 2px solid var(--import-accent); border-radius: 0 8px 8px 0; background: color-mix(in srgb, var(--import-accent) 5%, transparent); color: #c5cfe0; font-size: 13px; }
+.pi-guide-actions { display: flex; justify-content: space-between; gap: 12px; margin-top: 20px; }
+.pi-guide-actions button, .pi-guide-shortcut button, .pi-guide-primary { min-height: 44px; border: 1px solid #70d6ff55; border-radius: 10px; padding: 10px 14px; background: #70d6ff0c; color: #d1edfa; }
+.pi-guide-actions button:disabled { opacity: .4; cursor: default; }
+.pi-guide-primary { width: 100%; margin-top: 12px; }
+.pi-guide-troubleshooting { border-top: 1px solid #9bb4de26; padding-top: 24px; margin-top: 24px; }
+.pi-guide-troubleshooting h4 { font-size: 15px; color: #b9cbe3; }
+.pi-guide-troubleshooting details { border-bottom: 1px solid #9bb4de26; padding-bottom: 2px; }
+.pi-guide-troubleshooting summary { padding: 14px 0; cursor: pointer; color: #d4dff1; line-height: 1.65; word-break: keep-all; }
+.pi-guide-troubleshooting details > p, .pi-guide-troubleshooting details > ol { font-size: 13px; }
+.playlist-import-guide a { color: #aadfff; text-underline-offset: 4px; overflow-wrap: anywhere; }
+.pi-guide-links { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 14px 0; font-size: 13px; }
+.pi-guide-troubleshooting details > a { display: inline-block; margin: 8px 0 16px; font-size: 13px; }
+.pi-guide-device { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 10px; }
+.pi-guide-device button { min-height: 44px; padding: 8px 12px; border: 1px solid #9bb4de30; border-radius: 8px; background: transparent; color: #b8c9df; }
+.pi-guide-device button[aria-pressed='true'] { border-color: #70d6ff88; color: #d7f1ff; background: #70d6ff12; }
+.pi-guide-shortcut { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding-top: 20px; font-size: 13px; }
+.playlist-import-guide button:focus-visible, .playlist-import-guide a:focus-visible, .playlist-import-guide summary:focus-visible { outline: 2px solid #70d6ff; outline-offset: 4px; }
+@media (max-width: 480px) {
+    .llp-export-help:has(.playlist-import-guide) { padding-inline: 0; border-inline: 0; border-radius: 0; }
+    .pi-guide-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .pi-guide-steps button { min-height: 64px; }
+    .playlist-import-guide h4 { font-size: 17px; }
+    .pi-guide-shortcut { align-items: stretch; }
+    .pi-guide-shortcut button { width: 100%; }
+}
