@@ -28,7 +28,7 @@ try {
         await page.goto(base + '/taste-map');
         const nav = page.getByRole('navigation', { name: '모바일 음악 메뉴' });
         await nav.waitFor();
-        assert.deepEqual(await nav.getByRole('button').allTextContents(), ['내 지도', '발견', '오늘', 'Social']);
+        assert.deepEqual(await nav.getByRole('button').allTextContents(), ['내 지도', '발견', '오늘', '소셜']);
         assert.equal(calls.length, 0);
         await inside(page.getByRole('button', { name: '카카오톡으로 공유하기', exact: true }), viewport.height);
         assert.equal(await page.locator('.help-center-trigger').isVisible(), false);

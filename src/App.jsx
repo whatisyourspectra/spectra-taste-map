@@ -20,6 +20,7 @@ import MapOnboarding from './onboarding/MapOnboarding';
 import SocialPage from './social/SocialPage';
 import SpectraLogo from './components/SpectraLogo';
 import { isDemoTaste } from './taste/tasteStorage';
+import './styles/mobileDesign.css';
 
 function AppInner({ onRestorePersonalMap }) {
   const { hasTaste, tracks, stats, cloudSyncing, importTracks, status, progress, error, reset } = useTasteData();

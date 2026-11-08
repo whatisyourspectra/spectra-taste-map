@@ -107,11 +107,15 @@ try {
     await guest.getByRole('link', { name: '로그인하고 코멘트 남기기' }).waitFor();
     await guest.screenshot({ path: `${output}/mobile-profile.png`, fullPage: true });
     const mobile = await open(alice, true, '/taste-map');
-    await mobile.getByRole('navigation', { name: '모바일 음악 메뉴' }).getByRole('button', { name: 'Social' }).click();
+    await mobile.getByRole('navigation', { name: '모바일 음악 메뉴' }).getByRole('button', { name: '소셜' }).click();
     await mobile.getByRole('heading', { name: '지금 공개된 취향' }).waitFor();
     assert.equal(await mobile.locator('.social-mobile-nav a').count(), 4);
+    assert.deepEqual(await mobile.locator('.social-mobile-nav a').allTextContents(), ['내 지도', '발견', '오늘', '소셜']);
     assert.ok(await mobile.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'No horizontal overflow');
     await mobile.screenshot({ path: `${output}/mobile-feed.png`, fullPage: true });
+    await mobile.goto(`${base}/social?lang=en`);
+    await mobile.locator('.social-mobile-nav').waitFor();
+    assert.deepEqual(await mobile.locator('.social-mobile-nav a').allTextContents(), ['My map', 'Discover', 'Today', 'Social']);
     await page.goto(`${base}/social`);
     await page.getByRole('button', { name: '공개 해제', exact: true }).click();
     await page.getByRole('status').filter({ hasText: '공개를 해제했어요.' }).first().waitFor();

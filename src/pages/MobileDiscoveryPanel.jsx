@@ -35,7 +35,7 @@ export default function MobileDiscoveryPanel({ library, recommendations, seed, s
     };
     const query = current ? encodeURIComponent(`${current.artists} ${current.name}`) : '';
     return <section className="mtm-discovery mtm-scroll-page" aria-labelledby="mtm-discovery-title">
-        <div className="mtm-page-heading"><div><span className="public-map-eyebrow">FOLLOW YOUR CURIOSITY</span><h1 id="mtm-discovery-title">{en ? 'Discover' : '발견'}</h1><p>{en ? 'Start with a song you love. Find your next favorite.' : '좋아하는 한 곡에서, 다음 취향을 찾아요.'}</p></div></div>
+        <div className="mtm-page-heading"><div><span className="public-map-eyebrow">{en ? 'A little beyond your favorites' : '좋아하는 음악, 그다음 이야기'}</span><h1 id="mtm-discovery-title">{en ? 'Discover' : '발견'}</h1><p>{en ? 'Start with a song you love. Find your next favorite.' : '좋아하는 한 곡에서, 다음 취향을 찾아요.'}</p></div></div>
         <details className="mtm-seed-picker">
             <summary><Cover track={seed} /><span><small>{en ? 'Starting from' : '이 곡에서 시작해요'}</small><strong>{seed?.name}</strong><small>{seed?.artists}</small></span><span className="mtm-seed-change">{en ? 'Change' : '곡 바꾸기'}⌄</span></summary>
             <label className="public-map-search"><input type="search" aria-label={en ? 'Find a starting song' : '추천 기준곡 검색'} placeholder={en ? 'Song or artist from your music' : '내 곡 또는 아티스트 찾기'} value={sourceSearch} onChange={event => setSourceSearch(event.target.value)} /></label>

@@ -6,6 +6,8 @@ import { supabase } from '../auth/supabaseClient';
 import AccountButton from '../auth/AccountButton';
 import SpectraLogo from '../components/SpectraLogo';
 import MobileMusicIcon from '../components/MobileMusicIcon';
+import { mobileMusicTabs } from '../components/mobileMusicTabs';
+import HelpCenter from '../components/HelpCenter';
 import LanguageSwitcher from '../i18n/LanguageSwitcher';
 import { useLocale } from '../i18n/useLocale';
 import { titleizeGenre } from '../taste/genreIdentity';
@@ -196,7 +198,7 @@ export default function SocialPage() {
     const published = profile => { setOwn(profile); setRows(current => [profile, ...current.filter(row => row.user_id !== profile.user_id)]); setNotice(t('내 취향이 공개됐어요.', 'Your taste is now public.')); };
     const unpublished = () => { setOwn(current => ({ ...current, is_public: false })); setRows(current => current.filter(row => row.user_id !== user.id)); setNotice(t('공개를 해제했어요.', 'Your taste is now private.')); if (profileId === user.id) navigate('/social'); };
     return <main className="social-page">
-        <header className="social-header"><Link to="/" aria-label="SPECTRA home"><SpectraLogo decorative /></Link><nav aria-label={t('서비스 메뉴', 'App menu')}><Link to="/taste-map">{t('내 지도', 'My map')}</Link><Link to="/social" aria-current="page">Social<span /></Link></nav><div><LanguageSwitcher /><AccountButton /></div></header>
+        <header className="social-header"><Link to="/" aria-label="SPECTRA home"><SpectraLogo decorative /></Link><nav aria-label={t('서비스 메뉴', 'App menu')}><Link to="/taste-map">{t('내 지도', 'My map')}</Link><Link to="/social" aria-current="page">Social<span /></Link></nav><div><LanguageSwitcher /><span className="social-help-action"><HelpCenter inMenu /></span><AccountButton /></div></header>
         <div className="social-shell"><div className="social-main">
             {notice && <p role="status" className="social-success">{notice}</p>}
             {profileId ? <><Link className="social-back" to="/social">← {t('모든 취향 보기', 'All tastes')}</Link><ProfileDetail key={profileId} id={profileId} revision={profileId === own?.user_id ? own.updated_at : null} en={en} onRefresh={() => setRefresh(value => value + 1)} /></> : <>
@@ -211,8 +213,8 @@ export default function SocialPage() {
         </div><aside className="social-sidebar" id="social-my-taste">{ownError ? <section className="social-publish"><p role="alert">{errorText(ownError, en)}</p><button className="social-secondary" onClick={() => setRefresh(value => value + 1)}>{t('다시 시도', 'Retry')}</button></section>
             : ownReady ? <PublishPanel key={`${user?.id || 'guest'}-${own?.updated_at || 'new'}`} own={own} en={en} onPublished={published} onUnpublished={unpublished} /> : <p role="status">{t('내 공개 설정을 불러오는 중…', 'Loading your publication…')}</p>}
         </aside></div>
-        <nav className="social-mobile-nav" aria-label={t('모바일 음악 메뉴', 'Mobile music menu')}>{[
-            ['/taste-map', 'map', t('내 지도', 'My map')], ['/taste-map?tab=discover', 'compass', t('발견', 'Discover')], ['/taste-map?tab=today', 'today', t('오늘', 'Today')], ['/social', 'social', 'Social'],
-        ].map(([href, icon, label]) => <Link key={href} to={href} aria-current={href === '/social' ? 'page' : undefined}><MobileMusicIcon name={icon} />{label}</Link>)}</nav>
+        <nav className="social-mobile-nav" aria-label={t('모바일 음악 메뉴', 'Mobile music menu')}>
+            {mobileMusicTabs(lang).map(item => <Link key={item.id} to={item.href} aria-current={item.id === 'social' ? 'page' : undefined}><MobileMusicIcon name={item.icon} />{item.label}</Link>)}
+        </nav>
     </main>;
 }
