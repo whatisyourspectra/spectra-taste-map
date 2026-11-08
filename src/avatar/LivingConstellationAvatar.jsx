@@ -10,6 +10,9 @@ export default function LivingConstellationAvatar({
     spatial = false,
     onSelect,
     activeGenre = null,
+    label,
+    description,
+    className = '',
 }) {
     const id = useId().replace(/:/g, '');
     const [paused, setPaused] = useState(false);
@@ -37,13 +40,13 @@ export default function LivingConstellationAvatar({
         return () => document.removeEventListener('visibilitychange', onVisibility);
     }, []);
     return (
-        <svg className={`lc-avatar${spatial ? ' lc-spatial' : ''}${paused ? ' is-paused' : ''}`}
+        <svg className={`lc-avatar${spatial ? ' lc-spatial' : ''}${paused ? ' is-paused' : ''}${className ? ` ${className}` : ''}`}
             viewBox={fixedFrame ? "-20 -34 400 400" : viewBox} role={onSelect ? "group" : "img"} aria-labelledby={`${id}-title ${id}-desc`}
             style={{ overflow: showReceiver ? 'visible' : 'hidden', '--lc-pulse': `${avatar.pulseSeconds}s`, '--lc-drift': `${avatar.driftSeconds}s` }}>
-            <title id={`${id}-title`}>{lang === 'en' ? 'Your living Spectra' : '살아 있는 나의 스펙트라'}</title>
-            <desc id={`${id}-desc`}>{lang === 'en'
+            <title id={`${id}-title`}>{label || (lang === 'en' ? 'Your living Spectra' : '살아 있는 나의 스펙트라')}</title>
+            <desc id={`${id}-desc`}>{description || (lang === 'en'
                 ? `${avatar.nodes.length} track stars connected by taste, with ${avatar.orbits.length} exploration stars in orbit.`
-                : `취향으로 연결된 ${avatar.nodes.length}개의 곡 별과 탐색 중인 ${avatar.orbits.length}개의 공전하는 별.`}</desc>
+                : `취향으로 연결된 ${avatar.nodes.length}개의 곡 별과 탐색 중인 ${avatar.orbits.length}개의 공전하는 별.`)}</desc>
             <defs>
                 <radialGradient id={`${id}-glow`}>
                     <stop offset="0%" stopColor="currentColor" stopOpacity="0.5" />
@@ -113,6 +116,7 @@ export default function LivingConstellationAvatar({
                             key={node.id}
                             className={`lc-star${node.emerging ? ' emerging' : ''}${isFocus ? ' is-tour-focus' : ''}${isDim ? ' is-tour-dim' : ''}`}
                             data-track-id={node.id}
+                            data-star-kind={node.kind}
                             role={onSelect ? 'button' : undefined}
                             tabIndex={onSelect ? 0 : undefined}
                             aria-label={onSelect ? node.title : undefined}

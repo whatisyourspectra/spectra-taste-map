@@ -2,9 +2,11 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import LivingConstellationAvatar from '../avatar/LivingConstellationAvatar';
 import { clampZoom, DEFAULT_CAMERA, projectPoint, projectSpectra } from './projectSpectra';
 
-export default function ImmersiveSpectra({ avatar, previous, comparison, reaction, lang, stageRef, onSelect, tourCameraTarget }) {
-    const camera = useRef({ ...DEFAULT_CAMERA });
-    const [view, setView] = useState({ ...DEFAULT_CAMERA });
+export default function ImmersiveSpectra({ avatar, previous, comparison = 0, reaction, lang, stageRef, onSelect, tourCameraTarget,
+    initialCamera = DEFAULT_CAMERA, activeGenre, label, description, hint, artworkClassName }) {
+    const home = useRef({ ...initialCamera });
+    const camera = useRef({ ...initialCamera });
+    const [view, setView] = useState(() => ({ ...initialCamera }));
     const pointers = useRef(new Map());
     const velocity = useRef({ yaw: 0, pitch: 0 });
     const lastMove = useRef(0);
@@ -153,8 +155,11 @@ export default function ImmersiveSpectra({ avatar, previous, comparison, reactio
                         showReceiver={false}
                         fixedFrame
                         spatial
+                        label={label}
+                        description={description}
+                        className={artworkClassName}
                         onSelect={comparison < 50 ? onSelect : undefined}
-                        activeGenre={tourCameraTarget?.targetGenre}
+                        activeGenre={activeGenre || tourCameraTarget?.targetGenre}
                     />
                 </div>
                 {past && <div className="tmm-space-past" style={{ opacity: comparison / 100, pointerEvents: 'none' }} aria-hidden="true">
@@ -171,9 +176,9 @@ export default function ImmersiveSpectra({ avatar, previous, comparison, reactio
         </div>
         <div className="tmm-space-controls">
             <button type="button" aria-label={en ? 'Zoom out' : '축소'} onClick={() => adjust(-.15)}>−</button>
-            <button type="button" onClick={() => { stop(); camera.current = { ...DEFAULT_CAMERA }; paint(); }}>{en ? 'Recenter' : '중심으로'}</button>
+            <button type="button" onClick={() => { stop(); camera.current = { ...home.current }; paint(); }}>{en ? 'Recenter' : '중심으로'}</button>
             <button type="button" aria-label={en ? 'Zoom in' : '확대'} onClick={() => adjust(.15)}>+</button>
         </div>
-        <p className="tmm-space-hint">{en ? 'Swipe to rotate · Pinch to zoom · Tap a light' : '스와이프로 회전 · 두 손가락으로 확대 · 빛을 눌러 곡 보기'}</p>
+        <p className="tmm-space-hint">{hint || (en ? 'Swipe to rotate · Pinch to zoom · Tap a light' : '스와이프로 회전 · 두 손가락으로 확대 · 빛을 눌러 곡 보기')}</p>
     </div>;
 }

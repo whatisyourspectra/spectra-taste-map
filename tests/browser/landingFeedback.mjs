@@ -30,14 +30,13 @@ try {
             assert.equal(await page.locator('.llp-chapter-nav button').nth(index).locator('span').first().textContent(), `0${index + 1}`);
         }
         const demoName = lang === 'en' ? 'Try the demo map' : '데모 지도 체험하기';
-        for (const button of await page.locator('.llp-nav-demo-btn, .llp-hero-cta-group .llp-btn-secondary, .llp-demo-launch-btn, .lj-track-detail button').all()) {
+        assert.equal(await page.locator('.llp-nav-demo-btn').getAttribute('aria-label'), demoName);
+        for (const button of await page.locator('.llp-hero-cta-group .llp-btn-secondary, .llp-demo-launch-btn, .lj-track-detail button').all()) {
             assert.equal((await button.innerText()).replace('↗', '').replace('→', '').trim(), demoName);
         }
         if (lang === 'en') {
             assert.ok((await page.locator('#demo .llp-section-eyebrow').innerText()).includes('Before you explore your taste'));
             assert.ok((await page.locator('.llp-map-destination').innerText()).includes('track list with song titles and artists'));
-            assert.ok((await page.locator('.lj-method-note').innerText()).includes('Last.fm'));
-            assert.ok((await page.locator('.lj-method-note').innerText()).includes('estimates from tags'));
         }
         const assertAccountFits = async () => { const box = await page.locator('.llp-nav-auth .sa-account-button').boundingBox(); assert.ok(box.x >= 0 && box.x + box.width <= width, 'Account entry fits the screen'); };
         await assertAccountFits();

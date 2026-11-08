@@ -11,6 +11,14 @@ async function prepare(context) {
     await context.route('**/api/**', route => route.fulfill({ json: { tracks: [] } }));
     await context.addInitScript(() => localStorage.setItem('spectra:map-guide:v2:desktop', 'seen'));
 }
+async function chooseLanguage(page, language) {
+    const label = language === 'ko' ? '한국어' : 'EN';
+    const button = page.getByRole('button', { name: label, exact: true });
+    const more = page.locator('.llp-nav-more');
+    if (!await button.isVisible() && await more.isVisible()) await more.click();
+    await button.click();
+    if (await page.locator('.llp-nav-utility-panel').count()) await page.keyboard.press('Escape');
+}
 async function koreanText(page) {
     return page.evaluate(() => {
         const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
@@ -31,24 +39,24 @@ try {
         const page = await context.newPage();
         page.on('pageerror', e => errors.push(e.message));
         await page.goto(base);
-        await page.getByRole('button', { name: 'EN', exact: true }).waitFor();
+        await page.locator('.llp-nav-more').waitFor();
         assert.equal(await page.locator('html').getAttribute('lang'), 'en');
         assert.deepEqual(await koreanText(page), [], 'English landing has no Korean interface text');
-        await page.getByRole('button', { name: '한국어', exact: true }).click();
+        await chooseLanguage(page, 'ko');
         assert.equal(await page.locator('html').getAttribute('lang'), 'ko');
         await page.getByRole('button', { name: '텍스트 직접 붙여넣기', exact: true }).click();
         await page.locator('.llp-textarea').fill('Daft Punk - Get Lucky\nBeach House - Space Song');
-        await page.getByRole('button', { name: 'EN', exact: true }).click();
+        await chooseLanguage(page, 'en');
         assert.ok((await page.locator('.llp-textarea').inputValue()).includes('Get Lucky'));
         await openFeedback(page);
         const dialog = page.getByRole('dialog');
         await dialog.getByLabel(/^Subject/).fill('My feedback draft');
         await page.keyboard.press('Escape');
-        await page.getByRole('button', { name: '한국어', exact: true }).click();
+        await chooseLanguage(page, 'ko');
         await openFeedback(page);
         assert.equal(await dialog.getByLabel(/^제목/).inputValue(), 'My feedback draft');
         await page.keyboard.press('Escape');
-        await page.getByRole('button', { name: 'EN', exact: true }).click();
+        await chooseLanguage(page, 'en');
         await page.locator('.llp-export-help > summary').click();
         await page.locator('.llp-platform-chip').filter({ hasText: /^Spotify$/ }).click();
         assert.ok((await page.locator('.llp-export-link').getAttribute('href')).includes('/transfer/spotify-to-file'));
@@ -122,7 +130,7 @@ try {
         }
         if (width <= 900) {
             await page.getByText('···', { exact: true }).click();
-            await page.getByRole('button', { name: '한국어', exact: true }).click();
+            await chooseLanguage(page, 'ko');
             await page.getByRole('heading', { name: /내 지도/ }).waitFor();
         } else {
             await page.locator('.tm-lang-btn').filter({ hasText: /KO/ }).click();
@@ -138,7 +146,7 @@ try {
     const page = await context.newPage();
     await page.goto(`${base}/?lang=en`);
     assert.equal(await page.evaluate(() => localStorage.getItem('spectra-tastemap-lang-v1')), 'en');
-    await page.getByRole('button', { name: '한국어', exact: true }).click();
+    await chooseLanguage(page, 'ko');
     await page.reload();
     assert.equal(await page.locator('html').getAttribute('lang'), 'ko');
     await context.close();
@@ -170,7 +178,7 @@ try {
     await feedbackDialog.getByRole('alert').waitFor();
     assert.ok((await feedbackDialog.getByRole('alert').innerText()).includes('Your draft is safe'));
     await feedbackPage.keyboard.press('Escape');
-    await feedbackPage.getByRole('button', { name: '한국어', exact: true }).click();
+    await chooseLanguage(feedbackPage, 'ko');
     await openFeedback(feedbackPage);
     assert.ok((await feedbackDialog.getByRole('alert').innerText()).includes('입력 내용은 유지됩니다'));
     await feedbackDialog.getByRole('button', { name: '의견 보내기', exact: true }).click();
@@ -189,7 +197,7 @@ try {
     });
     const privatePage = await privateContext.newPage();
     await privatePage.goto(base);
-    await privatePage.getByRole('button', { name: 'EN', exact: true }).click();
+    await chooseLanguage(privatePage, 'en');
     await privatePage.getByRole('button', { name: 'Guide & feedback', exact: true }).waitFor();
     assert.equal(await privatePage.locator('html').getAttribute('lang'), 'en');
     await privateContext.close();

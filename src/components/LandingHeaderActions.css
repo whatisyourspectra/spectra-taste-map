@@ -1,0 +1,58 @@
+/* One destination, one account entry, one utility menu at every screen size. */
+.llp-root .llp-nav .llp-nav-actions { position: relative; flex: none; gap: 6px; }
+.llp-root .llp-nav .llp-nav-map-entry { display: inline-flex; align-items: center; justify-content: center; gap: 7px; width: auto; min-width: 0; max-width: none; min-height: 40px; height: 40px; padding: 0 13px; border: 1px solid #b9a3ff30; border-radius: 12px; background: #b9a3ff12; color: #d9cbff; box-shadow: none; font: inherit; font-size: 12px; font-weight: 600; letter-spacing: 0; white-space: nowrap; cursor: pointer; transition: background .18s, transform .18s; }
+.llp-root .llp-nav .llp-nav-map-entry > span { display: inline; overflow: visible; text-overflow: clip; }
+.llp-root .llp-nav .llp-nav-map-entry:hover { background: #b9a3ff20; border-color: #b9a3ff50; color: #eee7ff; box-shadow: none; transform: none; }
+.llp-root .llp-nav .llp-nav-map-entry:active { transform: scale(.97); }
+.llp-root .llp-nav .llp-nav-map-entry:disabled { opacity: .45; cursor: wait; }
+.llp-nav-actions .mtm-icon { flex: none; display: block; width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.llp-root .llp-nav .llp-nav-auth .sa-account-button { position: relative; display: grid; place-items: center; width: 40px; min-width: 40px; height: 40px; min-height: 40px; padding: 0; gap: 0; border: 1px solid #ffffff0e; border-radius: 12px; background: #ffffff04; color: #b2bbca; }
+.llp-nav-auth .sa-account-button:hover { background: #ffffff0a; }
+.llp-root .llp-nav .llp-nav-auth .sa-account-button > span:last-child { position: absolute; display: block; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.llp-nav-auth .sa-account-initial { width: 25px; height: 25px; background: #b9a3ff20; color: #d9cbff; }
+.llp-nav-auth .sa-account-button > svg { width: 18px; height: 18px; }
+.llp-nav-utilities { position: relative; }
+.llp-nav-more { display: grid; place-items: center; width: 40px; height: 40px; padding: 0; border: 1px solid transparent; border-radius: 12px; background: transparent; color: #9ca6b8; cursor: pointer; }
+.llp-nav-more > svg { width: 22px; height: 22px; }
+.llp-nav-more:hover, .llp-nav-more[aria-expanded="true"] { color: #e1d6f6; background: #b9a3ff12; }
+.llp-nav-actions :is(button, a):focus-visible { outline: 2px solid #b9a3ff; outline-offset: 3px; }
+.llp-nav-utility-panel { position: absolute; z-index: 10; right: 0; top: calc(100% + 12px); width: 280px; max-width: calc(100vw - 32px); max-height: calc(100dvh - 108px); padding: 10px; overflow-y: auto; overscroll-behavior: contain; border: 1px solid #ffffff12; border-radius: 20px; background: #191b22; color: #e5e9f0; box-shadow: 0 18px 60px #0008; text-align: left; animation: landing-utility-enter .18s ease-out; }
+.llp-nav-utility-links { display: grid; gap: 2px; }
+.llp-nav-utility-links > button { display: flex; align-items: center; gap: 11px; width: 100%; min-height: 44px; padding: 11px 12px; border: 0; border-radius: 11px; background: transparent; color: #cbd2df; font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
+.llp-nav-utility-links > button > .mtm-icon:first-child { color: #9e91b8; }
+.llp-nav-utility-links > button > .mtm-icon:last-child { margin-left: auto; width: 14px; height: 14px; color: #737d90; }
+.llp-nav-utility-links > button:hover { background: #ffffff06; color: #eee7ff; }
+.llp-nav-utility-links > button:disabled { opacity: .45; cursor: wait; }
+.llp-nav-preferences { display: grid; gap: 4px; margin-top: 8px; padding-top: 8px; border-top: 1px solid #ffffff0a; }
+.llp-nav-language { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; padding: 0 8px 0 12px; }
+.llp-nav-language > span { display: flex; align-items: center; gap: 11px; color: #a8b0bf; font-size: 13px; }
+.llp-nav-language > span .mtm-icon { color: #8b82a0; }
+.llp-nav-language .language-switcher { border: 0; background: #101116; }
+.llp-nav-language .language-switcher button { min-height: 36px; padding: 6px 10px; }
+.llp-nav-language .language-switcher button[aria-pressed="true"] { background: #b9a3ff26; color: #e2d7ff; }
+.llp-root .llp-nav .llp-sound-toggle { display: flex; flex: none; align-items: center; gap: 11px; width: 100%; height: 44px; padding: 0 12px; border: 0; border-radius: 11px; background: transparent; color: #a8b0bf; font: inherit; font-size: 13px; }
+.llp-nav .llp-sound-toggle > svg { color: #8b82a0; width: 18px; height: 18px; }
+.llp-nav .llp-sound-toggle > small { margin-left: auto; color: #7f899c; font-size: 11px; }
+.llp-nav .llp-sound-toggle > i { position: relative; width: 28px; height: 17px; border-radius: 10px; background: #ffffff18; }
+.llp-nav .llp-sound-toggle > i::after { content: ''; position: absolute; left: 3px; top: 3px; width: 11px; height: 11px; border-radius: 50%; background: #adb3c0; transition: transform .18s; }
+.llp-nav .llp-sound-toggle[aria-pressed="true"] > i { background: #b9a3ff; }
+.llp-nav .llp-sound-toggle[aria-pressed="true"] > i::after { background: #251e37; transform: translateX(11px); }
+.llp-nav .llp-sound-toggle[aria-pressed="true"] > small { color: #d9cbff; }
+.llp-nav .llp-sound-toggle:hover { background: #ffffff06; }
+.llp-nav .llp-sound-status { position: static; margin: 2px 12px 6px; padding: 0; background: none; color: #cfb9d0; font-size: 11px; line-height: 1.6; }
+.llp-nav-utility-panel > .taste-save-status { display: flex; max-width: 100%; padding: 12px; margin-top: 8px; border-top: 1px solid #ffffff0a; font-size: 11px; }
+@keyframes landing-utility-enter { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: none; } }
+@media (max-width: 699px) {
+    .llp-root .llp-nav .llp-nav-actions { gap: 4px; }
+    .llp-root .llp-nav .llp-nav-map-entry { min-height: 44px; height: 44px; padding-inline: 10px; font-size: 11px; gap: 6px; }
+    .llp-nav-actions .mtm-icon { width: 16px; height: 16px; }
+    .llp-root .llp-nav .llp-nav-auth .sa-account-button, .llp-nav-more { width: 44px; min-width: 44px; height: 44px; min-height: 44px; }
+    .llp-nav-utility-panel { max-height: calc(100dvh - 96px); top: calc(100% + 9px); }
+    .llp-nav-language .language-switcher button { min-height: 40px; }
+}
+@media (max-width: 360px) {
+    .llp-root .llp-nav .llp-nav-brand { --spectra-logo-width: 90px; }
+    .llp-root .llp-nav .llp-nav-map-entry { padding-inline: 8px; }
+    .llp-root .llp-nav .llp-nav-map-entry > .mtm-icon { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { .llp-nav-utility-panel { animation: none; } .llp-nav .llp-sound-toggle > i::after, .llp-root .llp-nav .llp-nav-map-entry { transition: none; } }

@@ -1,16 +1,15 @@
-import LanguageSwitcher from '../i18n/LanguageSwitcher.jsx';
 import { useLocale } from '../i18n/useLocale.js';
 import { translate } from '../i18n/translate.js';
 import { BRAND_TAGLINE } from '../brand/drawSpectraLogo';
 import SpectraLogo from '../components/SpectraLogo';
 import React, { useCallback, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import './LaunchLandingPage.css';
 import LaunchTasteMapHero from './LaunchTasteMapHero';
 import { DEMO_UNIVERSES, getCombinedDemoTracks } from '../taste/demoUniverses';
 import { parseTrackList, parseTrackListDetailed, readTrackFile } from '../utils/parseTrackList';
 import { MAX_IMPORT_TRACKS } from '../context/TasteDataContext';
-import AccountButton from '../auth/AccountButton';
+import LandingHeaderActions from '../components/LandingHeaderActions';
 import { useAuth } from '../auth/AuthContext';
 import SingleLineTitle from '../components/SingleLineTitle';
 import MobileEntryCard from '../components/MobileEntryCard';
@@ -29,11 +28,23 @@ export default function LaunchLandingPage({
   onOpenPersonalMap,
 }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   useLocale();
   const sound = useLandingSound();
   const landingRef = useRef(null);
   const [chapter, setChapter] = useState('hero');
+  // Resolve the guide's import link after the destination has mounted, including
+  // navigation from a mobile menu which unmounts as soon as the guide closes.
+  React.useEffect(() => {
+    if (location.hash !== '#import') return undefined;
+    const frame = requestAnimationFrame(() => {
+      const target = landingRef.current?.querySelector('#import');
+      target?.scrollIntoView({ block: 'start', behavior: 'instant' });
+      target?.querySelector('h2')?.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [location.hash, location.key]);
   React.useEffect(() => {
     const root = landingRef.current;
     const sections = [...root.querySelectorAll('main > section[id]')];
@@ -206,49 +217,9 @@ export default function LaunchLandingPage({
             <button type="button" className="llp-nav-link" onClick={() => scrollToSection('import')}> {translate("음악 가져오기")} </button>
           </div>
 
-          <div className="llp-nav-actions">
-            <LanguageSwitcher />
-            <button
-              type="button"
-              className="llp-sound-toggle"
-              data-sound-toggle
-              aria-pressed={sound.enabled}
-              aria-label={sound.enabled ? translate("사운드 끄기") : translate("사운드 켜기")}
-              title={sound.unavailable ? translate("이 브라우저에서는 사운드를 재생할 수 없어요") : sound.enabled ? translate("사운드 끄기") : translate("몽환적인 BGM과 효과음 켜기")}
-              onClick={sound.toggle}
-            >
-              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M11 5 6 9H3v6h3l5 4V5Z" />
-                {sound.enabled ? <path d="M15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14" /> : <path d="m16 9 5 6m0-6-5 6" />}
-              </svg>
-            </button>
-            {sound.unavailable && <span className="llp-sound-status" role="status">{translate("사운드를 재생할 수 없어요.")}</span>}
-            {hasTaste && !user && (
-              <button
-                type="button"
-                className="llp-nav-return-btn"
-                onClick={() => navigate('/taste-map')}
-                title={translate("현재 열려 있는 3D taste맵으로 돌아가기")}
-                aria-label={translate("현재 취향 지도로 돌아가기")}
-              >
-                <span>{translate("taste맵으로 돌아가기")}{importStatus === 'enriching' && pct > 0 ? ` (${pct}%)` : ''}</span>
-                <span className="llp-nav-return-arrow">↗</span>
-              </button>
-            )}
-            <button
-              type="button"
-              className={user ? 'llp-nav-return-btn' : 'llp-nav-demo-btn'}
-              aria-label={translate(primaryLabel)}
-              disabled={busy}
-              onClick={openPrimaryMap}
-            >
-              <span>{translate(primaryLabel)}</span>
-              <span aria-hidden="true">↗</span>
-            </button>
-            <div className="llp-nav-auth">
-              <AccountButton showSaveStatus />
-            </div>
-          </div>
+          <LandingHeaderActions hasTaste={hasTaste} busy={busy} progress={importStatus === 'enriching' && pct > 0 ? pct : 0}
+            sound={sound} onOpenMap={() => user ? openPersonalMap() : navigate('/taste-map')}
+            onTryDemo={() => handleSelectDemo(DEMO_UNIVERSES[0])} onSection={scrollToSection} />
         </nav>
       </header>
 
@@ -328,7 +299,7 @@ export default function LaunchLandingPage({
         <section className="llp-section llp-import-section" id="import">
           <div className="llp-section-header">
             <span className="llp-section-eyebrow">{LANDING_SECTIONS[3].number} / {translate(LANDING_SECTIONS[3].heading)}</span>
-            <h2 className="llp-section-title">
+            <h2 className="llp-section-title" tabIndex={-1}>
               <span className="llp-title-chunk">{translate("당신의 음악을")}</span>{' '}
               <span className="llp-title-chunk">{translate("하나의 지도로")}</span>
             </h2>

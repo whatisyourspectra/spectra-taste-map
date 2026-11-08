@@ -1,6 +1,6 @@
 import { buildTasteState, uniqueTracks, getTasteGenres } from '../taste/buildTasteState.js';
 import { isDemoTaste } from '../taste/tasteStorage.js';
-import { MUSIC_TAG_VERSION } from '../taste/musicTags.js';
+import { canonicalMusicTag, MUSIC_TAG_VERSION } from '../taste/musicTags.js';
 
 export const SOCIAL_SNAPSHOT_VERSION = 1;
 export const SOCIAL_TRACK_LIMIT = 24;
@@ -61,6 +61,10 @@ export function readSocialSnapshot(value) {
         tracks: (Array.isArray(value.tracks) ? value.tracks : []).slice(0, SOCIAL_TRACK_LIMIT)
             .filter(track => typeof track?.name === 'string' && typeof track?.artists === 'string')
             .map((track, index) => ({ id: `public-${index}`, name: cleanSocialText(track.name, 200),
-                artists: cleanSocialText(track.artists, 200), coverUrl: safeSocialCover(track.coverUrl) })),
+                artists: cleanSocialText(track.artists, 200), coverUrl: safeSocialCover(track.coverUrl),
+                // These tags are already part of the explicitly published song
+                // sample. Keep them so a peek never assigns unrelated songs.
+                genres: [...new Set((Array.isArray(track.genres) ? track.genres : []).slice(0, 8)
+                    .filter(genre => typeof genre === 'string').map(genre => canonicalMusicTag(cleanSocialText(genre, 80))).filter(Boolean))] })),
     };
 }

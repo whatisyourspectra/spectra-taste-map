@@ -30,7 +30,7 @@ function GenreTags({ snapshot, limit = 4 }) {
 function ProfileCard({ profile, en }) {
     const snapshot = readSocialSnapshot(profile.snapshot);
     return <Link className="social-profile-card" to={`/social/${profile.user_id}`}>
-        <div className="social-card-art"><SocialConstellation snapshot={snapshot} label={en ? 'Genre constellation' : '장르 분포 별자리'} /><span className="social-card-open">↗</span></div>
+        <div className="social-card-art"><SocialConstellation snapshot={snapshot} label={en ? 'Public taste constellation' : '공개 취향 별자리'} /><span className="social-card-open">↗</span></div>
         <div className="social-card-copy"><span className="social-card-person"><i>{profile.display_name.slice(0, 1)}</i><strong>{profile.display_name}</strong><span>{snapshot.trackCount.toLocaleString()}{en ? ' songs' : '곡'}</span></span>
             <p>{profile.headline || (en ? 'A little window into my music.' : '내가 좋아하는 음악을 만나보세요.')}</p><GenreTags snapshot={snapshot} />
             <span className="social-card-footer">{en ? 'Explore & leave a comment' : '취향 둘러보고 코멘트 남기기'} <span>→</span></span></div>
@@ -69,7 +69,7 @@ function PublishPanel({ own, onPublished, onUnpublished, en }) {
             <div className={`social-publication-state${own?.is_public ? ' is-public' : ''}`}><i />{own?.is_public ? t('공개 중', 'Public') : t('아직 비공개', 'Private')}</div>
             <label>{t('공개 닉네임', 'Public name')}<input value={name} onChange={event => setName(event.target.value)} maxLength={40} required autoComplete="nickname" /></label>
             <label>{t('한 줄 소개', 'A little about your taste')}<textarea value={headline} onChange={event => setHeadline(event.target.value)} maxLength={160} rows={3} placeholder={t('밤에 듣는 R&B와 오래된 재즈를 좋아해요.', 'Late-night R&B, old jazz, and everything in between.')} /><small>{headline.length}/160</small></label>
-            {snapshot && <div className="social-preview"><span>{t('공개 미리보기', 'Public preview')}</span><SocialConstellation snapshot={snapshot} label={t('공개할 장르 분포', 'Genre profile to publish')} /><GenreTags snapshot={snapshot} />
+            {snapshot && <div className="social-preview"><span>{t('공개 미리보기', 'Public preview')}</span><SocialConstellation snapshot={snapshot} label={t('공개할 취향 별자리', 'Taste constellation to publish')} /><GenreTags snapshot={snapshot} />
                 <p>{snapshot.trackCount.toLocaleString()}{t('곡에서 읽은 장르 분포', ' songs behind this taste')}</p></div>}
             <label className="social-checkbox"><input type="checkbox" checked={includeTracks} onChange={event => setIncludeTracks(event.target.checked)} />{t('대표곡도 함께 공개', 'Include representative songs')}</label>
             <p className="social-disclosure">{t(`닉네임, 소개, 곡 수, 장르 분포${includeTracks ? `와 대표곡 최대 24곡` : ''}이 공개돼요. 공개 후 음악을 바꾸면 직접 업데이트해 주세요.`, `Your name, intro, song count, genre profile${includeTracks ? ' and up to 24 representative songs' : ''} will be public. Publish an update when your music changes.`)}</p>
@@ -148,7 +148,16 @@ function CommentThread({ profile, en, onPrivate }) {
 function ProfileDetail({ id, revision, en, onRefresh }) {
     const [state, setState] = useState({ loading: true, profile: null, error: null });
     const [retry, setRetry] = useState(0), [copied, setCopied] = useState(false), [copyError, setCopyError] = useState(false);
+    const [revealedTrack, setRevealedTrack] = useState(null);
     const t = (ko, english) => en ? english : ko;
+    useEffect(() => {
+        if (!revealedTrack) return undefined;
+        const target = document.getElementById(`social-track-${id}-${revealedTrack.id}`);
+        target?.scrollIntoView({ block: 'center', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+        target?.querySelector('a')?.focus({ preventScroll: true });
+        const timer = window.setTimeout(() => setRevealedTrack(null), 2600);
+        return () => window.clearTimeout(timer);
+    }, [revealedTrack, id]);
     useEffect(() => {
         let cancelled = false;
         store.getProfile(id).then(profile => { if (!cancelled) setState({ loading: false, profile: profile?.is_public ? profile : null, error: null }); })
@@ -160,12 +169,12 @@ function ProfileDetail({ id, revision, en, onRefresh }) {
     if (!state.profile) return <section className="social-detail social-empty"><h2>{t('지금은 공개되지 않은 취향이에요', 'This taste is currently private')}</h2><p>{t('다른 사람들의 음악을 만나보세요.', 'There are more musical worlds to explore.')}</p><Link to="/social">{t('Social 둘러보기', 'Explore Social')} →</Link></section>;
     const profile = state.profile, snapshot = readSocialSnapshot(profile.snapshot);
     return <article className="social-detail">
-        <div className="social-detail-visual"><SocialConstellation snapshot={snapshot} label={t('공개 장르 분포 별자리', 'Public genre constellation')} /><span>ONE TASTE. MANY CONNECTIONS.</span></div>
+        <div className="social-detail-visual"><SocialConstellation detailed snapshot={snapshot} label={t('공개 취향을 표현한 3D 별자리', '3D constellation of this public taste')} onRevealTrack={track => setRevealedTrack({ id: track.id })} /></div>
         <div className="social-detail-copy"><span className="social-section-kicker">PUBLIC TASTE</span><h1>{profile.display_name}{!en && '의 스펙트라'}</h1><p className="social-headline">{profile.headline}</p>
             <GenreTags snapshot={snapshot} limit={12} /><p className="social-data-caption">{snapshot.trackCount.toLocaleString()}{t('곡으로 이루어진 취향 · 태그 기반 장르 분포', ' songs · A genre profile based on music tags')}</p>
             <button className="social-text-button" onClick={async () => { setCopyError(false); try { await navigator.clipboard.writeText(`${window.location.origin}/social/${profile.user_id}`); setCopied(true); } catch { setCopied(false); setCopyError(true); } }}>{copied ? t('링크 복사됨', 'Link copied') : t('취향 링크 복사', 'Copy taste link')}</button>
             {copyError && <p role="alert" className="social-error">{t('복사하지 못했어요. 주소창의 링크를 복사해 주세요.', 'Could not copy. Please copy the link from your address bar.')}</p>}
-            {snapshot.tracks.length > 0 && <section className="social-tracks"><h2>{t('이 취향을 들려주는 곡들', 'A few songs from this world')}</h2><ul>{snapshot.tracks.map(track => <li key={track.id}><span className="social-track-art">♪{track.coverUrl && <img src={track.coverUrl} alt="" loading="lazy" onError={event => { event.currentTarget.style.display = 'none'; }} />}</span><span><strong>{track.name}</strong><small>{track.artists}</small></span><a href={`https://open.spotify.com/search/${encodeURIComponent(`${track.artists} ${track.name}`)}`} target="_blank" rel="noopener noreferrer" aria-label={`${track.name} · Spotify`}>↗</a></li>)}</ul></section>}
+            {snapshot.tracks.length > 0 && <section className="social-tracks"><h2>{t('이 취향을 들려주는 곡들', 'A few songs from this world')}</h2><ul>{snapshot.tracks.map(track => <li key={track.id} id={`social-track-${id}-${track.id}`} className={revealedTrack?.id === track.id ? 'is-revealed' : undefined}><span className="social-track-art">♪{track.coverUrl && <img src={track.coverUrl} alt="" loading="lazy" onError={event => { event.currentTarget.style.display = 'none'; }} />}</span><span><strong>{track.name}</strong><small>{track.artists}</small></span><a href={`https://open.spotify.com/search/${encodeURIComponent(`${track.artists} ${track.name}`)}`} target="_blank" rel="noopener noreferrer" aria-label={`${track.name} · Spotify`}>↗</a></li>)}</ul></section>}
             <CommentThread key={id} profile={profile} en={en} onPrivate={() => { setState({ loading: false, profile: null, error: null }); onRefresh(); }} />
         </div>
     </article>;
@@ -202,7 +211,7 @@ export default function SocialPage() {
         <div className="social-shell"><div className="social-main">
             {notice && <p role="status" className="social-success">{notice}</p>}
             {profileId ? <><Link className="social-back" to="/social">← {t('모든 취향 보기', 'All tastes')}</Link><ProfileDetail key={profileId} id={profileId} revision={profileId === own?.user_id ? own.updated_at : null} en={en} onRefresh={() => setRefresh(value => value + 1)} /></> : <>
-                <section className="social-hero"><span className="social-section-kicker">SPECTRA / SOCIAL</span><h1>{t('음악으로 만나는,', 'Different music.')}<br /><span>{t('서로의 세계.', 'Connected worlds.')}</span></h1><p>{t('누군가의 취향을 들여다보고, 음악으로 이야기를 시작해 보세요.', 'Step into someone’s music taste. Find a song, start a conversation.')}</p><a className="social-publish-shortcut" href="#social-my-taste">{own?.is_public ? t('내 공개 설정', 'My publication') : t('내 취향 공개하기', 'Share my taste')} ↗</a><div className="social-hero-orbits" aria-hidden="true"><i /><i /><i /><span>✳</span></div></section>
+                <section className="social-hero"><span className="social-section-kicker">SPECTRA / SOCIAL</span><h1 className="social-hero-title">{t('서로의 스펙트라에는', 'What music fills')}<br /><span>{t('어떤 음악이 담겨 있을까요?', 'each other’s Spectra?')}</span></h1><p>{t('누군가의 취향을 들여다보고, 음악으로 이야기를 시작해 보세요.', 'Step into someone’s music taste. Find a song, start a conversation.')}</p><a className="social-publish-shortcut" href="#social-my-taste">{own?.is_public ? t('내 공개 설정', 'My publication') : t('내 취향 공개하기', 'Share my taste')} ↗</a><div className="social-hero-orbits" aria-hidden="true"><i /><i /><i /><span>✳</span></div></section>
                 <div className="social-section-heading"><h2>{t('지금 공개된 취향', 'Open worlds')}</h2><button className="social-text-button" onClick={() => setRefresh(value => value + 1)} disabled={loading}>{t('새로고침', 'Refresh')} ↻</button></div>
                 {error && <div className="social-error" role="alert">{errorText(error, en)} <button onClick={() => setRefresh(value => value + 1)}>{t('다시 시도', 'Retry')}</button></div>}
                 {!loading && !error && !rows.length && <section className="social-empty"><span>✳</span><h2>{t('첫 번째 취향을 기다리고 있어요', 'The first world could be yours')}</h2><p>{t('내 음악을 공개하고 첫 대화를 시작해 보세요.', 'Publish your music taste and open the first conversation.')}</p></section>}

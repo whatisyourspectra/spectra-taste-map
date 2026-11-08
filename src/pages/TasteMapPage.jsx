@@ -3,6 +3,7 @@ import { useLocale } from '../i18n/useLocale.js';
 import { getLanguage } from '../i18n/locale.js';
 import { translate } from '../i18n/translate.js';
 import SpectraLogo from '../components/SpectraLogo';
+import MapAbsorptionLayer from '../components/MapAbsorptionLayer';
 import React, { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import AccountButton from '../auth/AccountButton';
@@ -1654,6 +1655,9 @@ export default function TasteMapPage() {
     const [hoveredExploreId, setHoveredExploreId] = useState(null);
     const [savingLibraryTrackIds] = useState({}); // no async library save anymore; stays empty.
     const [savedFromRecIds, setSavedFromRecIds] = useState({});
+    const [mapAbsorptions, setMapAbsorptions] = useState([]);
+    const absorptionSequenceRef = useRef(0);
+    const absorbingTrackIds = useMemo(() => new Set(mapAbsorptions.map(flight => flight.track.id)), [mapAbsorptions]);
     const [recActionMessage, setRecActionMessage] = useState(null);
     const [bubbleContextMenu, setBubbleContextMenu] = useState(null);
     const [selectedTrackCard, setSelectedTrackCard] = useState(null);
@@ -4259,6 +4263,10 @@ export default function TasteMapPage() {
         setHoveredBubbleId(source === 'library' ? track.id : null);
     }, []);
 
+    const completeMapAbsorption = useCallback(token => {
+        setMapAbsorptions(previous => previous.filter(flight => flight.token !== token));
+    }, []);
+
     // Promote a recommendation into the same persisted library as imported songs.
     const saveTrackToMyBubble = useCallback((track, action = 'absorb', anchorId = null) => {
         if (!track?.id) return null;
@@ -4268,7 +4276,19 @@ export default function TasteMapPage() {
         const enrichedTrack = prepareLibraryAddition(tracks, track,
             anchorId || spectraExpandTrackId || recommendation?.sourceTrackId);
         if (!enrichedTrack) return null;
+        // Capture the rendered recommendation before saving removes its overlay.
+        const source = [...(containerRef.current?.querySelectorAll('[data-recommendation-id]') || [])]
+            .find(element => element.dataset.recommendationId === String(track.id));
+        const rect = source?.querySelector('.tm-rec-bubble')?.getBoundingClientRect() || source?.getBoundingClientRect();
         const saved = recordDecision?.(action, enrichedTrack, 'web') || enrichedTrack;
+        if (rect?.width && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            const token = ++absorptionSequenceRef.current;
+            setMapAbsorptions(previous => [...previous.filter(flight => flight.track.id !== saved.id).slice(-7), {
+                token, track: saved,
+                canvas: source.closest('.tm-bubble-wrap') || document.body,
+                origin: { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2, size: rect.width },
+            }]);
+        }
         setSavedFromRecIds(prev => ({ ...prev, [track.id]: true }));
         setTracks(prev => uniqueTracks([...prev, saved]));
         setRecActionMessage(copy.recAddSuccess);
@@ -5094,7 +5114,7 @@ export default function TasteMapPage() {
         if (!recActionMessage) return undefined;
         const timer = window.setTimeout(() => setRecActionMessage(null), 3600);
         return () => window.clearTimeout(timer);
-    }, [recActionMessage]);
+    }, [recActionMessage, savedFromRecIds]);
 
     const explorerName = (user?.displayName || (lang === 'en' ? 'My' : '나의')).trim();
     const explorerNickname = useMemo(() => {
@@ -5128,6 +5148,7 @@ export default function TasteMapPage() {
 
     return (
         <div className={`tm-root tm-lang-${lang}${mapFullscreen ? ' tm-root-fullscreen' : ''}${voyageState.active ? ' is-voyage-mode' : ''}`} ref={containerRef}>
+            <MapAbsorptionLayer flights={mapAbsorptions} containerRef={containerRef} onComplete={completeMapAbsorption} />
             <div className="tm-mobile-map-toolbar">
                 <div className="tm-mobile-searchbar">
                     <button type="button" aria-label={translate("모바일 홈으로")} onClick={() => navigate('/taste-map/mobile')}>←</button>
@@ -6015,6 +6036,7 @@ export default function TasteMapPage() {
                                             const nowPlaying = nowPlayingTrackId === node.track.id;
                                             const detailSelected = selectedTrackCard?.track?.id === node.track.id;
                                             const justAdded = Boolean(savedFromRecIds[node.track.id] && recActionMessage);
+                                            const absorbing = absorbingTrackIds.has(node.track.id);
                                             const spectraBlur = isSpectraExpandMode && node.track.id !== spectraExpandTrackId && !justAdded;
                                             const spectraAnchor = isSpectraExpandMode && node.track.id === spectraExpandTrackId;
                                             const nodeClusterId = assignmentByTrackId.get(node.track.id);
@@ -6025,7 +6047,7 @@ export default function TasteMapPage() {
                                                 <div
                                                     key={node.track.id}
                                                     data-bubble-id={node.track.id}
-                                                    className={`tm-bubble-item${isConstellationView ? ' tm-constellation-item' : ''}${constellationCoverZoomed ? ' is-cover-zoom' : ''}${active ? '' : ' muted'}${showLabel || justAdded ? ' show-label' : ''}${justAdded ? ' is-new-addition' : ''}${hovered ? ' hovered' : ''}${detailSelected ? ' detail-selected' : ''}${picked ? ' picked' : ''}${nowPlaying ? ' now-playing' : ''}${clusterFocused ? ' cluster-focus' : ''}${clusterExpandPulsing ? ' cluster-expand-pulse' : ''}${spectraBlur ? ' spectra-blur' : ''}${spectraAnchor ? ' spectra-anchor' : ''}${isVoyageStar ? ' tm-voyage-star' : ''}${isVoyageActive ? ' is-voyage-active-star' : ''}${isVoyageDimmed ? ' is-voyage-dimmed' : ''}`}
+                                                    className={`tm-bubble-item${isConstellationView ? ' tm-constellation-item' : ''}${constellationCoverZoomed ? ' is-cover-zoom' : ''}${active ? '' : ' muted'}${showLabel || justAdded ? ' show-label' : ''}${justAdded && !absorbing ? ' is-new-addition' : ''}${absorbing ? ' is-absorbing' : ''}${hovered ? ' hovered' : ''}${detailSelected ? ' detail-selected' : ''}${picked ? ' picked' : ''}${nowPlaying ? ' now-playing' : ''}${clusterFocused ? ' cluster-focus' : ''}${clusterExpandPulsing ? ' cluster-expand-pulse' : ''}${spectraBlur ? ' spectra-blur' : ''}${spectraAnchor ? ' spectra-anchor' : ''}${isVoyageStar ? ' tm-voyage-star' : ''}${isVoyageActive ? ' is-voyage-active-star' : ''}${isVoyageDimmed ? ' is-voyage-dimmed' : ''}`}
                                                     onPointerDown={(isConstellationView || shareMode) ? undefined : (event) => handleBubbleDragStart(event, node.track.id)}
                                                     onPointerMove={(isConstellationView || shareMode) ? undefined : handleBubbleDragMove}
                                                     onPointerUp={(isConstellationView || shareMode) ? undefined : handleBubbleDragEnd}

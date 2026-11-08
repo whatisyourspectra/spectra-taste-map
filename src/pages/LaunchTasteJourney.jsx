@@ -123,11 +123,6 @@ export default function LaunchTasteJourney({ onOpen, busy }) {
         <div className="lj-stage">
           <div className="lj-stage-tabs" role="group" aria-label={translate("지도 변화 단계")}>{CHAPTERS.map((chapter, i) => <button key={chapter.symbol} type="button" aria-pressed={stage === i} onClick={() => chooseStage(i)}>{translate(chapter.label)}</button>)}</div>
           <BubbleAtlas stage={stage} onOpen={onOpen} busy={busy} />
-          <aside className="lj-method-note" aria-labelledby="map-method-title">
-            <h3 id="map-method-title">{translate('곡은 어떻게 배치되나요?')}</h3>
-            <p>{translate('Last.fm의 곡·아티스트 태그와 이용 가능한 Spotify 아티스트 장르로 비슷한 곡을 묶어요.')}</p>
-            <p>{translate('분위기·에너지는 태그에서 추정한 값이에요. 음원을 직접 분석하거나 Spotify Audio Features API를 사용한 결과는 아닙니다.')}</p>
-          </aside>
           <p className="lj-mobile-hint">{translate(CHAPTERS[stage].hint)}</p>
         </div>
       </div>

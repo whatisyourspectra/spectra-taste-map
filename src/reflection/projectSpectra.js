@@ -8,7 +8,7 @@ export function clampZoom(value) { return Math.max(.65, Math.min(2.4, value)); }
 export function projectPoint(point, camera, key) {
     const x = point.x - 180;
     const y = point.y - 166;
-    const z = (hash01(`${key}:depth`) - .5) * 150;
+    const z = Number.isFinite(point.z) ? point.z : (hash01(`${key}:depth`) - .5) * 150;
     const cy = Math.cos(camera.yaw), sy = Math.sin(camera.yaw);
     const cp = Math.cos(camera.pitch), sp = Math.sin(camera.pitch);
     const rx = x * cy + z * sy;

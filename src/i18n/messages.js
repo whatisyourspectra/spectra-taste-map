@@ -586,9 +586,6 @@ export default {
   "목적지를 파일 내보내기로 고르고 CSV 또는 TXT 파일을 다운로드하세요.": "Choose Export to file as the destination and download a CSV or TXT file.",
   "이 화면으로 돌아와 다운로드한 파일을 선택하세요.": "Return here and choose your downloaded file.",
   "새로 찾은 곡은 SPECTRA 지도에 추가돼요. Spotify·Apple Music 플레이리스트로 내보내기는 아직 지원하지 않아요.": "New discoveries are added to your SPECTRA map. Exporting to Spotify or Apple Music playlists is not supported yet.",
-  "곡은 어떻게 배치되나요?": "How are songs placed?",
-  "Last.fm의 곡·아티스트 태그와 이용 가능한 Spotify 아티스트 장르로 비슷한 곡을 묶어요.": "Similar songs are grouped using Last.fm track and artist tags, plus Spotify artist genres when available.",
-  "분위기·에너지는 태그에서 추정한 값이에요. 음원을 직접 분석하거나 Spotify Audio Features API를 사용한 결과는 아닙니다.": "Mood and energy are estimates from tags. They are not measured from the audio or supplied by the Spotify Audio Features API.",
   "곡 이름과 아티스트를 연결하고 장르 태그로 지도를 정리하고 있어요.": "Matching songs and artists, then arranging your map using genre tags.",
   "장르 태그가 비슷한 곡들이 가까이 모입니다. 흩어져 있던 플레이리스트를 취향의 영역으로 살펴보세요.": "Songs with related genre tags gather together. Explore your playlists as regions of taste.",
   "좋아하는 음악을 장르별 지도로 펼치고, 새로 발견한 곡도 내 SPECTRA 지도에 모아보세요.": "Turn your favorite music into a genre map, and add new discoveries to your SPECTRA map."

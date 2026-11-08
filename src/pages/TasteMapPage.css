@@ -2373,15 +2373,25 @@
 
 .tm-bubble-item.is-new-addition {
     z-index: 12;
+    opacity: 1;
+    transition: none;
 }
 
 .tm-bubble-item.is-new-addition .tm-bubble {
-    animation: tm-library-arrival 900ms ease-out;
+    animation: tm-library-arrival 560ms cubic-bezier(.22, 1, .36, 1);
+}
+
+.tm-bubble-item.is-absorbing {
+    opacity: 0 !important;
+    pointer-events: none;
+    transition: none;
 }
 
 @keyframes tm-library-arrival {
-    from { box-shadow: 0 0 0 12px rgba(125, 211, 252, 0.35); }
-    to { box-shadow: 0 0 0 0 rgba(125, 211, 252, 0); }
+    0% { transform: scale(.9); box-shadow: 0 0 0 5px #b9a3ff55, 0 0 28px #dc9bc744; }
+    35% { transform: scale(1.13); box-shadow: 0 0 0 14px #b9a3ff20, 0 0 32px #dc9bc724; }
+    65% { transform: scale(.97); box-shadow: 0 0 0 20px #b9a3ff08; }
+    100% { transform: scale(1); box-shadow: 0 0 0 24px #b9a3ff00; }
 }
 
 @media (prefers-reduced-motion: reduce) {
