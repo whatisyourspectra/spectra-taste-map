@@ -18,6 +18,7 @@ import {
 import { pendingImportTrack, mergeImportedTracks } from '../utils/importTracks';
 import { importTrackKey } from '../utils/parseTrackList';
 import { uniqueTracks } from '../taste/buildTasteState';
+import { findLibraryTrack, prepareLibraryAddition } from '../taste/libraryAddition';
 import { appendDecision, reflectionKey } from '../reflection/reflectionStorage';
 import { supabase } from '../auth/supabaseClient';
 const CHUNK_SIZE = 5;
@@ -29,6 +30,7 @@ const MIN_RECOVERY_CHUNK_SIZE = 10;
 
 import { MAX_IMPORT_TRACKS, limitImportTracks } from '../utils/sampleTracks.js';
 import { enrichTracksWithArtwork } from '../taste/demoArtwork.js';
+import { snapshotVoyage } from '../taste/voyageExpansion.js';
 export { MAX_IMPORT_TRACKS, limitImportTracks };
 
 const TasteDataContext = createContext(null);
@@ -214,14 +216,14 @@ export function TasteDataProvider({ children, ownerId = null }) {
             if (typeof window !== 'undefined' && list.length > 0) {
                 enrichTracksWithArtwork(list, (updatedList) => {
                     if (importRunRef.current !== runId) return;
-                    setTracks(updatedList);
-                    persistLocalTaste(sessionStorage, ownerId, {
-                        tracks: updatedList,
-                        featuresSource: source,
-                        stats: nextStats,
-                        mapId: id,
-                        updatedAt: new Date().toISOString(),
-                    });
+                    const current = currentTasteRef.current;
+                    if (current?.mapId !== id) return;
+                    const artwork = new Map(updatedList.map(track => [track.id, track]));
+                    const refreshed = current.tracks.map(track => ({ ...track, ...artwork.get(track.id) }));
+                    const payload = { ...current, tracks: refreshed };
+                    setTracks(refreshed);
+                    currentTasteRef.current = payload;
+                    persistLocalTaste(sessionStorage, ownerId, payload);
                 });
             }
 
@@ -265,10 +267,14 @@ export function TasteDataProvider({ children, ownerId = null }) {
             if (importRunRef.current !== runId) return;
             // Different source rows/chunks can resolve to the same catalog song.
             // Keep source slots for retries, but publish each resolved song once.
-            const nextTracks = uniqueTracks([...collectedById.values()]);
+            const discoveries = currentTasteRef.current?.mapId === id
+                ? currentTasteRef.current.tracks.filter(track => track.addedAt) : [];
+            const nextTracks = uniqueTracks([...collectedById.values(), ...discoveries]);
             const nextStats = {
+                ...(currentTasteRef.current?.mapId === id && currentTasteRef.current.stats?.voyageConstellations
+                    ? { voyageConstellations: currentTasteRef.current.stats.voyageConstellations } : {}),
                 fetchedCount: nextTracks.length,
-                totalAvailable: list.length,
+                totalAvailable: Math.max(list.length, nextTracks.length),
                 originalImportCount: originalTotal,
                 isCapped: capped,
                 processedCount,
@@ -444,16 +450,14 @@ export function TasteDataProvider({ children, ownerId = null }) {
     useEffect(() => {
         if (tracks.length > 0 && tracks.some((t) => !t.coverUrl || t.coverUrl.startsWith('data:image/svg+xml'))) {
             enrichTracksWithArtwork(tracks, (updatedList) => {
-                setTracks(updatedList);
-                if (mapId) {
-                    persistLocalTaste(sessionStorage, ownerId, {
-                        tracks: updatedList,
-                        featuresSource,
-                        stats,
-                        mapId,
-                        updatedAt: new Date().toISOString(),
-                    });
-                }
+                const current = currentTasteRef.current;
+                if (!mapId || current?.mapId !== mapId) return;
+                const artwork = new Map(updatedList.map(track => [track.id, track]));
+                const refreshed = current.tracks.map(track => ({ ...track, ...artwork.get(track.id) }));
+                const payload = { ...current, tracks: refreshed };
+                setTracks(refreshed);
+                currentTasteRef.current = payload;
+                persistLocalTaste(sessionStorage, ownerId, payload);
             });
         }
     }, [mapId]);
@@ -481,42 +485,64 @@ export function TasteDataProvider({ children, ownerId = null }) {
         }
     }, [ownerId, tracks, stats]);
 
+    const saveConstellation = useCallback(voyage => {
+        const snapshot = snapshotVoyage(voyage);
+        const current = currentTasteRef.current;
+        if (!snapshot || !current?.tracks?.length) return false;
+        const saved = Array.isArray(current.stats?.voyageConstellations) ? current.stats.voyageConstellations : [];
+        const payload = {
+            ...current,
+            stats: { ...current.stats, voyageConstellations: [snapshot, ...saved.filter(item => item?.startTrackId !== snapshot.startTrackId)] },
+            updatedAt: new Date().toISOString(),
+        };
+        currentTasteRef.current = payload;
+        setStats(payload.stats);
+        persistLocalTaste(sessionStorage, ownerId, payload);
+        void saveToAccount(payload);
+        return true;
+    }, [ownerId, saveToAccount]);
+
     const recordDecision = useCallback((action, track, source = 'web') => {
         if (!track?.id) return;
         const currentMapId = mapId || initial?.mapId || 'default-map';
         const storageKey = reflectionKey(ownerId, currentMapId);
 
-        if (typeof window !== 'undefined' && window.localStorage) {
-            appendDecision(window.localStorage, storageKey, action, track, source);
-        }
+        try {
+            if (typeof window !== 'undefined') appendDecision(window.localStorage, storageKey, action, track, source);
+        } catch { /* Reflection history is optional; library persistence still runs. */ }
 
         if (action === 'absorb') {
-            setTracks((prev) => {
-                const updated = uniqueTracks([...prev, track]);
-                const nextStats = {
-                    isDemo: stats?.isDemo === true,
-                    fetchedCount: updated.length,
-                    totalAvailable: updated.length,
-                    processedCount: updated.length,
-                    failedCount: stats?.failedCount || 0,
-                    backgroundEnriching: false,
-                };
-                setStats(nextStats);
-                const payload = {
-                    tracks: updated,
-                    featuresSource,
-                    stats: nextStats,
-                    mapId: currentMapId,
-                    pendingSourceList: null,
-                    updatedAt: new Date().toISOString(),
-                };
-                persistLocalTaste(sessionStorage, ownerId, payload);
-                currentTasteRef.current = payload;
-                void saveToAccount(payload);
-                return updated;
-            });
+            const current = currentTasteRef.current;
+            const library = current?.tracks || [];
+            const existing = findLibraryTrack(library, track);
+            if (existing) return existing;
+            const added = prepareLibraryAddition(library, track, track.tasteMapPlacement?.anchorId);
+            if (!added) return null;
+            const updated = [...library, added];
+            const nextStats = {
+                ...current?.stats,
+                fetchedCount: updated.length,
+                totalAvailable: Math.max(updated.length, current?.stats?.totalAvailable || 0),
+                processedCount: (current?.stats?.processedCount ?? library.length) + 1,
+            };
+            const payload = {
+                ...current,
+                tracks: updated,
+                featuresSource: current?.featuresSource || featuresSource,
+                stats: nextStats,
+                mapId: currentMapId,
+                updatedAt: new Date().toISOString(),
+            };
+            // Update synchronously so rapid additions and constellation snapshots
+            // use the latest library, including before React renders again.
+            currentTasteRef.current = payload;
+            setTracks(updated);
+            setStats(nextStats);
+            persistLocalTaste(sessionStorage, ownerId, payload);
+            void saveToAccount(payload);
+            return added;
         }
-    }, [mapId, initial?.mapId, ownerId, featuresSource, stats?.failedCount, stats?.isDemo, saveToAccount]);
+    }, [mapId, initial?.mapId, ownerId, featuresSource, saveToAccount]);
 
     const retryCloudSync = useCallback(async () => {
         if (!ownerId || !supabase) return;
@@ -568,6 +594,7 @@ export function TasteDataProvider({ children, ownerId = null }) {
         hasTaste: tracks.length > 0,
         importTracks,
         recordDecision,
+        saveConstellation,
         reset,
     };
 

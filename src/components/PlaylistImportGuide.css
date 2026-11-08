@@ -1,8 +1,6 @@
 .playlist-import-guide { margin: 20px 0 0; color: #b5c3d9; font-size: 14px; line-height: 1.75; }
 .playlist-import-guide h4 { margin: 0 0 10px; color: #edf1fb; font-size: 18px; line-height: 1.5; font-weight: 600; letter-spacing: -.02em; word-break: keep-all; }
 .playlist-import-guide p { margin: 10px 0; word-break: keep-all; overflow-wrap: anywhere; }
-.pi-guide-eyebrow { display: block; color: var(--import-accent); font-size: 11px; letter-spacing: .13em; margin-bottom: 12px; }
-.pi-guide-intro { margin-bottom: 20px; }
 .pi-guide-handoff { color: #91a4c0; font-size: 12px; }
 .pi-guide-steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; padding: 0; margin: 24px 0 0; list-style: none; }
 .playlist-import-guide button { font: inherit; cursor: pointer; }
@@ -12,7 +10,6 @@
 .pi-guide-panel { padding: 24px 0 0; }
 .pi-guide-checklist { margin: 12px 0; padding-left: 22px; }
 .pi-guide-checklist li { padding-left: 4px; margin-bottom: 12px; word-break: keep-all; overflow-wrap: anywhere; }
-.playlist-import-guide .pi-guide-callout { padding: 12px 14px; border-left: 2px solid var(--import-accent); border-radius: 0 8px 8px 0; background: color-mix(in srgb, var(--import-accent) 5%, transparent); color: #c5cfe0; font-size: 13px; }
 .pi-guide-actions { display: flex; justify-content: space-between; gap: 12px; margin-top: 20px; }
 .pi-guide-actions button, .pi-guide-shortcut button, .pi-guide-primary { min-height: 44px; border: 1px solid #70d6ff55; border-radius: 10px; padding: 10px 14px; background: #70d6ff0c; color: #d1edfa; }
 .pi-guide-actions button:disabled { opacity: .4; cursor: default; }

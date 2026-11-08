@@ -67,3 +67,49 @@ export function undoVoyageExpansion(state, trackId) {
         additions: state.additions.slice(0, -1),
     };
 }
+
+// Store the constellation itself, without transient playback or undo UI state.
+export function snapshotVoyage(state) {
+    if (!state?.active || !state.startTrackId || !state.curatedTracks?.length) return null;
+    return {
+        version: 1,
+        startTrackId: state.startTrackId,
+        curatedTracks: state.curatedTracks.map(track => ({ ...track })),
+        curatedEdges: state.curatedEdges.map(edge => ({ ...edge })),
+        nodes: state.nodes.map(node => ({ ...node })),
+        sequence: [...state.sequence],
+    };
+}
+
+export function restoreVoyage(snapshots, selectedTrack, libraryTracks = []) {
+    if (!Array.isArray(snapshots) || !selectedTrack?.id) return null;
+    const valid = snapshots.filter(saved => {
+        if (saved?.version !== 1 || !Array.isArray(saved.curatedTracks) || !Array.isArray(saved.nodes)
+            || !Array.isArray(saved.curatedEdges) || !Array.isArray(saved.sequence)) return false;
+        const ids = new Set(saved.curatedTracks.map(track => track?.id).filter(Boolean));
+        return ids.size === saved.curatedTracks.length && ids.size > 0 && ids.has(saved.startTrackId)
+            && saved.nodes.length === ids.size && new Set(saved.nodes.map(node => node?.id)).size === ids.size
+            && saved.nodes.every(node => ids.has(node?.id) && Number.isFinite(node.x) && Number.isFinite(node.y))
+            && saved.sequence.length === ids.size && new Set(saved.sequence).size === ids.size
+            && saved.sequence.every(id => ids.has(id))
+            && saved.curatedEdges.every(edge => ids.has(edge?.from) && ids.has(edge?.to) && edge.from !== edge.to);
+    });
+    const matches = track => track.id === selectedTrack.id || voyageTrackKey(track) === voyageTrackKey(selectedTrack);
+    const saved = valid.find(item => item.startTrackId === selectedTrack.id)
+        || valid.find(item => item.curatedTracks.some(matches));
+    if (!saved) return null;
+    const curatedTracks = saved.curatedTracks.map(track => {
+        const current = libraryTracks.find(item => item.id === track.id || voyageTrackKey(item) === voyageTrackKey(track));
+        return { ...track, ...current, id: track.id };
+    });
+    return {
+        startTrackId: saved.startTrackId,
+        trackId: curatedTracks.find(matches).id,
+        curatedTracks,
+        curatedTrackIds: curatedTracks.map(track => track.id),
+        curatedEdges: saved.curatedEdges.map(edge => ({ ...edge })),
+        nodes: saved.nodes.map(node => ({ ...node })),
+        sequence: [...saved.sequence],
+        additions: [],
+    };
+}

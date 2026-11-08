@@ -11,7 +11,7 @@ export function TrackCover({ track, className = '' }) {
     </span>;
 }
 
-export default function ConstellationExplorer({ seed, tracks, context, onAdd, onClose, cache, lang }) {
+export default function ConstellationExplorer({ seed, tracks, context, onAdd, onPlay, onClose, cache, lang }) {
     const en = lang === 'en';
     const [result, setResult] = useState({ key: '', tracks: [], status: 'loading' });
     const [retry, setRetry] = useState(0);
@@ -66,10 +66,16 @@ export default function ConstellationExplorer({ seed, tracks, context, onAdd, on
             {ready && result.tracks.map((track) => {
                 const added = existing.has(track.id) || existing.has(voyageTrackKey(track));
                 return <article className="cv-recommendation" key={track.id}>
-                    <TrackCover track={track} /><div><strong title={track.name}>{track.name}</strong><span title={track.artists}>{track.artists}</span><a className="cv-recommendation-listen" href={`https://www.youtube.com/results?search_query=${encodeURIComponent(`${track.artists} ${track.name}`)}`} target="_blank" rel="noopener noreferrer">{en ? 'Listen on YouTube ↗' : 'YouTube로 듣기 ↗'}</a><button type="button" disabled={added} onClick={() => onAdd(track, seed.id)}>{added ? (en ? '✓ Added' : '✓ 추가됨') : (en ? '+ Add star' : '+ 별자리에 추가')}</button></div>
+                    <TrackCover track={track} /><div><strong title={track.name}>{track.name}</strong><span title={track.artists}>{track.artists}</span>
+                        <div className="cv-recommendation-actions">
+                            <button type="button" disabled={added} onClick={() => onAdd(track, seed.id)}>{added ? (en ? '✓ Added' : '✓ 추가됨') : (en ? '+ Add star' : '+ 별자리에 추가')}</button>
+                            <button type="button" className="cv-recommendation-play" onClick={() => onPlay(track, seed.id)}>{added ? (en ? '▶ Play' : '▶ 재생') : (en ? '▶ Add & play' : '▶ 추가하고 재생')}</button>
+                        </div>
+                        <a className="cv-recommendation-listen" href={`https://www.youtube.com/results?search_query=${encodeURIComponent(`${track.artists} ${track.name}`)}`} target="_blank" rel="noopener noreferrer">{en ? 'Find on YouTube ↗' : 'YouTube에서 찾기 ↗'}</a>
+                    </div>
                 </article>;
             })}
         </div>
-        <p className="cv-expansion-status" role="status">{en ? 'New stars stay until you leave this constellation.' : '추가한 별은 이 별자리를 나갈 때까지 유지돼요.'}</p>
+        <p className="cv-expansion-status" role="status">{en ? 'Added songs are saved in this constellation and join its play queue.' : '추가한 곡은 이 별자리에 저장되고 재생 목록에 함께 들어가요.'}</p>
     </aside>;
 }

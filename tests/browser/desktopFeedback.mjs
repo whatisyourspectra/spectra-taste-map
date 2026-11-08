@@ -22,7 +22,7 @@ async function open(route = '/taste-map') {
     discoveryCalls.set(page, 0);
     page.on('request', request => { if (request.url().includes('/api/discover?')) discoveryCalls.set(page, discoveryCalls.get(page) + 1); });
     await page.addInitScript(tracks => {
-        sessionStorage.setItem('spectra:taste:v5', JSON.stringify({ tracks, mapId: 'desktop-feedback', featuresSource: 'lastfm', stats: {} }));
+        if (!sessionStorage.getItem('spectra:taste:v5')) sessionStorage.setItem('spectra:taste:v5', JSON.stringify({ tracks, mapId: 'desktop-feedback', featuresSource: 'lastfm', stats: {} }));
         localStorage.setItem('spectra:map-guide:v2:desktop', 'seen');
         window.YT = { PlayerState: { PLAYING: 1, PAUSED: 2, BUFFERING: 3, CUED: 5, ENDED: 0 }, Player: class {
             constructor(_, options) { this.events = options.events; setTimeout(() => this.events.onReady(), 0); }
@@ -91,6 +91,14 @@ try {
     await player.locator('.tm2-youtube-now').filter({ hasText: 'Recommendation 1-0' }).waitFor();
     await panel.getByRole('button', { name: '내 지도에 추가: Recommendation 1-0', exact: true }).click();
     await panel.getByRole('button', { name: '추가됨: Recommendation 1-0', exact: true }).waitFor();
+    await page.waitForFunction(() => {
+        const saved = JSON.parse(sessionStorage.getItem('spectra:taste:v5') || '{}');
+        return saved.tracks?.some(track => track.id === 'new-1-0' && track.tasteMapPlacement?.anchorId);
+    });
+    await page.locator('[data-bubble-id="new-1-0"]').waitFor({ state: 'attached' });
+    assert.equal(await page.locator('[data-recommendation-id="new-1-0"]').count(), 0, 'Saved tracks leave the recommendation overlay');
+    const stored = await page.evaluate(() => JSON.parse(sessionStorage.getItem('spectra:taste:v5')));
+    assert.equal(stored.tracks.length, 49, 'The discovery joins the personal library');
     assert.equal(calls, countAfterMore, 'Adding music must not invalidate the recommendation list');
     assert.equal(await panel.locator('ol li').count(), 16);
     fail = true;
@@ -117,6 +125,9 @@ try {
     await page.waitForTimeout(250);
     assert.equal(await page.locator('.tm-dock-zoom-value').textContent(), zoomBeforeScroll, 'The list boundary must not pass wheel gestures to the map');
     await page.screenshot({ path: `${output}/recommendation-list-1024.png` });
+    await page.reload();
+    await page.locator('.tm-bubble-item').first().waitFor();
+    assert.equal(await page.evaluate(() => JSON.parse(sessionStorage.getItem('spectra:taste:v5')).tracks.filter(t => t.id === 'new-1-0').length), 1, 'Reload retains the discovery exactly once');
     await page.close();
 
     const voyage = await open('/taste-map?view=constellation');

@@ -77,10 +77,13 @@
 .cv-recommendation strong { display: block; font-size: 14px; font-weight: 550; line-height: 1.45; overflow-wrap: anywhere; }
 .cv-recommendation div > span { display: block; font-size: 12px; line-height: 1.5; color: #9fb1c8; margin-top: 4px; }
 .cv-recommendation button, .cv-explorer-results [role=alert] button { min-height: 44px; padding: 0 14px; margin-top: 10px; background: #233f5b; border: 1px solid #486887; border-radius: 10px; font-size: 12px; }
+.cv-recommendation-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.cv-recommendation .cv-recommendation-actions button { margin-top: 0; padding: 9px 12px; line-height: 1.5; }
+.cv-recommendation .cv-recommendation-play { background: #304f6b; border-color: #7faac9; }
 .cv-expansion-status { color: #8fa7c1; font-size: 11px; line-height: 1.5; flex-shrink: 0; margin: 12px 0 0; }
 .cv-addition-toast { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(254px + var(--cv-safe-bottom)); width: min(420px, calc(100% - 48px)); padding: 10px 14px 4px; border: 1px solid #416960; border-radius: 14px; background: #162e31; z-index: 12; }
 .cv-addition-toast > div:first-child { color: #c2eddf; font-size: 13px; }
-.cv-addition-toast > div:last-child { display: flex; justify-content: flex-end; gap: 12px; }
+.cv-addition-toast > div:last-child { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px 12px; }
 .cv-addition-toast button { min-height: 44px; background: none; border: 0; color: #b9dcdf; font-size: 12px; padding: 0 4px; }
 .cv-youtube-pip { position: absolute; right: 24px; bottom: calc(92px + var(--cv-safe-bottom)); width: min(360px, calc(100% - 28px)); border-radius: 16px; overflow: hidden; background: #102035; border: 1px solid #547492; z-index: 60; box-shadow: 0 20px 48px #0009; }
 .cv-youtube-pip.is-hidden { position: fixed; right: -9999px; bottom: -9999px; opacity: 0; pointer-events: none; }
@@ -90,6 +93,7 @@
     .cv-sheet-backdrop { display: none; }
 }
 @media (max-width: 760px) {
+    body:has(.cv-hud-root) .help-center-trigger { display: none; }
     .cv-topbar { left: 14px; right: 14px; height: 68px; gap: 10px; }
     .cv-exit-btn { padding: 0 10px; }
     .cv-constellation-title { font-size: 13px; }

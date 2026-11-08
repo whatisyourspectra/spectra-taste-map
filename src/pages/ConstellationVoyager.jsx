@@ -57,13 +57,23 @@ export default function ConstellationVoyagerHUD({
         setShowVideoPip(false);
     };
     const selectStar = (track) => { setSelectedId(track.id); setAddition(null); };
-    const addStar = (track, anchorId) => {
+    const addStar = (track, anchorId, options) => {
         if (tracks.some((item) => item.id === track.id || voyageTrackKey(item) === voyageTrackKey(track))) return;
-        onAddTrack(track, anchorId);
+        if (onAddTrack(track, anchorId, options) === false) return;
         setAddition({ track, anchorId, previousId: selectedTrack?.id });
         setSelectedId(track.id);
         setFocusRequest({ id: track.id, version: Date.now() });
         closeExploration();
+    };
+    const playFromExploration = (track, anchorId) => {
+        const existing = tracks.find(item => item.id === track.id || voyageTrackKey(item) === voyageTrackKey(track));
+        if (existing) {
+            setSelectedId(existing.id);
+            setAddition(null);
+            onPlayTrack(existing);
+            setFocusRequest({ id: existing.id, version: Date.now() });
+            closeExploration();
+        } else addStar(track, anchorId, { play: true });
     };
     const undoAddition = () => {
         if (!addition) return;
@@ -137,8 +147,8 @@ export default function ConstellationVoyagerHUD({
         </div>
 
         {addition && !exploring && <div className="cv-addition-toast">
-            <div role="status"><span aria-hidden="true">✦</span> {en ? 'A new star is connected' : '새로운 별이 연결됐어요'}</div>
-            <div><button type="button" onClick={undoAddition}>{en ? 'Undo' : '추가 취소'}</button><button type="button" onClick={() => exploreFrom(tracks.find((track) => track.id === addition.anchorId))}>{en ? 'Keep exploring' : '탐색 계속'}</button></div>
+            <div role="status"><span aria-hidden="true">✦</span> {en ? 'A new star has joined your constellation' : '새로운 별이 별자리에 합쳐졌어요'}</div>
+            <div><button type="button" onClick={undoAddition}>{en ? 'Undo' : '추가 취소'}</button><button type="button" onClick={() => onPlayTrack(addition.track)}>{en ? 'Play now' : '바로 재생'}</button><button type="button" onClick={() => exploreFrom(tracks.find((track) => track.id === addition.anchorId))}>{en ? 'Keep exploring' : '탐색 계속'}</button></div>
         </div>}
 
         <section className="cv-selection" hidden={exploring || queueOpen} aria-label={en ? 'Selected star' : '선택한 별'}>
@@ -150,7 +160,7 @@ export default function ConstellationVoyagerHUD({
 
         {exploring && <>
             <button type="button" className="cv-sheet-backdrop" onClick={closeExploration} aria-label={en ? 'Close exploration' : '탐색 닫기'} tabIndex={-1} />
-            <ConstellationExplorer cache={discoveryCache} seed={explorationSeed} tracks={tracks} context={discoveryContext} onAdd={addStar} onClose={closeExploration} lang={lang} />
+            <ConstellationExplorer cache={discoveryCache} seed={explorationSeed} tracks={tracks} context={discoveryContext} onAdd={addStar} onPlay={playFromExploration} onClose={closeExploration} lang={lang} />
         </>}
 
         {queueOpen && <>

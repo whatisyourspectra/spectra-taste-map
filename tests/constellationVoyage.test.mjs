@@ -252,3 +252,45 @@ test('undo removes only the last added branch and safely handles its playback', 
     assert.deepEqual(original.curatedTrackIds, ['seed']);
     assert.equal(original.trackId, 'seed');
 });
+
+test('saved constellations retain added songs, connections and play order after leaving and undo', async () => {
+    const { createVoyageGraph, extendVoyage, snapshotVoyage, restoreVoyage, undoVoyageExpansion } = await import('../src/taste/voyageExpansion.js');
+    const seed = { id: 'seed', name: 'Seed', artists: 'Artist' };
+    const base = { tracks: [seed], edges: [] };
+    const initial = { active: true, startTrackId: seed.id, trackId: seed.id, curatedTracks: [seed], curatedTrackIds: [seed.id], curatedEdges: [], ...createVoyageGraph(base, seed.id) };
+    const expanded = extendVoyage(initial, { id: 'new', name: 'New song', artists: 'New artist' }, seed.id);
+    const saved = JSON.parse(JSON.stringify(snapshotVoyage(expanded)));
+    const restored = restoreVoyage([saved], seed, [{ ...seed, coverUrl: 'updated-cover' }]);
+    assert.equal(restored.curatedTracks.length, 2);
+    assert.equal(restored.curatedTracks[0].coverUrl, 'updated-cover');
+    assert.deepEqual(restored.nodes, expanded.nodes);
+    assert.deepEqual(restored.curatedEdges, expanded.curatedEdges);
+    assert.deepEqual(restored.sequence, ['seed', 'new']);
+    assert.equal(restored.isPlaying, undefined, 'Restoring a graph must not restore stale playback state');
+    assert.equal(restoreVoyage([saved], { id: 'new' }).trackId, 'new');
+    assert.equal(restoreVoyage([saved], { id: 'provider-alias', name: 'NEW SONG', artists: 'new artist' }).trackId, 'new');
+    assert.equal(restoreVoyage([saved], { id: 'unrelated' }), null);
+    const undone = undoVoyageExpansion(expanded, 'new');
+    assert.deepEqual(restoreVoyage([snapshotVoyage(undone)], seed).sequence, ['seed']);
+    assert.equal(restoreVoyage([{ ...saved, nodes: [{ id: 'seed', x: NaN, y: 0 }] }], seed), null);
+    assert.equal(restoreVoyage([{ ...saved, sequence: ['seed', 'seed'] }], seed), null);
+    assert.equal(snapshotVoyage({ ...initial, active: false }), null);
+});
+
+test('constellation additions round-trip through the existing account map snapshot', async () => {
+    const { snapshotVoyage, restoreVoyage, createVoyageGraph, extendVoyage } = await import('../src/taste/voyageExpansion.js');
+    const { saveCloudTaste, fetchCloudTaste } = await import('../src/taste/tasteStorage.js');
+    const seed = { id: 'root', name: 'Root', artists: 'Artist' };
+    const base = { tracks: [seed], edges: [] };
+    const state = extendVoyage({ active: true, startTrackId: seed.id, curatedTracks: [seed], curatedTrackIds: [seed.id], curatedEdges: [], ...createVoyageGraph(base, seed.id) }, { id: 'added', name: 'Discovered', artists: 'Artist' }, seed.id);
+    let row;
+    const client = { from: () => ({
+        upsert: value => { row = structuredClone(value); return { select: () => ({ maybeSingle: async () => ({ data: { updated_at: value.updated_at } }) }) }; },
+        select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: row }) }) }),
+    }) };
+    await saveCloudTaste(client, 'owner', { mapId: 'map', tracks: [seed], stats: { fetchedCount: 1, voyageConstellations: [snapshotVoyage(state)] } });
+    const restored = await fetchCloudTaste(client, 'owner');
+    assert.equal(row.user_id, 'owner');
+    assert.equal(restored.mapId, 'map');
+    assert.deepEqual(restoreVoyage(restored.stats.voyageConstellations, seed).sequence, ['root', 'added']);
+});

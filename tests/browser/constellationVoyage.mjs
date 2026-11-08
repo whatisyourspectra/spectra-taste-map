@@ -9,8 +9,15 @@ try {
         const errors = [];
         page.on('pageerror', (error) => errors.push(error.message));
         await page.addInitScript(() => {
+            // The current mobile route has its own map. Render the desktop voyager
+            // at narrow widths to check this component's responsive layout only.
+            const nativeMatchMedia = window.matchMedia.bind(window);
+            window.matchMedia = query => query === '(max-width: 900px)'
+                ? { matches: false, media: query, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {} }
+                : nativeMatchMedia(query);
             const tracks = Array.from({ length: 24 }, (_, i) => ({ id: `t${i}`, name: `Song ${i} — A Longer Song Title`, artists: 'Test Artist', genres: ['ambient'], valence: (i % 6) / 6, energy: (i % 4) / 4, danceability: 0.4, acousticness: 0.3, instrumentalness: 0.6, popularity: 40, coverUrl: 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="80" height="80"%3E%3Crect width="80" height="80" fill="%23527794"/%3E%3Ccircle cx="40" cy="40" r="20" fill="%239fc6de"/%3E%3C/svg%3E' }));
-            sessionStorage.setItem('spectra:taste:v5', JSON.stringify({ tracks, mapId: 'voyage-test', stats: {}, featuresSource: 'lastfm' }));
+            if (!sessionStorage.getItem('spectra:taste:v5')) sessionStorage.setItem('spectra:taste:v5', JSON.stringify({ tracks, mapId: 'voyage-test', stats: {}, featuresSource: 'lastfm' }));
+            localStorage.setItem('spectra:map-guide:v2:desktop', 'seen');
             window.YT = {
                 PlayerState: { PLAYING: 1, PAUSED: 2, BUFFERING: 3, CUED: 5, ENDED: 0 },
                 Player: class {
@@ -36,14 +43,7 @@ try {
             return route.fulfill({ json: { tracks: Array.from({ length: 8 }, (_, i) => ({ id: `${prefix}${i}`, name: prefix === 'new' ? `New Star ${i}` : `Beyond ${i}`, artists: 'New Artist', genres: ['ambient'] })) } });
         });
         await page.route('**/api/youtube/search?**', (route) => route.fulfill({ json: { video: { videoId: 'test-video1', title: 'Test video' } } }));
-        if (width < 900) {
-            await page.goto(`${baseURL}/taste-map/mobile`);
-            await page.locator('.tmm-map-entry').waitFor();
-            const entry = await page.locator('.tmm-map-entry').boundingBox();
-            assert.ok(entry.y + entry.height < height, 'Main exploration entry is in the first viewport');
-            await page.screenshot({ path: `/tmp/voyage-home-${width}-${height}.png` });
-            await page.locator('.tmm-map-entry').click();
-        } else await page.goto(`${baseURL}/taste-map`);
+        await page.goto(`${baseURL}/taste-map?lang=ko`);
         await page.locator('.tm-bubble-item button.tm-bubble').first().waitFor({ timeout: 20000 });
         await page.waitForTimeout(1200);
         await page.locator('.tm-bubble-item button.tm-bubble').first().dispatchEvent('click');
@@ -54,6 +54,7 @@ try {
         await page.locator('.ccp-voyage-launch-btn').click();
         await page.locator('.cv-star').first().waitFor();
         assert.equal(await page.locator('.cv-star').count(), 8);
+        const rootId = await page.locator('.cv-star.selected').getAttribute('data-track-id');
         assert.equal(await page.locator('.tm-bubble-item').count(), 0);
         const playingBefore = await page.locator('.cv-track-title').textContent();
         await page.locator('.cv-star:not(.selected)').first().click();
@@ -70,17 +71,26 @@ try {
         assert.equal(await page.locator('.cv-explorer-seed strong').textContent(), selectedName, 'Autoplay does not change exploration seed');
         assert.equal(discoveryRequests, countBeforeAutoplay);
         await page.screenshot({ path: `/tmp/voyage-sheet-${width}-${height}.png` });
+        const playingBeforeAdd = await page.locator('.cv-track-title').textContent();
         await page.locator('.cv-recommendation button').first().click();
         await page.locator('.cv-addition-toast').waitFor();
         assert.equal(await page.locator('.cv-star').count(), 9);
         assert.equal(await page.locator('.cv-explorer').count(), 0);
         assert.equal(await page.locator('.cv-selection-copy strong').textContent(), 'New Star 0');
+        assert.equal(await page.locator('.cv-track-title').textContent(), playingBeforeAdd, 'Adding alone keeps the current song playing');
+        await page.getByRole('button', { name: '바로 재생', exact: true }).click();
+        await page.waitForFunction(() => document.querySelector('.cv-track-title')?.textContent === 'New Star 0');
+        await page.locator('.cv-queue-toggle').click();
+        assert.equal(await page.locator('.cv-play-queue li').count(), 9);
+        await page.locator('.cv-play-queue').getByRole('button', { name: '재생: New Star 0', exact: true }).click();
+        await page.locator('.cv-queue-toggle').click();
         const newStar = await page.locator('.cv-star.just-added').boundingBox();
         const map = await page.locator('.cv-map-scroll').boundingBox();
         assert.ok(newStar.y >= map.y - 1 && newStar.y + 60 < map.y + map.height, 'Added star is brought into view');
         await page.screenshot({ path: `/tmp/voyage-added-${width}-${height}.png` });
         await page.getByRole('button', { name: '추가 취소', exact: true }).click();
         assert.equal(await page.locator('.cv-star').count(), 8);
+        assert.equal(await page.evaluate(() => JSON.parse(sessionStorage.getItem('spectra:taste:v5')).stats.voyageConstellations[0].sequence.length), 8);
         assert.equal(await page.locator('.cv-selection-copy strong').textContent(), selectedName);
         await page.locator('.cv-explore-toggle').click();
         await page.locator('.cv-recommendation button').first().click();
@@ -92,8 +102,10 @@ try {
         assert.equal(await page.locator('.cv-explorer').count(), 0);
         assert.equal(await page.locator('.cv-hud-root').count(), 1, 'Escape dismisses sheet before leaving constellation');
         await page.locator('.cv-explore-toggle').click(); // Selected new star becomes the next exploration seed.
-        await page.locator('.cv-recommendation', { hasText: 'Beyond 0' }).locator('button').click();
+        await page.locator('.cv-recommendation', { hasText: 'Beyond 0' }).getByRole('button', { name: '▶ 추가하고 재생', exact: true }).click();
         assert.equal(await page.locator('.cv-star').count(), 10);
+        await page.waitForFunction(() => document.querySelector('.cv-track-title')?.textContent === 'Beyond 0');
+        assert.equal(await page.evaluate(() => JSON.parse(sessionStorage.getItem('spectra:taste:v5')).stats.voyageConstellations[0].sequence.length), 10);
         failDiscovery = true;
         await page.locator('.cv-explore-toggle').click();
         await page.locator('.cv-explorer [role=alert]').waitFor();
@@ -107,7 +119,20 @@ try {
         assert.equal(await page.locator('.cv-hud-root').count(), 0);
         assert.equal(await page.locator('.tm-bubble-item').first().getAttribute('style'), before);
         if (width > 900) assert.equal(await page.locator('.tm-root-fullscreen').count(), 1);
-        // A selected song on the mobile home can deep-link directly to its constellation.
+        await page.locator('.ccp-voyage-launch-btn').click();
+        assert.equal(await page.locator('.cv-star').count(), 10, 'Reopening the constellation keeps discovered songs');
+        await page.locator('.cv-queue-toggle').click();
+        await page.locator('.cv-play-queue').getByRole('button', { name: '재생: Beyond 0', exact: true }).click();
+        assert.equal(await page.locator('.cv-track-title').textContent(), 'Beyond 0');
+        await page.goto(`${baseURL}/taste-map?view=constellation&star=${encodeURIComponent(rootId)}&lang=ko`);
+        await page.locator('.cv-hud-root').waitFor();
+        assert.equal(await page.locator('.cv-star').count(), 10, 'Page reload restores the saved graph');
+        await page.locator('.cv-queue-toggle').click();
+        await page.locator('.cv-play-queue').getByRole('button', { name: '재생: New Star 0', exact: true }).click();
+        assert.equal(await page.locator('.cv-track-title').textContent(), 'New Star 0');
+        await page.locator('.cv-queue-toggle').click();
+        await page.locator('.cv-exit-btn').click();
+        // An explicit song link also restores a saved constellation at narrow widths.
         if (width < 900) {
             await page.goto(`${baseURL}/taste-map?view=constellation&star=t3`);
             await page.locator('.cv-hud-root').waitFor();

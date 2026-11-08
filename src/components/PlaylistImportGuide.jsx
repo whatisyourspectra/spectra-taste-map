@@ -29,15 +29,10 @@ export default function PlaylistImportGuide({ platform, onChooseFile }) {
     };
     const exportUrl = `https://www.tunemymusic.com/${lang === 'ko' ? 'ko/' : ''}transfer/${platform.exportPath}`;
     return <section className="playlist-import-guide" data-platform={platform.id} style={{ '--import-accent': platform.accent }} aria-label={translate('{0} 가져오기 단계별 안내', [platform.label])}>
-        <div className="pi-guide-intro">
-            <span className="pi-guide-eyebrow">{platform.label.toUpperCase()} → SPECTRA</span>
-            <h4>{translate('로그인부터 목록 선택까지, 함께 따라가요.')}</h4>
-            <p>{translate('TuneMyMusic에서 {0} 목록을 파일로 저장한 뒤, 이곳에 올리는 방식이에요. SPECTRA 로그인과는 별개입니다.', [platform.label])}</p>
-        </div>
         <a className="llp-export-link" href={exportUrl} target="_blank" rel="noopener noreferrer">
             {translate('{0} 곡 목록 내보내기 ↗', [platform.label])}<span>{translate('TuneMyMusic · 새 탭')}</span>
         </a>
-        <p className="pi-guide-handoff">{translate('새 탭에서 진행한 뒤 이 탭으로 돌아오세요. 아래 단계는 안내이며 실제 연결 상태를 표시하지 않아요.')}</p>
+        <p className="pi-guide-handoff">{translate('TuneMyMusic에서 파일을 저장한 뒤, 이곳에 업로드하세요.')}</p>
         <div className="pi-guide-device" role="group" aria-label={translate('안내를 볼 기기')}>
             <button type="button" aria-pressed={device === 'mobile'} onClick={() => updateGuide({ device: 'mobile' })}>{translate('모바일')}</button>
             <button type="button" aria-pressed={device === 'desktop'} onClick={() => updateGuide({ device: 'desktop' })}>Mac / PC</button>
@@ -53,7 +48,6 @@ export default function PlaylistImportGuide({ platform, onChooseFile }) {
                     <li>{translate(platform.accountCheck)}</li>
                     <li>{translate('{0} 보관함 접근 요청을 확인하고 허용한 뒤, TuneMyMusic의 목록 선택 화면으로 돌아가세요.', [platform.label])}</li>
                 </ol>
-                <p className="pi-guide-callout">{translate('로그인 정보는 해당 음악 서비스의 로그인 화면에서만 입력하세요. SPECTRA에 입력할 필요는 없어요.')}</p>
             </>}
             {step === 1 && <>
                 <h4>{translate('처음에는 익숙한 플레이리스트 하나를 골라보세요.')}</h4>
@@ -62,7 +56,6 @@ export default function PlaylistImportGuide({ platform, onChooseFile }) {
                     <li>{translate('가져올 플레이리스트 이름과 곡 수를 확인하고 선택하세요. 처음에는 곡이 있는 목록 하나로 시작하면 좋아요.')}</li>
                     <li>{translate('곡 선택 화면이 있다면 원하는 곡이 체크되어 있는지 확인한 뒤 다음으로 이동하세요.')}</li>
                 </ol>
-                <p className="pi-guide-callout">{translate('목록이 비어 있거나 원하는 목록이 없다면 아래 ‘로그인했는데 목록이 안 보여요’를 먼저 확인하세요.')}</p>
             </>}
             {step === 2 && <>
                 <h4>{translate('목적지는 다른 음악 서비스 대신 파일로 선택하세요.')}</h4>
@@ -71,7 +64,6 @@ export default function PlaylistImportGuide({ platform, onChooseFile }) {
                     <li>{translate('{0} 형식을 고르고 내보내기를 진행한 뒤, 완료 화면에서 파일을 다운로드하세요.', [platform.format])}</li>
                     <li>{translate('파일 이름이 .csv 또는 .txt로 끝나는지 확인하세요. 플레이리스트 공유 링크나 음원 다운로드는 곡 목록 파일과 달라요.')}</li>
                 </ol>
-                <p className="pi-guide-callout">{translate('내보내기 옵션과 이용 조건은 TuneMyMusic 화면에서 확인할 수 있어요.')}</p>
             </>}
             {step === 3 && <>
                 <h4>{translate('다운로드한 파일로 나의 지도를 만드세요.')}</h4>

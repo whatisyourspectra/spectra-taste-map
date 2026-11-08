@@ -25,7 +25,9 @@ function pickInRange(seed, min, max) { return min + (max - min) * seed; }
 
 self.onmessage = ({ data }) => {
     const {
-        tracks,
+        tracks: allTracks,
+        affinityEntries,
+        fixedBaseEntries,
         fieldW,
         fieldH,
         worldScale,
@@ -39,6 +41,13 @@ self.onmessage = ({ data }) => {
     const assignmentByTrackId = new Map(assignmentEntries);
     const playWeightById = new Map(playWeightEntries || []);
     const projected2dByTrackId = new Map(projected2dEntries || []);
+    const fixedBase = new Map(fixedBaseEntries || []);
+    const allIds = new Set(allTracks.map(track => track.id));
+    const affinity = new Map((affinityEntries || []).filter(([id, anchor]) => id !== anchor && allIds.has(anchor)));
+    // Lay out imported songs first: additions must not rescale or displace them.
+    let tracks = allTracks.filter(track => !affinity.has(track.id));
+    // Corrupt/cyclic provenance must never make songs disappear.
+    if (!tracks.length) { tracks = allTracks; affinity.clear(); }
     const count = tracks.length;
     if (count === 0) { self.postMessage({ nodes: [] }); return; }
 
@@ -104,7 +113,10 @@ self.onmessage = ({ data }) => {
         const rawY = Math.min(virtualH - pad, Math.max(pad, pad + (1 - yVal) * (virtualH - pad * 2) + jy));
         const clusterId = assignmentByTrackId.get(track.id);
         const color = CLUSTER_COLORS[(clusterId ?? 0) % CLUSTER_COLORS.length];
-        return { id: track.id, rawX, rawY, x: rawX, y: rawY, size, color, clusterId };
+        const fixed = fixedBase.get(track.id);
+        return { id: track.id, rawX, rawY, x: rawX, y: rawY, size, color, clusterId,
+            ...(fixed ? { x: fixed.nX * virtualW, y: fixed.nY * virtualH,
+                rawX: fixed.nRawX * virtualW, rawY: fixed.nRawY * virtualH } : {}) };
     });
 
     // Compute coarse per-cluster centers from raw coordinates.
@@ -132,7 +144,8 @@ self.onmessage = ({ data }) => {
     // collision refinements. This keeps multi-thousand-track layouts fast and responsive.
     const layoutIterations = count > 2500 ? 18 : count > 1600 ? 22 : count > 900 ? 28 : count > 450 ? 36 : 44;
 
-    for (let iter = 0; iter < layoutIterations; iter++) {
+    const baseIsFixed = tracks.every(track => fixedBase.has(track.id));
+    for (let iter = 0; !baseIsFixed && iter < layoutIterations; iter++) {
         // Fast integer spatial hash grid (1 insertion per node)
         const grid = new Map();
         for (let i = 0; i < nodes.length; i++) {
@@ -196,6 +209,37 @@ self.onmessage = ({ data }) => {
             node.x = Math.max(pad, Math.min(virtualW - pad, node.x + (center.x - node.x) * clusterPull));
             node.y = Math.max(pad, Math.min(virtualH - pad, node.y + (center.y - node.y) * clusterPull));
         }
+    }
+
+    const nodeById = new Map(nodes.map(node => [node.id, node]));
+    const pending = allTracks.filter(track => affinity.has(track.id));
+    while (pending.length) {
+        const index = pending.findIndex(track => nodeById.has(affinity.get(track.id)));
+        const track = pending.splice(index < 0 ? 0 : index, 1)[0];
+        const anchor = nodeById.get(affinity.get(track.id));
+        const displayX = node => node.x + (node.rawX - node.x) * 0.18;
+        const displayY = node => node.y + (node.rawY - node.y) * 0.18;
+        const centerX = anchor ? displayX(anchor) : virtualW / 2;
+        const centerY = anchor ? displayY(anchor) : virtualH / 2;
+        const size = sizeMin + (sizeMax - sizeMin) * getSizeT(track.id);
+        let best = null;
+        // Search a deterministic spiral for space beside the seed, without
+        // pushing existing songs. Identical snapshots reproduce the placement.
+        for (let attempt = 0; attempt < 240; attempt++) {
+            const angle = hash01(track.id) * Math.PI * 2 + attempt * 2.399963229728653;
+            const radius = (size + (anchor?.size || size)) / 2 + 24 + Math.sqrt(attempt) * 14;
+            const x = Math.max(pad, Math.min(virtualW - pad, centerX + Math.cos(angle) * radius));
+            const y = Math.max(pad, Math.min(virtualH - pad, centerY + Math.sin(angle) * radius));
+            const clearance = nodes.reduce((min, node) => Math.min(min,
+                Math.hypot(x - displayX(node), y - displayY(node)) - (size + node.size) / 2 - 12), Infinity);
+            if (!best || clearance > best.clearance) best = { x, y, clearance };
+            if (clearance >= 0) break;
+        }
+        const clusterId = assignmentByTrackId.get(track.id);
+        const node = { id: track.id, ...best, rawX: best.x, rawY: best.y, size,
+            color: CLUSTER_COLORS[(clusterId ?? 0) % CLUSTER_COLORS.length], clusterId };
+        nodes.push(node);
+        nodeById.set(node.id, node);
     }
 
     // Normalize to [0,1] so the main thread can scale to any field size

@@ -1,13 +1,14 @@
+import { findLibraryTrack, prepareLibraryAddition } from '../taste/libraryAddition';
 import { useLocale } from '../i18n/useLocale.js';
 import { getLanguage } from '../i18n/locale.js';
 import { translate } from '../i18n/translate.js';
 import SpectraLogo from '../components/SpectraLogo';
 import React, { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import AccountButton from '../auth/AccountButton';
 import { DEMO_UNIVERSES, getDemoUniverseIndex } from '../taste/demoUniverses';
 import { buildConstellationTopology, buildSeedConstellation, buildVoyageSequence, getVoyageNeighbor } from '../taste/constellationTopology';
-import { createVoyageGraph, extendVoyage, undoVoyageExpansion } from '../taste/voyageExpansion';
+import { createVoyageGraph, extendVoyage, undoVoyageExpansion, restoreVoyage } from '../taste/voyageExpansion';
 import { getGenreIdentity, normalizeGenre } from '../taste/genreIdentity';
 import { useTasteData } from '../context/TasteDataContext';
 import { uniqueTracks, getTasteGenres } from '../taste/buildTasteState';
@@ -149,7 +150,7 @@ const TM_I18N = {
         recAdd: '내 버블 추가',
         recAdded: '추가됨',
         recSaving: '저장 중…',
-        recAddSuccess: '나의 스펙트라에 추가했어요.',
+        recAddSuccess: '내 취향 지도에 추가했어요.',
         recAddFail: '저장 실패',
         contextMenuExpand: '이 곡에서 새 음악 찾기',
         contextMenuFocus: '이 곡으로 이동',
@@ -239,7 +240,7 @@ const TM_I18N = {
         recAdd: 'Add to bubble',
         recAdded: 'Added',
         recSaving: 'Saving…',
-        recAddSuccess: 'Added to your Spectra.',
+        recAddSuccess: 'Added to your Taste Map.',
         recAddFail: 'Save failed',
         contextMenuExpand: 'Expand spectra around this track',
         contextMenuFocus: 'Focus this track',
@@ -1527,6 +1528,7 @@ export default function TasteMapPage() {
         status: importStatus,
         progress: importProgress,
         recordDecision,
+        saveConstellation,
         reset,
     } = useTasteData();
     const navigate = useNavigate();
@@ -1657,7 +1659,6 @@ export default function TasteMapPage() {
     const [selectedTrackCard, setSelectedTrackCard] = useState(null);
     const [expandedClusterPulseId, setExpandedClusterPulseId] = useState(null);
     const [spectraExpandTrackId, setSpectraExpandTrackId] = useState(null);
-    const [spectraAffinityMap, setSpectraAffinityMap] = useState({});
     const [shareMode, setShareMode] = useState(false);
     const [shareSelectedMap, setShareSelectedMap] = useState({});
     const [selectionRect, setSelectionRect] = useState(null);
@@ -1710,6 +1711,7 @@ export default function TasteMapPage() {
     const cameraAnimationRafRef = useRef(0);
     const kmeansWorkerRef = useRef(null);
     const bubbleLayoutWorkerRef = useRef(null);
+    const bubbleBaseLayoutRef = useRef(null);
     const copy = TM_I18N[lang] || TM_I18N.ko;
     const customGroupLibraryId = mapId || cacheUserId || 'guest';
 
@@ -2186,7 +2188,7 @@ export default function TasteMapPage() {
 
     const bubbleTracks = useMemo(() => {
         if (visibleGroup) return bubbleCandidateTracks;
-        if (bubbleCandidateTracks.length <= BUBBLE_MAX_COUNT) return bubbleCandidateTracks;
+        if (bubbleCandidateTracks.filter(track => !track.addedAt).length <= BUBBLE_MAX_COUNT) return bubbleCandidateTracks;
         if (hasTrackFilter) {
             const selected = [];
             const seen = new Set();
@@ -2242,7 +2244,11 @@ export default function TasteMapPage() {
 
         return selected.slice(0, BUBBLE_MAX_COUNT);
     }, [bubbleCandidateTracks, assignmentByTrackId, hasTrackFilter, activeTrackIds, visibleGroup]);
-    const knownTrackIds = useMemo(() => new Set(tracks.map((track) => track.id)), [tracks]);
+    const knownTrackIds = useMemo(() => {
+        const ids = new Set(tracks.map(track => track.id));
+        exploreRecs.forEach(item => { if (findLibraryTrack(tracks, item.track)) ids.add(item.track.id); });
+        return ids;
+    }, [tracks, exploreRecs]);
     const spectraExpandTrack = useMemo(
         () => (spectraExpandTrackId ? tracks.find((track) => track.id === spectraExpandTrackId) || null : null),
         [tracks, spectraExpandTrackId],
@@ -2269,10 +2275,10 @@ export default function TasteMapPage() {
     }, [bubbleCandidateTracks, spectraExpandTrack]);
 
     const bubbleWorldScale = useMemo(() => {
-        const count = bubbleTracks.length;
+        const count = bubbleTracks.filter(track => !track.tasteMapPlacement?.anchorId).length;
         const densityBoost = Math.max(1, Math.sqrt(Math.max(1, count) / 110));
         return BUBBLE_BASE_WORLD_SCALE * densityBoost;
-    }, [bubbleTracks.length]);
+    }, [bubbleTracks]);
 
     // Track debounced camera viewport for viewport-aware sparse discovery
     const [debouncedViewport, setDebouncedViewport] = useState(() => ({
@@ -2450,6 +2456,13 @@ export default function TasteMapPage() {
         bubbleLayoutWorkerRef.current?.terminate();
         const worker = new Worker(new URL('../workers/bubbleLayoutWorker.js', import.meta.url), { type: 'module' });
         bubbleLayoutWorkerRef.current = worker;
+        const baseTracks = bubbleTracks.filter(track => !track.tasteMapPlacement?.anchorId);
+        const baseKey = JSON.stringify([mapId, activeMapView, xAxis, yAxis,
+            debouncedFieldSize.w, debouncedFieldSize.h, bubbleWorldScale,
+            baseTracks.map(track => [track.id, getTrackFeature(track, xAxis), getTrackFeature(track, yAxis),
+                track.popularity, recentPlayMap.get(track.id)])]);
+        const fixedBaseEntries = bubbleBaseLayoutRef.current?.key === baseKey
+            ? bubbleBaseLayoutRef.current.entries : [];
 
         worker.onmessage = ({ data }) => {
             if (bubbleLayoutWorkerRef.current !== worker) return;
@@ -2474,6 +2487,9 @@ export default function TasteMapPage() {
                     },
                 };
             }).filter(Boolean);
+            const baseIds = new Set(baseTracks.map(track => track.id));
+            bubbleBaseLayoutRef.current = { key: baseKey,
+                entries: data.nodes.filter(node => baseIds.has(node.id)).map(node => [node.id, node]) };
             setBubbleNodesResult(merged);
             worker.terminate();
         };
@@ -2487,25 +2503,9 @@ export default function TasteMapPage() {
             return [t.id, { type: 'none', value: 0 }];
         });
 
-        const trackById = new Map(tracks.map((track) => [track.id, track]));
-        const projected2dEntries = bubbleTracks
-            .map((track) => {
-                const sourceId = spectraAffinityMap[track.id];
-                if (!sourceId) return null;
-                const sourceTrack = trackById.get(sourceId);
-                if (!sourceTrack) return null;
-                // Keep the saved track near the expansion seed while preserving some own feature identity.
-                const sourceX = clamp01(getTrackFeature(sourceTrack, xAxis));
-                const sourceY = clamp01(getTrackFeature(sourceTrack, yAxis));
-                const selfX = clamp01(getTrackFeature(track, xAxis));
-                const selfY = clamp01(getTrackFeature(track, yAxis));
-                const jx = pickInRange(hash01(`${track.id}:affx`), -0.03, 0.03);
-                const jy = pickInRange(hash01(`${track.id}:affy`), -0.03, 0.03);
-                const x = clamp01(sourceX * 0.72 + selfX * 0.28 + jx);
-                const y = clamp01(sourceY * 0.72 + selfY * 0.28 + jy);
-                return [track.id, [x, y]];
-            })
-            .filter(Boolean);
+        const affinityEntries = bubbleTracks
+            .filter(track => track.tasteMapPlacement?.anchorId)
+            .map(track => [track.id, track.tasteMapPlacement.anchorId]);
 
         const layoutTracks = bubbleTracks.map((track) => ({
             id: track.id,
@@ -2526,12 +2526,14 @@ export default function TasteMapPage() {
             yAxis,
             assignmentEntries: bubbleAssignmentEntries,
             playWeightEntries,
-            // Spectra expansion save-bias: place newly saved tracks near the expansion seed.
-            projected2dEntries,
+            affinityEntries,
+            fixedBaseEntries,
         });
         return () => { worker.terminate(); bubbleLayoutWorkerRef.current = null; };
     }, [
         bubbleTracks,
+        mapId,
+        activeMapView,
         debouncedFieldSize.w,
         debouncedFieldSize.h,
         bubbleWorldScale,
@@ -2540,7 +2542,6 @@ export default function TasteMapPage() {
         assignmentByTrackId,
         recentPlayMap,
         tracks,
-        spectraAffinityMap,
     ]);
 
     const dominantCluster = clusterStats[0] || null;
@@ -3285,11 +3286,12 @@ export default function TasteMapPage() {
             const ranked = [...visible].sort((a, b) => {
                 const priority = item => (item.node.track.id === selectedId ? 100000 : 0)
                     + (item.node.track.id === spectraExpandTrackId ? 90000 : 0)
+                    + (savedFromRecIds[item.node.track.id] ? 85000 : 0)
                     + (item.active ? 1000 : 0) + item.sizePx + hash01(item.node.track.id);
                 return priority(b) - priority(a);
             });
             return ranked.filter(item => {
-                const pinned = item.node.track.id === selectedId || item.node.track.id === spectraExpandTrackId;
+                const pinned = item.node.track.id === selectedId || item.node.track.id === spectraExpandTrackId || savedFromRecIds[item.node.track.id];
                 if (!pinned && occupied.some(other => Math.hypot(item.xPx - other.xPx, item.yPx - other.yPx) < spacing)) return false;
                 occupied.push(item);
                 return true;
@@ -3307,6 +3309,7 @@ export default function TasteMapPage() {
                     score: (id === spectraExpandTrackId ? 100000 : 0)
                         + (id === selectedId ? 90000 : 0)
                         + (id === hoveredBubbleId ? 80000 : 0)
+                        + (savedFromRecIds[id] ? 75000 : 0)
                         + (item.active ? 5000 : 0)
                         + item.sizePx * 10
                         + hash01(id),
@@ -3323,6 +3326,10 @@ export default function TasteMapPage() {
         spectraExpandTrackId,
         selectedTrackCard,
         hoveredBubbleId,
+        savedFromRecIds,
+        compactMap,
+        activeMapView,
+        shareMode,
         voyageState.active,
         voyageTrackIdSet,
     ]);
@@ -3752,6 +3759,7 @@ export default function TasteMapPage() {
             }));
 
         const items = exploreRecs.map((item, idx) => {
+            if (findLibraryTrack(tracks, item.track) || savedFromRecIds[item.track.id]) return null;
             const recId = `rec-${item.track.id}-${idx}`;
             const recFx = clamp01(getTrackFeature(item.track, xAxis));
             const recFy = clamp01(getTrackFeature(item.track, yAxis));
@@ -3862,8 +3870,10 @@ export default function TasteMapPage() {
             };
         });
 
-        return items;
+        return items.filter(Boolean);
     }, [
+        tracks,
+        savedFromRecIds,
         voyageState.active,
         exploreEnabled,
         viewMode,
@@ -4249,33 +4259,21 @@ export default function TasteMapPage() {
         setHoveredBubbleId(source === 'library' ? track.id : null);
     }, []);
 
-    // "Save" now folds the discovered track into the local field and records a taste decision.
-    const saveTrackToMyBubble = useCallback((track, action = 'absorb') => {
-        const trackId = track?.id;
-        if (!trackId) return;
-        if (knownTrackIds.has(trackId) || savedFromRecIds[trackId]) return;
-
-        if (isSpectraExpandMode && spectraExpandTrackId && spectraExpandTrackId !== trackId) {
-            setSpectraAffinityMap((prev) => ({ ...prev, [trackId]: spectraExpandTrackId }));
-        }
-
-        const enrichedTrack = { ...track, addedAt: new Date().toISOString() };
-        setSavedFromRecIds((prev) => ({ ...prev, [trackId]: true }));
-        setTracks((prev) => uniqueTracks([...prev, enrichedTrack]));
-
-        if (recordDecision) {
-            recordDecision(action, enrichedTrack, 'web');
-        }
-
+    // Promote a recommendation into the same persisted library as imported songs.
+    const saveTrackToMyBubble = useCallback((track, action = 'absorb', anchorId = null) => {
+        if (!track?.id) return null;
+        const existing = findLibraryTrack(tracks, track);
+        if (existing) return existing;
+        const recommendation = exploreRenderItems.find(item => item.track.id === track.id);
+        const enrichedTrack = prepareLibraryAddition(tracks, track,
+            anchorId || spectraExpandTrackId || recommendation?.sourceTrackId);
+        if (!enrichedTrack) return null;
+        const saved = recordDecision?.(action, enrichedTrack, 'web') || enrichedTrack;
+        setSavedFromRecIds(prev => ({ ...prev, [track.id]: true }));
+        setTracks(prev => uniqueTracks([...prev, saved]));
         setRecActionMessage(copy.recAddSuccess);
-    }, [
-        knownTrackIds,
-        savedFromRecIds,
-        copy.recAddSuccess,
-        isSpectraExpandMode,
-        spectraExpandTrackId,
-        recordDecision,
-    ]);
+        return saved;
+    }, [tracks, exploreRenderItems, copy.recAddSuccess, spectraExpandTrackId, recordDecision]);
 
     const focusBubbleTrack = useCallback((trackId, { ensureZoom = 0, duration = 560 } = {}) => {
         if (!trackId || !bubbleRenderItems.length || !bubbleFieldSize.w || !bubbleFieldSize.h) return false;
@@ -4312,6 +4310,7 @@ export default function TasteMapPage() {
             curatedEdges: seedConstellation.edges,
             curatedTrackIds: seedConstellation.trackIds,
             ...createVoyageGraph(seedConstellation, track.id),
+            ...restoreVoyage(importedStats?.voyageConstellations, track, importedTracks),
         });
 
         setBubblePlaybackTrack(null);
@@ -4320,7 +4319,7 @@ export default function TasteMapPage() {
         setMetroStudioOpen(false);
         setBubbleContextMenu(null);
 
-    }, [assignmentByTrackId, bubbleNodesResult, cancelCameraAnimation, selectedTrackCard]);
+    }, [assignmentByTrackId, bubbleNodesResult, cancelCameraAnimation, selectedTrackCard, importedStats?.voyageConstellations, importedTracks]);
 
     useEffect(() => {
         const id = initialVoyageTrackRef.current;
@@ -4350,14 +4349,24 @@ export default function TasteMapPage() {
         voyageReturnRef.current = null;
     }, [scheduleZoomCameraUpdate]);
 
-    const handleVoyageAdd = useCallback((track, anchorId) => {
-        setVoyageState((previous) => extendVoyage(previous, track, anchorId));
-    }, []);
+    const handleVoyageAdd = useCallback((track, anchorId, { play = false } = {}) => {
+        const next = extendVoyage(voyageState, track, anchorId);
+        if (next === voyageState) return false;
+        const updated = play ? { ...next, trackId: track.id, isPlaying: true } : next;
+        saveTrackToMyBubble(track, 'absorb', anchorId);
+        setVoyageState(updated);
+        saveConstellation(updated);
+        if (play) setNowPlayingTrackId(track.id);
+        return true;
+    }, [voyageState, saveConstellation, saveTrackToMyBubble]);
 
     const handleVoyageUndo = useCallback((trackId) => {
-        setVoyageState((previous) => undoVoyageExpansion(previous, trackId));
+        const next = undoVoyageExpansion(voyageState, trackId);
+        if (next === voyageState) return;
+        setVoyageState(next);
+        saveConstellation(next);
         setNowPlayingTrackId((previous) => previous === trackId ? null : previous);
-    }, []);
+    }, [voyageState, saveConstellation]);
 
     const handleVoyageSelect = useCallback((track) => {
         setVoyageState((previous) => ({ ...previous, trackId: track.id, isPlaying: true }));
@@ -4567,12 +4576,6 @@ export default function TasteMapPage() {
         if (activeTrackIds.has(spectraExpandTrackId)) return;
         setSpectraExpandTrackId(null);
     }, [spectraExpandTrackId, activeTrackIds]);
-
-    useEffect(() => {
-        if (isSpectraExpandMode) return;
-        if (Object.keys(spectraAffinityMap).length === 0) return;
-        setSpectraAffinityMap({});
-    }, [isSpectraExpandMode, spectraAffinityMap]);
 
     const handleContextFocusTrack = useCallback(() => {
         if (!bubbleContextMenu?.track) return;
@@ -5193,35 +5196,41 @@ export default function TasteMapPage() {
                         )}
                     </div>
                 </div>
-                <div className="tm-header-side">
-                    <button type="button" className="tm-nav-home-btn" onClick={() => navigate('/social')}>Social ↗</button>
-                    <button
-                        type="button"
-                        className="tm-nav-home-btn"
-                        onClick={handleGoHome}
-                        title={lang === 'en' ? 'Launch Home' : '런칭 홈으로 이동'}
-                    >
-                        <span className="tm-nav-home-icon" aria-hidden="true">⌂</span>
-                        <span>{lang === 'en' ? 'Launch Home' : '런칭 홈'}</span>
-                    </button>
-                    <AccountButton lang={lang} showSaveStatus />
-                    <div className="tm-lang-toggle" role="tablist" aria-label="language toggle">
+                <div className="tm-header-side" role="group" aria-label={lang === 'en' ? 'Map navigation and settings' : '지도 이동 및 설정'}>
+                    <nav className="tm-header-links" aria-label={lang === 'en' ? 'Explore SPECTRA' : 'SPECTRA 둘러보기'}>
                         <button
                             type="button"
-                            className={`tm-lang-btn${lang === 'ko' ? ' active' : ''}`}
-                            onClick={() => setLang('ko')}
-                            aria-selected={lang === 'ko'}
+                            className="tm-nav-home-btn tm-header-link"
+                            onClick={handleGoHome}
+                            title={lang === 'en' ? 'Launch Home' : '런칭 홈으로 이동'}
+                            aria-label={lang === 'en' ? 'Launch Home' : '런칭 홈으로 이동'}
                         >
-                            KO
+                            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m3.5 10 8.5-7 8.5 7M5.5 8.5V21h5v-7h3v7h5V8.5" /></svg>
                         </button>
-                        <button
-                            type="button"
-                            className={`tm-lang-btn${lang === 'en' ? ' active' : ''}`}
-                            onClick={() => setLang('en')}
-                            aria-selected={lang === 'en'}
-                        >
-                            EN
-                        </button>
+                        <Link className="tm-header-link tm-header-link-social" to="/social" title="Social" aria-label="Social">
+                            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="9" cy="8" r="3" /><path d="M3 21v-2a6 6 0 0 1 12 0v2M16 5a3 3 0 0 1 0 6m2 3a6 6 0 0 1 3 5v2" /></svg>
+                        </Link>
+                    </nav>
+                    <div className="tm-header-preferences">
+                        <AccountButton lang={lang} showSaveStatus />
+                        <div className="tm-lang-toggle" role="group" aria-label={lang === 'en' ? 'Language' : '언어'}>
+                            <button
+                                type="button"
+                                className={`tm-lang-btn${lang === 'ko' ? ' active' : ''}`}
+                                onClick={() => setLang('ko')}
+                                aria-pressed={lang === 'ko'}
+                            >
+                                KO
+                            </button>
+                            <button
+                                type="button"
+                                className={`tm-lang-btn${lang === 'en' ? ' active' : ''}`}
+                                onClick={() => setLang('en')}
+                                aria-pressed={lang === 'en'}
+                            >
+                                EN
+                            </button>
+                        </div>
                     </div>
                 </div>
             </header>
@@ -6005,7 +6014,8 @@ export default function TasteMapPage() {
                                             const picked = !!shareSelectedMap[node.track.id];
                                             const nowPlaying = nowPlayingTrackId === node.track.id;
                                             const detailSelected = selectedTrackCard?.track?.id === node.track.id;
-                                            const spectraBlur = isSpectraExpandMode && node.track.id !== spectraExpandTrackId;
+                                            const justAdded = Boolean(savedFromRecIds[node.track.id] && recActionMessage);
+                                            const spectraBlur = isSpectraExpandMode && node.track.id !== spectraExpandTrackId && !justAdded;
                                             const spectraAnchor = isSpectraExpandMode && node.track.id === spectraExpandTrackId;
                                             const nodeClusterId = assignmentByTrackId.get(node.track.id);
                                             const isVoyageStar = voyageState.active && voyageTrackIdSet.has(node.track.id);
@@ -6015,7 +6025,7 @@ export default function TasteMapPage() {
                                                 <div
                                                     key={node.track.id}
                                                     data-bubble-id={node.track.id}
-                                                    className={`tm-bubble-item${isConstellationView ? ' tm-constellation-item' : ''}${constellationCoverZoomed ? ' is-cover-zoom' : ''}${active ? '' : ' muted'}${showLabel ? ' show-label' : ''}${hovered ? ' hovered' : ''}${detailSelected ? ' detail-selected' : ''}${picked ? ' picked' : ''}${nowPlaying ? ' now-playing' : ''}${clusterFocused ? ' cluster-focus' : ''}${clusterExpandPulsing ? ' cluster-expand-pulse' : ''}${spectraBlur ? ' spectra-blur' : ''}${spectraAnchor ? ' spectra-anchor' : ''}${isVoyageStar ? ' tm-voyage-star' : ''}${isVoyageActive ? ' is-voyage-active-star' : ''}${isVoyageDimmed ? ' is-voyage-dimmed' : ''}`}
+                                                    className={`tm-bubble-item${isConstellationView ? ' tm-constellation-item' : ''}${constellationCoverZoomed ? ' is-cover-zoom' : ''}${active ? '' : ' muted'}${showLabel || justAdded ? ' show-label' : ''}${justAdded ? ' is-new-addition' : ''}${hovered ? ' hovered' : ''}${detailSelected ? ' detail-selected' : ''}${picked ? ' picked' : ''}${nowPlaying ? ' now-playing' : ''}${clusterFocused ? ' cluster-focus' : ''}${clusterExpandPulsing ? ' cluster-expand-pulse' : ''}${spectraBlur ? ' spectra-blur' : ''}${spectraAnchor ? ' spectra-anchor' : ''}${isVoyageStar ? ' tm-voyage-star' : ''}${isVoyageActive ? ' is-voyage-active-star' : ''}${isVoyageDimmed ? ' is-voyage-dimmed' : ''}`}
                                                     onPointerDown={(isConstellationView || shareMode) ? undefined : (event) => handleBubbleDragStart(event, node.track.id)}
                                                     onPointerMove={(isConstellationView || shareMode) ? undefined : handleBubbleDragMove}
                                                     onPointerUp={(isConstellationView || shareMode) ? undefined : handleBubbleDragEnd}
@@ -6086,6 +6096,7 @@ export default function TasteMapPage() {
                                             rec.inView ? (
                                                 <div
                                                     key={rec.id}
+                                                    data-recommendation-id={rec.track.id}
                                                     className={`tm-rec-bubble-item${rec.hovered ? ' hovered' : ''}${rec.relatedToFocus ? ' spectra-related' : ''}${rec.showGuideLabel ? ' guide-label' : ''}${selectedTrackCard?.track?.id === rec.track.id ? ' detail-selected' : ''}`}
                                                     style={{
                                                         '--tm-rec-size': rec.style['--tm-rec-size'],
