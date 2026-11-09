@@ -71,6 +71,14 @@ try {
             const tour = page.locator('.map-guide-panel');
             await tour.waitFor();
             assert.equal(await page.locator('.help-center-dialog[open]').count(), 0);
+            assert.equal(await tour.locator('.map-guide-progress').count(), 0, 'The horizontal progress bar is removed');
+            await tour.press('ArrowLeft');
+            await tour.locator('.map-guide-count').filter({ hasText: '1/6' }).waitFor();
+            await tour.press('ArrowRight');
+            await tour.locator('.map-guide-count').filter({ hasText: '2/6' }).waitFor();
+            await tour.dispatchEvent('keydown', { key: 'ArrowRight', repeat: true });
+            assert.match(await tour.locator('.map-guide-count').innerText(), /2\/6/, 'Holding an arrow must not skip steps');
+            await tour.press('ArrowLeft');
             for (let step = 0; step < 6; step++) {
                 await tour.locator('.map-guide-count').filter({ hasText: `${step + 1}/6` }).waitFor();
                 await page.waitForTimeout(450);
@@ -78,19 +86,36 @@ try {
                 assert.ok(box.x >= 0 && box.y >= 0 && box.x + box.width <= width && box.y + box.height <= height, `Tour step ${step + 1} fits`);
                 if (step === 1 || step === 3) await page.screenshot({ path: `output/review/help-center/${lang}-${width}-tour-${step + 1}.png` });
                 if (lang === 'en') assert.doesNotMatch(await tour.innerText(), /[가-힣]/);
-                if (step < 5) await tour.locator('.map-guide-next').click();
+                if (step === 4) {
+                    await page.locator('.tm-dock-actions .tm-dock-action').last().click();
+                    const name = page.locator('#tm-custom-group-name');
+                    await name.fill('Night');
+                    await name.press('ArrowLeft');
+                    assert.match(await tour.locator('.map-guide-count').innerText(), /5\/6/, 'Editing a group name must not navigate the walkthrough');
+                    assert.equal(await name.evaluate(input => input.selectionStart), 4);
+                    await name.press('ArrowRight');
+                    assert.equal(await name.evaluate(input => input.selectionStart), 5);
+                    await page.locator('.tm-group-panel-head button').click();
+                    await tour.focus();
+                }
+                if (step < 5) {
+                    if (step % 2 === 0) await tour.press('ArrowRight');
+                    else await tour.locator('.map-guide-next').click();
+                }
             }
             await tour.locator('.map-guide-prev').click();
             await tour.locator('.map-guide-count').filter({ hasText: '5/6' }).waitFor();
-            await tour.locator('.map-guide-next').click();
-            await tour.locator('.map-guide-next').click();
+            await tour.press('ArrowRight');
+            await tour.press('ArrowRight');
             await tour.waitFor({ state: 'detached' });
             assert.equal(await page.evaluate(() => localStorage.getItem('spectra:map-guide:v2:desktop')), 'seen');
             help = await openHelp(page);
             await help.locator('.help-center-tour').click();
             await tour.waitFor();
-            await tour.locator('.map-guide-dismiss').click();
+            await tour.press('Escape');
             await tour.waitFor({ state: 'detached' });
+            await page.keyboard.press('ArrowRight');
+            assert.equal(await tour.count(), 0, 'The shortcut listener is removed when the walkthrough closes');
         }
         await openFeedback(page);
         const feedback = page.locator('.feedback-dialog[open]');

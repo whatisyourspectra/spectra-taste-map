@@ -81,19 +81,33 @@ export default function MapOnboarding({ mobile = false }) {
       if (panel) setPlacement(positionGuide(box, panel, { width: window.innerWidth, height: window.innerHeight }));
       setRect({ left: Math.max(6, box.left - 6), top: Math.max(6, box.top - 6), width: Math.min(box.width + 12, window.innerWidth - 12), height: Math.min(box.height + 12, window.innerHeight - 12), bottom: box.bottom });
     };
-    const escape = event => { if (event.key === 'Escape') { event.stopPropagation(); close(); } };
+    const handleKeyDown = event => {
+      if (event.defaultPrevented || event.isComposing) return;
+      if (event.key === 'Escape') { event.stopPropagation(); close(); return; }
+      if (!['ArrowLeft', 'ArrowRight'].includes(event.key) || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+      const target = event.target;
+      if (target?.isContentEditable || target?.closest?.('input, textarea, select, [role="textbox"], [role="slider"], [role="combobox"], [role="tablist"], [role="listbox"], [role="menu"], [role="tree"]')) return;
+      const dialog = target?.closest?.('[role="dialog"], dialog[open]');
+      if (dialog && dialog !== panelRef.current) return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (event.repeat) return;
+      if (event.key === 'ArrowLeft') setStep(current => current === null ? null : Math.max(0, current - 1));
+      else if (step === steps.length - 1) close();
+      else setStep(current => current === null ? null : Math.min(steps.length - 1, current + 1));
+    };
     update();
     const timer = window.setInterval(update, 400);
     window.addEventListener('scroll', update, true);
     window.addEventListener('resize', update);
     const observer = new ResizeObserver(update);
     if (panelRef.current) observer.observe(panelRef.current);
-    window.addEventListener('keydown', escape, true);
-    return () => { host?.remove(); if (mobile) setMobileHost(null); if (openedTrack) document.querySelector('.ccp-close-btn')?.click(); window.clearInterval(timer); observer.disconnect(); window.removeEventListener('scroll', update, true); window.removeEventListener('resize', update); window.removeEventListener('keydown', escape, true); };
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => { host?.remove(); if (mobile) setMobileHost(null); if (openedTrack) document.querySelector('.ccp-close-btn')?.click(); window.clearInterval(timer); observer.disconnect(); window.removeEventListener('scroll', update, true); window.removeEventListener('resize', update); window.removeEventListener('keydown', handleKeyDown, true); };
   }, [step, mobile, steps, close]);
   if (step === null) return null;
   const panel = (
-    <section ref={panelRef} tabIndex={-1} role="dialog" aria-labelledby="map-guide-title" aria-describedby="map-guide-description"
+    <section ref={panelRef} tabIndex={-1} role="dialog" aria-labelledby="map-guide-title" aria-describedby="map-guide-description" aria-keyshortcuts="ArrowLeft ArrowRight"
       className={`map-guide-panel${mobile ? ' is-mobile' : ''}`}
       data-side={!mobile ? placement?.side || undefined : undefined}
       style={mobile ? undefined : { left: placement?.left ?? 16, top: placement?.top ?? 16, visibility: placement ? 'visible' : 'hidden', '--guide-arrow': `${placement?.arrow || 24}px` }}>
@@ -102,7 +116,6 @@ export default function MapOnboarding({ mobile = false }) {
         <span className="map-guide-count" aria-live="polite">{step + 1}/{steps.length}<span>{en ? 'Quick tour' : '빠른 사용 안내'}</span></span>
         <button type="button" className="map-guide-dismiss" onClick={close} aria-label={en ? 'Close walkthrough' : '따라하기 안내 닫기'}><MobileMusicIcon name="close" /></button>
       </div>
-      <div className="map-guide-progress" aria-hidden="true">{steps.map((item, index) => <span key={item.target} className={index <= step ? 'is-complete' : ''} />)}</div>
       <div className="map-guide-step" key={`${step}:${lang}`}>
         <div className="map-guide-label"><span><MobileMusicIcon name={steps[step].icon || 'discover'} /></span>{translate(steps[step].label)}</div>
         <h2 id="map-guide-title">{translate(steps[step].title)}</h2>
@@ -111,8 +124,8 @@ export default function MapOnboarding({ mobile = false }) {
         {steps[step].hint && <p className="map-guide-hint">{translate(steps[step].hint)}</p>}
       </div>
       <div className="map-guide-footer">
-        {step > 0 && <button type="button" className="map-guide-prev" onClick={() => setStep(step - 1)}>{translate("이전")}</button>}
-        <button type="button" className="map-guide-next" onClick={() => step === steps.length - 1 ? close() : setStep(step + 1)}>{step === steps.length - 1 ? (en ? 'Explore my map' : '내 지도 둘러보기') : <>{translate("다음")}<MobileMusicIcon name="arrow" /></>}</button>
+        {step > 0 && <button type="button" className="map-guide-prev" aria-keyshortcuts="ArrowLeft" title={en ? 'Previous (←)' : '이전 (←)'} onClick={() => setStep(step - 1)}>{translate("이전")}</button>}
+        <button type="button" className="map-guide-next" aria-keyshortcuts="ArrowRight" title={en ? 'Next (→)' : '다음 (→)'} onClick={() => step === steps.length - 1 ? close() : setStep(step + 1)}>{step === steps.length - 1 ? (en ? 'Explore my map' : '내 지도 둘러보기') : <>{translate("다음")}<MobileMusicIcon name="arrow" /></>}</button>
       </div>
     </section>
   );

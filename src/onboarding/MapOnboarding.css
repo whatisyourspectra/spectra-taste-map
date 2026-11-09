@@ -8,16 +8,13 @@
   position: fixed; z-index: 10001; margin: 0; width: min(360px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow: visible; box-sizing: border-box; padding: 22px; border: 1px solid var(--guide-border); border-radius: 24px; background: var(--guide-surface); color: var(--guide-text); box-shadow: 0 18px 64px #0008, inset 0 1px 0 #ffffff05; font-family: inherit; text-align: left;
 }
 .map-guide-highlight { position: fixed; z-index: 10000; box-sizing: border-box; border: 2px solid #b9a3ff; border-radius: 16px; pointer-events: none; box-shadow: 0 0 0 5px #b9a3ff14, 0 0 32px #b9a3ff18; transition: left .2s, top .2s, width .2s, height .2s; }
-.map-guide-meta { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: -8px -6px 3px 0; }
+.map-guide-meta { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: -8px -6px 16px 0; }
 .map-guide-count { display: flex; align-items: center; gap: 8px; color: var(--guide-accent); font-size: 12px; font-weight: 650; font-variant-numeric: tabular-nums; }
 .map-guide-count > span { color: var(--guide-muted); font-weight: 500; font-size: 11px; }
 .map-guide-panel button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: inherit; border: 0; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: background .15s, transform .15s; }
 .map-guide-panel .mtm-icon { flex: none; width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .map-guide-panel .map-guide-dismiss { width: 44px; height: 44px; padding: 10px; border-radius: 50%; color: var(--guide-muted); background: transparent; }
 .map-guide-panel .map-guide-dismiss:hover { color: var(--guide-text); background: #ffffff08; }
-.map-guide-progress { display: flex; gap: 5px; margin-bottom: 22px; }
-.map-guide-progress > span { flex: 1; height: 3px; border-radius: 3px; background: #ffffff0e; transition: background .2s; }
-.map-guide-progress > .is-complete { background: var(--guide-accent); }
 .map-guide-step { max-height: calc(100dvh - 215px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; animation: map-guide-step-enter .2s ease-out; }
 .map-guide-label { display: flex; align-items: center; gap: 9px; margin-bottom: 14px; color: #d9cbff; font-size: 12px; font-weight: 600; }
 .map-guide-label > span { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 11px; background: #b9a3ff14; }
@@ -43,7 +40,7 @@
 .map-guide-panel[data-side="right"] .map-guide-arrow { left: -7px; top: calc(var(--guide-arrow) - 6px); border-left: 1px solid var(--guide-border); border-bottom: 1px solid var(--guide-border); }
 .map-guide-panel[data-side="left"] .map-guide-arrow { right: -7px; top: calc(var(--guide-arrow) - 6px); border-right: 1px solid var(--guide-border); border-top: 1px solid var(--guide-border); }
 @keyframes map-guide-step-enter { from { opacity: .3; transform: translateY(5px); } to { opacity: 1; transform: none; } }
-@media (max-height: 700px) { .map-guide-panel { padding: 18px; } .map-guide-progress { margin-bottom: 16px; } .map-guide-panel h2 { font-size: 21px; } .map-guide-label { margin-bottom: 10px; } .map-guide-footer { margin-top: 18px; } }
-@media (prefers-reduced-motion: reduce) { .map-guide-panel button, .map-guide-highlight, .map-guide-progress > span { transition: none; } .map-guide-step { max-height: calc(100dvh - 215px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; animation: none; } }
+@media (max-height: 700px) { .map-guide-panel { padding: 18px; } .map-guide-panel h2 { font-size: 21px; } .map-guide-label { margin-bottom: 10px; } .map-guide-footer { margin-top: 18px; } }
+@media (prefers-reduced-motion: reduce) { .map-guide-panel button, .map-guide-highlight { transition: none; } .map-guide-step { max-height: calc(100dvh - 215px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; animation: none; } }
 .map-guide-inline-host { width: 100%; margin: 16px 0; scroll-margin-top: 90px; }
 .map-guide-panel.is-mobile { position: relative; inset: auto; width: 100%; max-width: 100%; z-index: 1; }
