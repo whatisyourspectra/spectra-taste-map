@@ -2443,7 +2443,7 @@ export default function TasteMapPage() {
         const worker = new Worker(new URL('../workers/bubbleLayoutWorker.js', import.meta.url), { type: 'module' });
         bubbleLayoutWorkerRef.current = worker;
         const baseTracks = bubbleTracks.filter(track => !track.tasteMapPlacement?.anchorId);
-        const baseKey = JSON.stringify(['neighborhood-layout-v4', mapId, activeMapView, xAxis, yAxis, isDemoUniverse,
+        const baseKey = JSON.stringify(['clustered-neighborhood-v6', mapId, activeMapView, xAxis, yAxis,
             debouncedFieldSize.w, debouncedFieldSize.h, bubbleWorldScale,
             baseTracks.map(track => [track.id, getTrackFeature(track, xAxis), getTrackFeature(track, yAxis),
                 track.popularity, recentPlayMap.get(track.id), track.artists, getTrackGenres(track)])]);
@@ -2517,7 +2517,6 @@ export default function TasteMapPage() {
             affinityEntries,
             fixedBaseEntries,
             layoutMode: activeMapView === 'spotify' ? 'exploratory' : 'features',
-            spacingProfile: isDemoUniverse ? 'expressive' : undefined,
         });
         return () => { worker.terminate(); bubbleLayoutWorkerRef.current = null; };
     }, [
@@ -2532,7 +2531,6 @@ export default function TasteMapPage() {
         assignmentByTrackId,
         recentPlayMap,
         assignments.length,
-        isDemoUniverse,
         tracks.length,
         genreGroups,
         tracks,

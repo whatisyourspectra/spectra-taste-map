@@ -33,7 +33,7 @@ function scatterHash(value) {
     return (hash >>> 0) / 4294967296;
 }
 
-function exploratoryAnchors(tracks, assignments, expressiveSpacing = false) {
+function exploratoryAnchors(tracks, assignments) {
     const groups = new Map();
     for (const track of tracks) {
         const cluster = assignments.get(track.id) ?? 0;
@@ -65,7 +65,7 @@ function exploratoryAnchors(tracks, assignments, expressiveSpacing = false) {
     for (const region of regions.values()) {
         const parent = familyAnchors.get(region.family);
         const angle = scatterHash(`${region.key}:bearing`) * Math.PI * 2;
-        const radius = .025 + scatterHash(`${region.key}:offset`) * .05;
+        const radius = .02 + scatterHash(`${region.key}:offset`) * .04;
         region.x = parent.x + Math.cos(angle) * radius;
         region.y = parent.y + Math.sin(angle) * radius;
     }
@@ -73,14 +73,14 @@ function exploratoryAnchors(tracks, assignments, expressiveSpacing = false) {
     for (const group of groups.values()) {
         const region = regions.get(group.genre);
         const angle = scatterHash(`${group.key}:bearing`) * Math.PI * 2;
-        const reach = families.length === 1 ? .3 : .035 + .1 * Math.sqrt(region.count / tracks.length);
+        const reach = families.length === 1 ? .3 : .025 + .075 * Math.sqrt(region.count / tracks.length);
         const radius = Math.sqrt(scatterHash(`${group.key}:distance`)) * reach
-            * (expressiveSpacing ? .6 + scatterHash(`${group.key}:reach`) * 1.1 : 1);
+            * (.6 + scatterHash(`${group.key}:reach`) * 1.1);
         let centerX = region.x + Math.cos(angle) * radius * 1.1;
         let centerY = region.y + Math.sin(angle) * radius;
         // A few artist neighborhoods drift into the gaps, producing sparse
         // bridges and outliers rather than a ring, wave, or uniform cloud.
-        if (scatterHash(`${group.key}:outlier`) > .85) {
+        if (scatterHash(`${group.key}:outlier`) > .89) {
             centerX = centerX * .4 + (.08 + scatterHash(`${group.key}:far-x`) * .84) * .6;
             centerY = centerY * .4 + (.08 + scatterHash(`${group.key}:far-y`) * .84) * .6;
         }
@@ -92,17 +92,17 @@ function exploratoryAnchors(tracks, assignments, expressiveSpacing = false) {
             // separates their lightly overlapping artwork for inspection.
             const tail = scatterHash(`${track.id}:tail`) > .85 ? 3.2 : 1;
             const role = scatterHash(`${track.id}:spacing-role`);
-            const fringe = expressiveSpacing && role >= .68;
+            const fringe = role >= .78;
             const radius = fringe
-                ? .7 + scatterHash(`${track.id}:radius`) * 2.8
-                : Math.pow(scatterHash(`${track.id}:radius`), expressiveSpacing ? 2.1 : 1.8) * tail;
-            const spread = Math.min(.04, .004 + Math.sqrt(group.members.length) * .003);
-            const stretch = expressiveSpacing ? .7 + scatterHash(`${group.key}:stretch`) * 1.4 : 1;
+                ? .5 + scatterHash(`${track.id}:radius`) * 1.8
+                : Math.pow(scatterHash(`${track.id}:radius`), 2.1) * tail;
+            const spread = Math.min(.035, .003 + Math.sqrt(group.members.length) * .002);
+            const stretch = .7 + scatterHash(`${group.key}:stretch`) * 1.4;
             const dx = Math.cos(angle) * radius * spread * 1.5 * stretch;
             const dy = Math.sin(angle) * radius * spread * .72 / Math.sqrt(stretch);
             let x = centerX + dx * Math.cos(orientation) - dy * Math.sin(orientation);
             let y = centerY + dx * Math.sin(orientation) + dy * Math.cos(orientation);
-            if (scatterHash(`${track.id}:wanderer`) > .9) {
+            if (scatterHash(`${track.id}:wanderer`) > .93) {
                 x = x * .3 + (.05 + scatterHash(`${track.id}:wide-x`) * .9) * .7;
                 y = y * .3 + (.06 + scatterHash(`${track.id}:wide-y`) * .88) * .7;
             }
@@ -129,7 +129,6 @@ self.onmessage = ({ data }) => {
         playWeightEntries,
         projected2dEntries,
         layoutMode,
-        spacingProfile,
     } = data;
 
     const assignmentByTrackId = new Map(assignmentEntries);
@@ -147,8 +146,7 @@ self.onmessage = ({ data }) => {
 
     const isGenreProjected = projected2dByTrackId.size > 0;
     const exploratory = layoutMode === 'exploratory';
-    const expressiveSpacing = exploratory && spacingProfile === 'expressive';
-    const neighborhoodAnchors = exploratory ? exploratoryAnchors(tracks, assignmentByTrackId, expressiveSpacing) : new Map();
+    const neighborhoodAnchors = exploratory ? exploratoryAnchors(tracks, assignmentByTrackId) : new Map();
     const virtualW = Math.max(1, fieldW * worldScale);
     const virtualH = Math.max(1, fieldH * worldScale);
 
@@ -213,15 +211,15 @@ self.onmessage = ({ data }) => {
         const clusterId = assignmentByTrackId.get(track.id);
         const color = CLUSTER_COLORS[(clusterId ?? 0) % CLUSTER_COLORS.length];
         const fixed = fixedBase.get(track.id);
-        const fringe = expressiveSpacing && scatterHash(`${track.id}:spacing-role`) >= .68;
+        const fringe = exploratory && scatterHash(`${track.id}:spacing-role`) >= .78;
         return { id: track.id, rawX, rawY, x: rawX, y: rawY, size, color, clusterId,
             // Leave room around fringe tracks while retaining compact cores.
             // Applying the same large gap to every song flattens the density.
-            spacing: exploratory ? fringe ? 12 + scatterHash(`${track.id}:gap`) * 24
-                : 1 + Math.pow(scatterHash(`${track.id}:gap`), 2) * 10 : 0,
-            packing: fringe ? 1.35 + scatterHash(`${track.id}:air`) * .95
-                : .62 + Math.pow(scatterHash(`${track.layoutArtist || track.id}:density`), 2) * .95,
-            clearance: fringe ? 1.15 : 1,
+            spacing: exploratory ? fringe ? 6 + scatterHash(`${track.id}:gap`) * 14
+                : .5 + Math.pow(scatterHash(`${track.id}:gap`), 2) * 8 : 0,
+            packing: fringe ? 1.05 + scatterHash(`${track.id}:air`) * .6
+                : .58 + Math.pow(scatterHash(`${track.layoutArtist || track.id}:density`), 2) * .6,
+            clearance: fringe ? 1.05 : 1,
             artist: track.layoutArtist,
             ...(fixed ? { x: fixed.nX * virtualW, y: fixed.nY * virtualH,
                 rawX: fixed.nRawX * virtualW, rawY: fixed.nRawY * virtualH } : {}) };
@@ -248,8 +246,7 @@ self.onmessage = ({ data }) => {
 
     const clusterPull = count > 2000 ? 0.012 : count > 1000 ? 0.016 : count > 600 ? 0.022 : count > 300 ? 0.028 : 0.034;
     const cellSize = Math.max((sizeMax + sepPadAdjusted) * 2.0,
-        exploratory ? (sizeMax * overviewCoverScale * (expressiveSpacing ? 2.3 : 1.57)
-            + (expressiveSpacing ? 36 : 11)) / overviewZoom : 0);
+        exploratory ? (sizeMax * overviewCoverScale * 1.65 + 20) / overviewZoom : 0);
     // Large imports favor fast, stable placement over imperceptible late-pass
     // collision refinements. This keeps multi-thousand-track layouts fast and responsive.
     const layoutIterations = count > 2500 ? 18 : count > 1600 ? 22 : count > 900 ? 28 : count > 450 ? 36 : 44;
@@ -295,7 +292,7 @@ self.onmessage = ({ data }) => {
                         const sameArtist = a.artist && a.artist === b.artist;
                         const gap = (a.spacing + b.spacing) / 2 * (sameArtist ? .2 : 1);
                         const packing = sameArtist ? (a.packing + b.packing) / 2
-                            : Math.max(a.clearance, b.clearance) * (sameCluster ? .94 : 1);
+                            : Math.max(a.clearance, b.clearance) * (sameCluster ? .82 : 1);
                         const minDist = exploratory
                             ? ((a.size + b.size) / 2 * overviewCoverScale * packing + gap) / overviewZoom
                             : (a.size + b.size) / 2 + clusterGap;

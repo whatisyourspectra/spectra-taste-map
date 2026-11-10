@@ -18,7 +18,6 @@ function layout(list = tracks, options = {}) {
     tracks: list.map((track, index) => ({ ...track, layoutArtist: track.artists, layoutGenreKey: partition.groups[partition.labels[index]]?.key })),
     fieldW: width, fieldH: height, worldScale: 5 * Math.max(1, Math.sqrt(count / 110)),
     xAxis: 'valence', yAxis: 'energy', layoutMode: 'exploratory',
-    spacingProfile: 'expressive',
     assignmentEntries: list.map((track, index) => [track.id, partition.labels[index]]),
     playWeightEntries: list.map(track => [track.id, { type: 'popularity', value: track.popularity }]),
     ...options,
@@ -40,8 +39,11 @@ test('240-song browsing layout is deterministic, broad and keeps every song', ()
   assert.ok(range('nY') > .6, 'Keep vertical paths and gaps to explore');
 });
 
-test('overview mixes compact neighborhoods with breathing room without burying covers', () => {
-  const nodes = layout();
+for (const [label, collection] of [
+  ['demo', tracks],
+  ['personal import', tracks.map((track, index) => ({ ...track, demoUniverseId: undefined, id: `personal-${index}` }))],
+]) test(`${label} mixes dense neighborhoods with breathing room without burying covers`, () => {
+  const nodes = layout(collection);
   const scale = 5 * Math.sqrt(240 / 110);
   const w = width * scale, h = height * scale;
   const spanX = Math.max(...nodes.map(node => node.nX)) - Math.min(...nodes.map(node => node.nX));
@@ -52,11 +54,12 @@ test('overview mixes compact neighborhoods with breathing room without burying c
     Math.hypot((a.nX - b.nX) * w * zoom, (a.nY - b.nY) * h * zoom) / ((a.size + b.size) / 2 * coverScale)
   ))).sort((a, b) => a - b);
   const compact = nearest.filter(distance => distance < 1).length;
-  assert.ok(compact > nodes.length * .2, 'Some covers should overlap lightly to form recognizable neighborhoods');
+  assert.ok(compact > nodes.length * .45, 'A substantial part of the map should form dense neighborhoods');
   assert.ok(compact < nodes.length * .8, 'Keep loose tracks between the compact neighborhoods');
   assert.ok(nearest[0] > .5, 'Even the closest pair must keep both cover centers visible');
-  assert.ok(nearest[Math.floor(nodes.length * .9)] / nearest[Math.floor(nodes.length * .1)] > 2.5,
-    'Loose demo tracks must have substantially more space than dense cores');
+  assert.ok(nearest[Math.floor(nodes.length * .25)] < .85, 'Dense cores should retain lightly overlapping artwork');
+  assert.ok(nearest[Math.floor(nodes.length * .9)] / nearest[Math.floor(nodes.length * .1)] > 1.7,
+    'Loose tracks must retain more space than dense cores');
   assert.ok(nearest.at(-1) > 2, 'Leave isolated satellites beyond the dense cores');
 });
 
