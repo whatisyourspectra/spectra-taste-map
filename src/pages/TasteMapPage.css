@@ -4030,6 +4030,42 @@
     margin-bottom: 4px;
 }
 
+.tm-header-details { display: grid; gap: 4px; }
+.tm-header-details[hidden] { display: none; }
+.tm-header-toggle {
+    display: grid;
+    place-items: center;
+    flex: 0 0 30px;
+    width: 30px;
+    height: 30px;
+    margin-left: auto;
+    padding: 6px;
+    border: 1px solid #ffffff14;
+    border-radius: 9px;
+    background: #ffffff06;
+    color: #b6a8e6;
+    cursor: pointer;
+}
+.tm-header-toggle:hover { color: #efe7ff; background: #b6a8e61a; }
+.tm-header-toggle:focus-visible { outline: 2px solid #b6a8e6; outline-offset: 3px; }
+.tm-header-toggle svg { width: 18px; height: 18px; transition: transform .2s ease; }
+.tm-header-toggle path { stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.tm-header-summary { color: #aab7cb; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.tm-header-main.is-collapsed {
+    width: fit-content;
+    max-width: min(310px, calc(100vw - 180px));
+    padding: 8px 9px 8px 14px;
+    border-radius: 14px;
+    gap: 0;
+}
+.tm-header-main.is-collapsed .tm-header-nav-row { gap: 12px; margin: 0; }
+.tm-header-main.is-collapsed .tm-pill { --spectra-logo-width: 110px; }
+.tm-header-main.is-collapsed .tm-demo-badge { display: none; }
+.tm-header-main.is-collapsed .tm-header-toggle svg { transform: rotate(180deg); }
+@media (prefers-reduced-motion: reduce) {
+    .tm-header-toggle svg { transition: none; }
+}
+
 .tm-demo-badge {
     display: inline-flex;
     align-items: center;
@@ -6471,6 +6507,8 @@
  .tm-mobile-searchbar button { flex: 0 0 44px; height: 44px; border: 0; background: none; color: #d9e6fa; font-size: 24px; }
  .tm-mobile-searchbar input { width: 100%; min-width: 0; border: 0; outline: 0; color: #eef4ff; background: none; font-size: 16px; }
  .tm-mobile-searchbar input::placeholder { color: #a5b5cf; }
+ .tm-mobile-searchbar .language-switcher { padding: 2px; border-radius: 10px; }
+ .tm-mobile-searchbar .language-switcher button { flex: 0 0 auto; min-width: 30px; width: auto; height: 38px; padding: 4px 6px; font-size: 12px; border-radius: 7px; }
  .tm-mobile-search-results, .tm-mobile-map-menu { margin-top: 8px; padding: 10px; border: 1px solid #ffffff22; border-radius: 14px; background: #111827; color: #b9c9e1; }
  .tm-mobile-search-results button { display: grid; gap: 4px; width: 100%; min-height: 52px; padding: 10px; text-align: left; border: 0; border-bottom: 1px solid #ffffff10; color: #eef4ff; background: none; font-size: 14px; }
  .tm-mobile-search-results span { color: #a5b5cf; font-size: 12px; }

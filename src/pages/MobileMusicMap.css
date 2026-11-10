@@ -36,13 +36,22 @@ html:has(.mobile-taste-map), body:has(.mobile-taste-map) { background: #070b13; 
 .mtm-more-panel > button:hover, .mtm-more-panel > a:hover { background: #ffffff08; }
 body:has(.mobile-taste-map) > #root .help-center-trigger { display: none; }
 .mtm-more-panel .help-center-menu-entry { border-top: 1px solid #9bb4de24; border-radius: 0 0 10px 10px; }
-.mobile-taste-map .public-map-header { gap: 10px; }
+.mobile-taste-map .public-map-header { gap: 8px; flex-wrap: nowrap; }
+.mobile-taste-map .public-map-home, .mtm-more-menu { flex-shrink: 0; }
+.mtm-language-switcher { height: 40px; box-sizing: border-box; border-color: #b9a3ff30; border-radius: 12px; background: #ffffff04; }
+.mtm-language-switcher button { border-radius: 8px; }
+.mtm-language-switcher button[aria-pressed=true] { background: #b9a3ff26; color: #e2d7ff; }
+.mtm-save-label-compact { display: none; }
+@media (max-width: 699px) {
+    .mtm-save-label-full { display: none; }
+    .mtm-save-label-compact { display: inline; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+}
 .mobile-taste-map .public-map-header .spectra-logo { width: 118px; }
 .mobile-taste-map .sa-account-button { display: grid; place-items: center; width: 44px; height: 44px; min-height: 44px; padding: 0; border: 1px solid #b9caff24; border-radius: 50%; background: #141d2d; color: #d2e0f4; flex-shrink: 0; }
 .mobile-taste-map .sa-account-button > span:last-child { display: none; }
 .mobile-taste-map .sa-account-button > svg { width: 20px; height: 20px; }
 .mobile-taste-map .sa-account-initial { display: grid; place-items: center; width: 28px; height: 28px; margin: 0; }
-.mtm-save-state { display: flex; align-items: center; gap: 6px; min-height: 44px; margin-left: auto; color: var(--mtm-secondary); font-size: 12px; white-space: nowrap; }
+.mtm-save-state { display: flex; align-items: center; gap: 6px; min-width: 0; min-height: 44px; margin-left: auto; color: var(--mtm-secondary); font-size: 12px; white-space: nowrap; }
 .mtm-save-state i { width: 5px; height: 5px; border-radius: 50%; background: #a7a4d7; }
 .mtm-save-state.saved i { background: #8fdac1; }
 .mtm-save-state.error { color: #f0c58b; }

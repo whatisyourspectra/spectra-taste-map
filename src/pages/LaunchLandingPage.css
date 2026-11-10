@@ -1285,7 +1285,7 @@ html:has(.llp-root), body:has(.llp-root) {
 }
 
 /* File import is the default; playlist export instructions stay optional. */
-.llp-save-note { max-width: 530px; margin: 0; color: #93a6c2; font-size: 13px; line-height: 1.7; }
+.llp-save-note { max-width: 530px; margin: 10px auto 0; color: #93a6c2; font-size: 13px; line-height: 1.7; text-align: center; word-break: keep-all; overflow-wrap: break-word; text-wrap: balance; }
 .llp-paste-label { display: block; margin: 8px 0 12px; color: #c4d2e6; font-size: 14px; line-height: 1.6; }
 .llp-export-help { margin-top: 24px; border: 1px solid #9bb4de30; border-radius: 12px; padding: 0 18px 14px; text-align: left; }
 .llp-export-help:not([open]) { padding-bottom: 0; }

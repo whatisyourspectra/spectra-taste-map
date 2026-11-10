@@ -26,9 +26,14 @@ try {
             await page.setViewportSize({ width, height: 900 });
             const box = await page.locator('.llp-nav-actions').boundingBox();
             const logo = await page.locator('.llp-nav-brand').boundingBox();
-            assert.ok(box.width <= 220 && box.x + box.width <= width && box.x >= logo.x + logo.width, 'The compact controls fit beside the logo');
+            assert.ok(box.width <= 310 && box.x + box.width <= width && box.x >= logo.x + logo.width, 'The controls and visible language switch fit beside the logo');
             assert.ok(await more.boundingBox().then(item => item.height >= 40));
             assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+            const language = page.locator('.llp-nav-language-switcher');
+            assert.equal(await language.isVisible(), true, 'Language is available without opening the menu');
+            await language.locator(`button[lang="${lang === 'ko' ? 'en' : 'ko'}"]`).click();
+            assert.equal(await more.getAttribute('aria-expanded'), 'false');
+            await language.locator(`button[lang="${lang}"]`).click();
             await page.screenshot({ path: `${output}/${lang}-${width}-closed.png` });
             await more.focus(); await more.press('ArrowDown');
             const menu = page.locator('.llp-nav-utility-panel');
@@ -36,9 +41,7 @@ try {
             await page.waitForFunction(() => document.activeElement?.closest('.llp-nav-utility-links'));
             const menuBox = await menu.boundingBox();
             assert.ok(menuBox.x >= 0 && menuBox.x + menuBox.width <= width && menuBox.y + menuBox.height <= 900);
-            await menu.locator(`.language-switcher button[lang="${lang === 'ko' ? 'en' : 'ko'}"]`).click();
-            assert.equal(await more.getAttribute('aria-expanded'), 'true', 'Changing language keeps settings open');
-            await menu.locator(`.language-switcher button[lang="${lang}"]`).click();
+            assert.equal(await menu.locator('.language-switcher').count(), 0, 'Language controls are outside settings');
             if (lang === 'en') assert.doesNotMatch((await menu.innerText()).replaceAll('한국어', ''), /[가-힣]/);
             await menu.locator('.llp-sound-toggle').click();
             await menu.locator('.llp-sound-status').waitFor();

@@ -90,14 +90,12 @@ try {
         assert.equal(await nav.getByRole('button', { name: '내 지도', exact: true }).getAttribute('aria-current'), 'page');
         await page.goForward();
         assert.equal(await nav.getByRole('button', { name: '오늘', exact: true }).getAttribute('aria-current'), 'page');
-        await page.getByLabel('더 보기', { exact: true }).click();
-        await page.getByRole('button', { name: 'English', exact: true }).click();
+        await page.locator('.public-map-header > .language-switcher').getByRole('button', { name: 'English', exact: true }).click();
         const englishNav = page.getByRole('navigation', { name: 'Mobile music menu' });
         assert.deepEqual(await englishNav.getByRole('button').allTextContents(), ['My map', 'Discover', 'Today', 'Social']);
         await englishNav.getByRole('button', { name: 'My map', exact: true }).click();
         await page.getByRole('heading', { name: /My map/ }).waitFor();
-        await page.getByLabel('More options', { exact: true }).click();
-        await page.getByRole('button', { name: '한국어', exact: true }).click();
+        await page.locator('.public-map-header > .language-switcher').getByRole('button', { name: '한국어', exact: true }).click();
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
         await page.goto(base + '/taste-map/mobile?oracle=1');
         await today.waitFor();

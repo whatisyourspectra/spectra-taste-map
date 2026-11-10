@@ -70,19 +70,23 @@ try {
         await page.locator('.llp-nav-map-entry').waitFor({ state: 'attached' });
         assert.equal(await page.locator('.llp-nav-actions > button').count(), 1, 'One primary destination remains in the header');
         const actions = await page.locator('.llp-nav-actions').boundingBox();
-        assert.ok(actions.width <= 220 && actions.x + actions.width <= width, 'The utility cluster stays compact');
+        assert.ok(actions.width <= 310 && actions.x + actions.width <= width, 'The controls include a visible language switch');
         const more = page.getByRole('button', { name: lang === 'ko' ? '추가 메뉴' : 'More options', exact: true });
         await more.click();
         const utilities = page.locator('.llp-nav-utility-panel');
         await utilities.waitFor();
         const menuBounds = await utilities.boundingBox();
         assert.ok(menuBounds.x >= 0 && menuBounds.x + menuBounds.width <= width, 'The utility menu fits the screen');
-        assert.ok(await utilities.locator('.language-switcher').isVisible());
+        assert.ok(await page.locator('.llp-nav-language-switcher').isVisible());
+        assert.equal(await utilities.locator('.language-switcher').count(), 0);
         assert.ok(await utilities.locator('.llp-sound-toggle').isVisible());
         await page.keyboard.press('Escape');
         assert.equal(await utilities.count(), 0);
         assert.ok(await more.evaluate(element => element === document.activeElement));
-        await page.locator('.llp-nav-auth .sa-account-button').click();
+        if (width <= 699) {
+            await more.click();
+            await page.locator('.llp-nav-menu-auth .sa-account-button').click();
+        } else await page.locator('.llp-nav-auth .sa-account-button').click();
         assert.equal(new URL(page.url()).searchParams.get('returnTo'), '/taste-map');
         await page.getByRole('button', { name: lang === 'ko' ? 'Google로 계속하기' : 'Continue with Google', exact: true }).click();
         await assertPersonalMap(page, hasSongs);

@@ -1,5 +1,6 @@
 import { findLibraryTrack, prepareLibraryAddition } from '../taste/libraryAddition';
 import { useLocale } from '../i18n/useLocale.js';
+import LanguageSwitcher from '../i18n/LanguageSwitcher';
 import { getLanguage } from '../i18n/locale.js';
 import { translate } from '../i18n/translate.js';
 import SpectraLogo from '../components/SpectraLogo';
@@ -1631,6 +1632,8 @@ export default function TasteMapPage() {
     const [camera, setCamera] = useState({ x: 0, y: 0 });
     const [bubbleZoom, setBubbleZoom] = useState(0.6);
     const [hoveredBubbleId, setHoveredBubbleId] = useState(null);
+    const [mapHeaderCollapsed, setMapHeaderCollapsed] = useState(false);
+    const minimizeMapHeader = useCallback(() => setMapHeaderCollapsed(true), []);
     const [nowPlayingTrackId, setNowPlayingTrackId] = useState(null);
     const [bubblePlaybackTrack, setBubblePlaybackTrack] = useState(null);
     const [bubblePlaybackQueue, setBubblePlaybackQueue] = useState([]);
@@ -3010,6 +3013,7 @@ export default function TasteMapPage() {
         const onWheel = (e) => {
             // Let overlay lists scroll natively before consuming map zoom gestures.
             if (e.target?.closest?.('.tm-group-panel, .tm-discovery-panel')) return;
+            minimizeMapHeader();
             e.preventDefault();
             clearTimeout(scrollHintTimerRef.current);
             setScrollHint(false);
@@ -3020,7 +3024,7 @@ export default function TasteMapPage() {
         };
         el.addEventListener('wheel', onWheel, { passive: false });
         return () => el.removeEventListener('wheel', onWheel);
-    }, [viewMode, zoomAroundPointByFactor]);
+    }, [viewMode, zoomAroundPointByFactor, minimizeMapHeader]);
 
     const clearPanVisual = useCallback(() => {
         if (panVisualFrameRef.current) {
@@ -3897,11 +3901,12 @@ export default function TasteMapPage() {
         spectraExpandTrackId,
     ]);
     const handleZoomButton = useCallback((factor) => {
+        minimizeMapHeader();
         const rect = bubbleFieldRef.current?.getBoundingClientRect();
         const cx = rect ? rect.left + rect.width / 2 : 0;
         const cy = rect ? rect.top + rect.height / 2 : 0;
         zoomAroundPointByFactor(factor, cx, cy);
-    }, [zoomAroundPointByFactor]);
+    }, [zoomAroundPointByFactor, minimizeMapHeader]);
     const toggleExplore = useCallback(() => {
         if (exploreEnabled) { setExploreEnabled(false); return; }
         setExploreEnabled(true);
@@ -5153,6 +5158,7 @@ export default function TasteMapPage() {
                 <div className="tm-mobile-searchbar">
                     <button type="button" aria-label={translate("모바일 홈으로")} onClick={() => navigate('/taste-map/mobile')}>←</button>
                     <input aria-label={translate("곡 또는 아티스트 찾기")} placeholder={lang === 'en' ? 'Find a song or artist' : translate("곡 또는 아티스트 찾기")} value={mobileMapSearch} onChange={event => setMobileMapSearch(event.target.value)} />
+                    <LanguageSwitcher compact />
                     <button type="button" aria-label={translate("지도 메뉴")} aria-expanded={mobileMapMenu} onClick={() => setMobileMapMenu(value => !value)}>⋯</button>
                 </div>
                 {mobileMapSearch && <div className="tm-mobile-search-results">
@@ -5160,14 +5166,13 @@ export default function TasteMapPage() {
                 </div>}
                 {mobileMapMenu && <div className="tm-mobile-map-menu">
                     <AccountButton lang={lang} showSaveStatus />
-                    <button type="button" onClick={() => setLang(lang === 'ko' ? 'en' : 'ko')}>{lang === 'ko' ? 'English' : '한국어'}</button>
                     <button type="button" onClick={handleGoHome}>{lang === 'ko' ? '런칭 홈' : 'Launch home'}</button>
                     <span>{tracks.length}{translate("곡 ·")} {clusterStats.length}{translate("개 영역")}</span>
                 </div>}
             </div>
             {/* Header */}
             <header className="tm-header">
-                <div className="tm-header-main">
+                <div className={`tm-header-main${mapHeaderCollapsed ? ' is-collapsed' : ''}`}>
                     <div className="tm-header-nav-row">
                         <span
                             className="tm-pill"
@@ -5182,39 +5187,53 @@ export default function TasteMapPage() {
                         {isDemoUniverse && (
                             <span className="tm-demo-badge" title={translate("체험용 데모 은하입니다")}>DEMO FIELD</span>
                         )}
+                        {mapHeaderCollapsed && <span className="tm-header-summary">{isDemoUniverse ? 'DEMO · ' : ''}{tracks.length.toLocaleString()}{lang === 'en' ? ' songs' : '곡'}</span>}
+                        <button
+                            type="button"
+                            className="tm-header-toggle"
+                            aria-expanded={!mapHeaderCollapsed}
+                            aria-controls="tm-map-introduction"
+                            aria-label={mapHeaderCollapsed ? (lang === 'en' ? 'Expand map information' : '지도 정보 펼치기') : (lang === 'en' ? 'Minimize map information' : '지도 정보 최소화')}
+                            title={mapHeaderCollapsed ? (lang === 'en' ? 'Expand map information' : '지도 정보 펼치기') : (lang === 'en' ? 'Minimize map information' : '지도 정보 최소화')}
+                            onClick={() => setMapHeaderCollapsed(value => !value)}
+                        >
+                            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m6 14 6-6 6 6" /></svg>
+                        </button>
                     </div>
-                    <h1 className="tm-title">
-                        <span className="tm-title-brand">{explorerNickname}</span>
-                        {' Taste Field'}
-                    </h1>
-                    <p className="tm-subtitle">
-                        {copy.mappedSubtitle}
-                    </p>
-                    <div className="tm-header-live" aria-label="map status">
-                        {Number(importedStats?.metadataPendingCount) > 0 && <span>{importedStats.metadataPendingCount}{translate("곡 분석 대기 · 원본 곡 정보 유지")}</span>}
-                        <span className="tm-live-signal"><span aria-hidden />LIVE FIELD</span>
-                        <span>{tracks.length} {lang === 'en' ? 'memories' : '개의 기억'}</span>
-                        <span>{clusterStats.length} {lang === 'en' ? 'regions' : '개의 영역'}</span>
-                        {importedStats?.isCapped && (
-                            <span title={lang === 'en' ? `Uniformly sampled from ${importedStats.originalImportCount?.toLocaleString()} tracks` : `전체 ${importedStats.originalImportCount?.toLocaleString()}곡 중 대표 선별`}>
-                                {lang === 'en'
-                                    ? `Representative ${importedStats.totalAvailable?.toLocaleString()} sampled`
-                                    : `대표 ${importedStats.totalAvailable?.toLocaleString()}곡 선별됨`}
-                            </span>
-                        )}
-                        {importStatus === 'enriching' && importProgress.total > 0 && (
-                            <span>
-                                {lang === 'en' ? 'Adding the rest' : '나머지 곡 추가 중'}
-                                {' '}{Math.round((importProgress.done / importProgress.total) * 100)}%
-                            </span>
-                        )}
-                        {importStatus === 'ready' && Number(importedStats?.failedCount) > 0 && (
-                            <span>
-                                {lang === 'en'
-                                    ? `${importedStats.failedCount} ${Number(importedStats.failedCount) === 1 ? 'track' : 'tracks'} awaiting analysis`
-                                    : `${importedStats.failedCount}곡 분석 대기`}
-                            </span>
-                        )}
+                    <div id="tm-map-introduction" className="tm-header-details" hidden={mapHeaderCollapsed}>
+                        <h1 className="tm-title">
+                            <span className="tm-title-brand">{explorerNickname}</span>
+                            {' Taste Field'}
+                        </h1>
+                        <p className="tm-subtitle">
+                            {copy.mappedSubtitle}
+                        </p>
+                        <div className="tm-header-live" aria-label="map status">
+                            {Number(importedStats?.metadataPendingCount) > 0 && <span>{importedStats.metadataPendingCount}{translate("곡 분석 대기 · 원본 곡 정보 유지")}</span>}
+                            <span className="tm-live-signal"><span aria-hidden />LIVE FIELD</span>
+                            <span>{tracks.length} {lang === 'en' ? 'memories' : '개의 기억'}</span>
+                            <span>{clusterStats.length} {lang === 'en' ? 'regions' : '개의 영역'}</span>
+                            {importedStats?.isCapped && (
+                                <span title={lang === 'en' ? `Uniformly sampled from ${importedStats.originalImportCount?.toLocaleString()} tracks` : `전체 ${importedStats.originalImportCount?.toLocaleString()}곡 중 대표 선별`}>
+                                    {lang === 'en'
+                                        ? `Representative ${importedStats.totalAvailable?.toLocaleString()} sampled`
+                                        : `대표 ${importedStats.totalAvailable?.toLocaleString()}곡 선별됨`}
+                                </span>
+                            )}
+                            {importStatus === 'enriching' && importProgress.total > 0 && (
+                                <span>
+                                    {lang === 'en' ? 'Adding the rest' : '나머지 곡 추가 중'}
+                                    {' '}{Math.round((importProgress.done / importProgress.total) * 100)}%
+                                </span>
+                            )}
+                            {importStatus === 'ready' && Number(importedStats?.failedCount) > 0 && (
+                                <span>
+                                    {lang === 'en'
+                                        ? `${importedStats.failedCount} ${Number(importedStats.failedCount) === 1 ? 'track' : 'tracks'} awaiting analysis`
+                                        : `${importedStats.failedCount}곡 분석 대기`}
+                                </span>
+                            )}
+                        </div>
                     </div>
                 </div>
                 <div className="tm-header-side" role="group" aria-label={lang === 'en' ? 'Map navigation and settings' : '지도 이동 및 설정'}>
@@ -5965,6 +5984,12 @@ export default function TasteMapPage() {
                                         ref={bubbleLayerRef}
                                         className={`tm-bubble-layer${isConstellationView ? ' tm-constellation-layer' : ''}${isSpectraExpandMode ? ' spectra-expanding' : ''}${visibleBubbleRenderItems.length > 280 ? ' high-density' : ''}${shareMode ? ' selection-mode' : ''}${shareMode && selectionSpacePressed ? ' selection-pan-ready' : ''}`}
                                         style={{ '--tm-bubble-scale': compactMap && !isConstellationView ? 1 : getBubbleVisualScale(bubbleZoom) }}
+                                        onPointerDownCapture={(event) => {
+                                            if (event.button === 0 && event.isPrimary !== false && !event.target?.closest?.('.tm-bubble-context-menu, .tm-group-panel')) minimizeMapHeader();
+                                        }}
+                                        onClickCapture={(event) => {
+                                            if (event.detail === 0 && !event.target?.closest?.('.tm-bubble-context-menu, .tm-group-panel')) minimizeMapHeader();
+                                        }}
                                         onPointerDown={(event) => {
                                             if (shareMode) {
                                                 if (bubbleContextMenu) setBubbleContextMenu(null);

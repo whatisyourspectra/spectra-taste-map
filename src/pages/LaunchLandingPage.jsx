@@ -449,7 +449,6 @@ export default function LaunchLandingPage({
             {error && <div className="llp-import-error">{translate(error)}</div>}
 
             <p className="llp-map-destination">{translate('음원 파일 대신 곡 제목과 아티스트가 담긴 목록을 올려주세요. 가져온 음악으로 SPECTRA 지도를 만들어요.')}</p>
-            <p className="llp-privacy-note"> {translate("🔒 파일을 가져올 때 스트리밍 계정을 연결할 필요가 없습니다.")} </p>
           </div>
         </section>
       </main>

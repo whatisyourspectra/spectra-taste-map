@@ -60,6 +60,7 @@ export default function LandingHeaderActions({ hasTaste, busy, progress, sound, 
             <MobileMusicIcon name={hasMap ? 'map' : 'compass'} />
             <span>{hasMap ? t('내 지도', 'My map') : t('데모 체험', 'Try demo')}{progress ? ` ${progress}%` : ''}</span>
         </button>
+        <LanguageSwitcher className="llp-nav-language-switcher" compact />
         <div className="llp-nav-auth" title={user ? t('내 계정', 'My account') : t('로그인', 'Sign in')}><AccountButton /></div>
         <div ref={hostRef} className="llp-nav-utilities">
             <button ref={triggerRef} type="button" className="llp-nav-more" aria-label={t('추가 메뉴', 'More options')} aria-expanded={open} aria-controls={id}
@@ -75,8 +76,8 @@ export default function LandingHeaderActions({ hasTaste, busy, progress, sound, 
                     <button type="button" onClick={() => act(() => onSection('features'), 'features')}><MobileMusicIcon name="map" /><span>{translate('지도 작동 방식')}</span><MobileMusicIcon name="next" /></button>
                     <button type="button" disabled={busy} onClick={() => act(onTryDemo)}><MobileMusicIcon name="compass" /><span>{translate('데모 지도 체험하기')}</span><MobileMusicIcon name="arrow" /></button>
                 </div>
+                <div className="llp-nav-menu-auth"><AccountButton /></div>
                 <div className="llp-nav-preferences">
-                    <div className="llp-nav-language"><span><MobileMusicIcon name="language" />{t('언어', 'Language')}</span><LanguageSwitcher /></div>
                     <button type="button" className="llp-sound-toggle" data-sound-toggle aria-pressed={sound.enabled}
                         aria-label={sound.enabled ? translate('사운드 끄기') : translate('사운드 켜기')} onClick={sound.toggle}>
                         <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4V5Z" />{sound.enabled ? <path d="M15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14" /> : <path d="m16 9 5 6m0-6-5 6" />}</svg>

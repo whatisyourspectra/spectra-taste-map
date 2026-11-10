@@ -1,4 +1,5 @@
 import { useLocale } from '../i18n/useLocale.js';
+import LanguageSwitcher from '../i18n/LanguageSwitcher';
 import { translate } from '../i18n/translate.js';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
@@ -33,14 +34,9 @@ function MobileMapExplorer({ requestedStar }) {
     const mode = tab === 'discover' ? 'discover' : 'library';
     const overviewOpen = tab === 'map' && params.get('view') === 'immersive';
     const menuRef = useRef(null);
-    const { lang, setLang } = useLocale();
+    const { lang } = useLocale();
     const en = lang === 'en';
     const t = (ko, english) => en ? english : ko;
-    const changeLanguage = () => {
-        const next = en ? 'ko' : 'en';
-        setLang(next);
-        menuRef.current.open = false;
-    };
     const { tracks, stats, status, progress, mapId, featuresSource, recordDecision, cloudSaveStatus, retryCloudSync, retryImportAnalysis } = useTasteData();
     const { user } = useAuth();
     const [view, setView] = useState('bubbles');
@@ -75,6 +71,7 @@ function MobileMapExplorer({ requestedStar }) {
     const selectedIndex = collection.findIndex(track => track.id === selectedId);
     const pending = Number(stats?.metadataPendingCount) || 0;
     const saveLabel = demo ? t('데모 지도', 'Demo map') : !user ? t('로그인해 저장', 'Sign in to save') : cloudSaveStatus === 'saved' ? t('계정에 저장됨', 'Saved to account') : cloudSaveStatus === 'saving' ? t('계정에 저장 중', 'Saving') : cloudSaveStatus === 'error' ? t('저장 확인 필요', 'Check saving') : t('저장 확인', 'Check saving');
+    const compactSaveLabel = demo ? t('데모', 'Demo') : !user ? t('로그인', 'Sign in') : cloudSaveStatus === 'saved' ? t('저장됨', 'Saved') : cloudSaveStatus === 'saving' ? t('저장 중', 'Saving') : t('저장 확인', 'Check save');
 
     useEffect(() => {
         const viewport = window.visualViewport;
@@ -179,7 +176,12 @@ function MobileMapExplorer({ requestedStar }) {
     const query = selected ? encodeURIComponent(`${selected.artists} ${selected.name}`) : '';
     const discoveryState = discovery.key === requestKey ? discovery.status : 'loading';
     return <main ref={pageRef} className={`public-map-page mobile-taste-map mtm-tab-${tab}${tab === 'map' && expanded ? ' is-library-open' : ''}${tab === 'map' && selected ? ' has-selection' : ''}`}>
-        <header className="public-map-header"><Link className="public-map-home" to="/" aria-label={translate("SPECTRA 홈")}><SpectraLogo decorative /></Link><Link className={`mtm-save-state ${cloudSaveStatus}`} to={`/auth/login?returnTo=${encodeURIComponent(location.pathname + location.search)}`}><i />{saveLabel}</Link><details ref={menuRef} className="mtm-more-menu" onKeyDown={event => { if (event.key === 'Escape') { event.stopPropagation(); menuRef.current.open = false; menuRef.current.querySelector('summary').focus(); } }}><summary aria-label={en ? 'More options' : '더 보기'}>···</summary><div className="mtm-more-panel"><AccountButton lang={lang} /><Link to="/" onClick={() => { menuRef.current.open = false; }}><MobileMusicIcon name="upload" />{en ? 'Import music' : '음악 가져오기'}</Link><button type="button" onClick={changeLanguage}><MobileMusicIcon name="language" />{en ? '한국어' : 'English'}</button><HelpCenter inMenu onOpened={() => { menuRef.current.open = false; }} /></div></details></header>
+        <header className="public-map-header">
+            <Link className="public-map-home" to="/" aria-label={translate("SPECTRA 홈")}><SpectraLogo decorative /></Link>
+            <Link className={`mtm-save-state ${cloudSaveStatus}`} aria-label={saveLabel} title={saveLabel} to={`/auth/login?returnTo=${encodeURIComponent(location.pathname + location.search)}`}><i /><span className="mtm-save-label-full">{saveLabel}</span><span className="mtm-save-label-compact" aria-hidden="true">{compactSaveLabel}</span></Link>
+            <LanguageSwitcher className="mtm-language-switcher" compact />
+            <details ref={menuRef} className="mtm-more-menu" onKeyDown={event => { if (event.key === 'Escape') { event.stopPropagation(); menuRef.current.open = false; menuRef.current.querySelector('summary').focus(); } }}><summary aria-label={en ? 'More options' : '더 보기'}>···</summary><div className="mtm-more-panel"><AccountButton lang={lang} /><Link to="/" onClick={() => { menuRef.current.open = false; }}><MobileMusicIcon name="upload" />{en ? 'Import music' : '음악 가져오기'}</Link><HelpCenter inMenu onOpened={() => { menuRef.current.open = false; }} /></div></details>
+        </header>
         <div className="mtm-map-content" hidden={tab !== 'map'}>
         <section className="mtm-intro"><div className="mtm-intro-heading"><div><span className="public-map-eyebrow">{en ? "Your own music collection" : "음악으로 채운 나만의 공간"}</span><h1>{en ? 'My map' : '내 지도'} <span>{model.library.length.toLocaleString()}{en ? ' tracks' : '곡'}</span></h1></div><button className="mtm-share-entry" type="button" aria-label={t('내 취향 지도 공유하기', 'Share my taste map')} aria-haspopup="dialog" onClick={() => setShareChannel('card')} disabled={!model.library.length}><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 15V3m-4 4 4-4 4 4M5 13v7h14v-7" /></svg><span>{t('공유', 'Share')}</span></button></div><p>{status === 'enriching' ? translate("곡 정보를 연결하고 있어요 · {0} / {1}", [progress.done, progress.total]) : t('좋아하는 음악에서, 다음 취향으로.', 'Your favorite music, your next discovery.')}</p></section>
         <div className="mtm-map-shortcuts"><button className="mtm-overview-entry" type="button" aria-haspopup="dialog" onClick={() => navigate('/taste-map?view=immersive')}><MobileMusicIcon name="map" />{en ? 'Explore my taste' : '내 취향 둘러보기'}</button><button className="mtm-kakao-entry" type="button" aria-haspopup="dialog" onClick={() => setShareChannel('kakao')} disabled={!model.library.length}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3C6.5 3 2 6.5 2 10.8c0 2.8 1.9 5.2 4.7 6.6l-1.2 4.2 5.3-3.1 1.2.1c5.5 0 10-3.5 10-7.8S17.5 3 12 3Z" fill="currentColor" /></svg>{en ? 'Share on KakaoTalk' : '카카오톡으로 공유하기'}</button></div>
