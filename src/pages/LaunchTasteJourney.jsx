@@ -33,23 +33,43 @@ function position(track, stage) {
   return [x + Math.cos(angle) * (stage === 2 ? 19 : 13), y + Math.sin(angle) * (stage === 2 ? 18 : 12)];
 }
 
+// Light follows the pointer inside a cover without changing its map position.
+function moveCoverLight(event) {
+  if (event.pointerType === 'touch' || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const element = event.currentTarget;
+  const box = element.getBoundingClientRect();
+  const x = Math.max(0, Math.min(1, (event.clientX - box.left) / box.width));
+  const y = Math.max(0, Math.min(1, (event.clientY - box.top) / box.height));
+  element.style.setProperty('--cover-light-x', `${(x * 100).toFixed(1)}%`);
+  element.style.setProperty('--cover-light-y', `${(y * 100).toFixed(1)}%`);
+  element.style.setProperty('--cover-tilt-x', `${((.5 - y) * 10).toFixed(2)}deg`);
+  element.style.setProperty('--cover-tilt-y', `${((x - .5) * 10).toFixed(2)}deg`);
+}
+
+function resetCoverLight(event) {
+  for (const property of ['--cover-light-x', '--cover-light-y', '--cover-tilt-x', '--cover-tilt-y']) event.currentTarget.style.removeProperty(property);
+}
+
 function BubbleAtlas({ stage, onOpen, busy }) {
   const [selectedId, setSelectedId] = useState(TRACKS[0].id);
   const [region, setRegion] = useState(null);
   const [hovered, setHovered] = useState(null);
+  const [focusedId, setFocusedId] = useState(null);
   const selected = TRACKS.find(track => track.id === selectedId) || TRACKS[0];
-  const focus = TRACKS.find(track => track.id === hovered) || selected;
+  const activeId = hovered ?? focusedId;
+  const focus = TRACKS.find(track => track.id === activeId) || selected;
   const origin = position(focus, stage);
   const neighbors = TRACKS.filter(track => track.id !== focus.id)
     .map(track => ({ track, point: position(track, stage) }))
     .sort((a, b) => Math.hypot(a.point[0] - origin[0], a.point[1] - origin[1]) - Math.hypot(b.point[0] - origin[0], b.point[1] - origin[1]))
     .slice(0, 5);
+  const relatedIds = new Set(neighbors.map(({ track }) => track.id));
   const selectRegion = (group) => {
     setRegion(region === group ? null : group);
     if (region !== group) setSelectedId(TRACKS.find(track => track.group === group).id);
   };
   return (
-    <div className={`lj-atlas lj-atlas--${stage}`}>
+    <div className={`lj-atlas lj-atlas--${stage}${activeId ? ' is-interacting' : ''}`}>
       <div className="lj-atlas-heading"><span className="spectra-logo-caption"><SpectraLogo />LIVE DEMO</span><span>18 SONGS</span></div>
       <div className="lj-regions" role="group" aria-label={translate("데모 장르 영역 선택")}>
         {DEMO_UNIVERSES.map((universe, group) => <button type="button" key={universe.id} style={{ '--region': universe.color }} aria-pressed={region === group} onClick={() => selectRegion(group)}><SpectraSymbol symbol={universe.symbol} />{translate(REGIONS[group])}</button>)}
@@ -58,18 +78,25 @@ function BubbleAtlas({ stage, onOpen, busy }) {
         <div className="lj-map-grid" aria-hidden="true" />
         {stage > 0 && DEMO_UNIVERSES.map((universe, group) => <div key={universe.id} className={`lj-region-cloud lj-region-cloud--${group}`} style={{ '--region': universe.color }} aria-hidden="true" />)}
         <svg className="lj-connections" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-          {neighbors.map(({ track, point }) => <line key={track.id} x1={origin[0]} y1={origin[1]} x2={point[0]} y2={point[1]} style={{ stroke: focus.color }} />)}
+          {neighbors.map(({ track, point }, index) => <g key={`${focus.id}-${track.id}-${stage}`} style={{ '--signal-delay': `${index * 55}ms`, '--signal-color': focus.color }}>
+            <line x1={origin[0]} y1={origin[1]} x2={point[0]} y2={point[1]} style={{ stroke: focus.color }} />
+            {activeId && <line className="lj-connection-signal" pathLength="1" x1={origin[0]} y1={origin[1]} x2={point[0]} y2={point[1]} style={{ stroke: focus.color }} />}
+          </g>)}
         </svg>
         {TRACKS.map((track) => {
           const [x, y] = position(track, stage);
           const picked = track.id === selectedId;
           return <button type="button" key={track.id}
-            className={`lj-bubble${picked ? ' is-picked' : ''}${region !== null && region !== track.group ? ' is-muted' : ''}`}
+            className={`lj-bubble${picked ? ' is-picked' : ''}${activeId === track.id ? ' is-lit' : ''}${activeId && relatedIds.has(track.id) ? ' is-related' : ''}${region !== null && region !== track.group ? ' is-muted' : ''}`}
             style={{ left: `${x}%`, top: `${y}%`, '--region': track.color, '--delay': `${-(track.local * 0.8)}s`, '--bubble-size': `${track.local === 0 ? 64 : 42 + track.local * 3}px` }}
             aria-label={`${track.name} · ${track.artists}`} aria-pressed={picked}
             onClick={() => { setSelectedId(track.id); if (region !== null) setRegion(track.group); }}
-            onPointerEnter={() => setHovered(track.id)} onPointerLeave={() => setHovered(null)}
-            onFocus={() => setHovered(track.id)} onBlur={() => setHovered(null)}>
+            onPointerEnter={event => { if (event.pointerType !== 'touch') setHovered(track.id); }}
+            onPointerMove={moveCoverLight}
+            onPointerLeave={event => { resetCoverLight(event); setHovered(previous => previous === track.id ? null : previous); }}
+            onPointerCancel={event => { resetCoverLight(event); setHovered(previous => previous === track.id ? null : previous); }}
+            onFocus={event => { if (event.currentTarget.matches(':focus-visible')) setFocusedId(track.id); }}
+            onBlur={() => setFocusedId(previous => previous === track.id ? null : previous)}>
             <span className="lj-bubble-cover"><img src={track.coverUrl} alt="" loading="lazy" decoding="async" /></span>
             <span className="lj-bubble-label">{track.name}</span>
           </button>;
@@ -138,7 +165,8 @@ export function LaunchDemoPortal({ group, onSelect }) {
     <div className="lj-demo-orbit" aria-hidden="true" />
     {tracks.map((track, i) => {
       const angle = (i - 1) * Math.PI / 3;
-      return <button type="button" key={track.id} className={`lj-demo-bubble${selected === i ? ' is-picked' : ''}`} style={{ left: `${50 + Math.cos(angle) * 32}%`, top: `${47 + Math.sin(angle) * 30}%`, '--region': track.color }} aria-label={translate("{0} 보기", [track.name])} aria-pressed={selected === i} onClick={() => { setSelected(i); onSelect?.(); }}><img src={track.coverUrl} alt="" loading="lazy" decoding="async" /></button>;
+      return <button type="button" key={track.id} className={`lj-demo-bubble${selected === i ? ' is-picked' : ''}`} style={{ left: `${50 + Math.cos(angle) * 32}%`, top: `${47 + Math.sin(angle) * 30}%`, '--region': track.color }} aria-label={translate("{0} 보기", [track.name])} aria-pressed={selected === i} onClick={() => { setSelected(i); onSelect?.(); }}
+        onPointerMove={moveCoverLight} onPointerLeave={resetCoverLight} onPointerCancel={resetCoverLight}><img src={track.coverUrl} alt="" loading="lazy" decoding="async" /></button>;
     })}
     <span className="lj-demo-center" aria-hidden="true"><SpectraSymbol symbol={DEMO_UNIVERSES[group].symbol} /></span>
     <div className="lj-demo-track" aria-live="polite"><strong>{tracks[selected].name}</strong><span>{tracks[selected].artists}</span></div>

@@ -1314,3 +1314,34 @@ html:has(.llp-root), body:has(.llp-root) {
 @media (max-width: 360px) {
   .llp-nav:has(.llp-nav-return-btn) .llp-nav-brand { --spectra-logo-width: 96px; }
 }
+
+/* One brief entrance, using the current type, colours and final positions. */
+@media (prefers-reduced-motion: no-preference) {
+  .llp-root[data-hero-entering='true'] .llp-art-eyebrow {
+    animation: llp-entry-detail .5s cubic-bezier(.16,1,.3,1) both;
+  }
+  .llp-root[data-hero-entering='true'] .llp-hero-title > span {
+    animation: llp-entry-title .7s cubic-bezier(.16,1,.3,1) .08s both;
+  }
+  .llp-root[data-hero-entering='true'] .llp-hero-title > em {
+    animation: llp-entry-title .75s cubic-bezier(.16,1,.3,1) .2s both;
+  }
+  .llp-root[data-hero-entering='true'] .llp-hero-desc {
+    animation: llp-entry-detail .55s cubic-bezier(.16,1,.3,1) .28s both;
+  }
+  .llp-root[data-hero-entering='true'] .llp-hero-cta-group {
+    animation: llp-entry-action .5s cubic-bezier(.16,1,.3,1) .4s both;
+  }
+}
+@keyframes llp-entry-title {
+  from { opacity: 0; clip-path: inset(0 0 100% 0); transform: translate3d(0,22px,0); }
+  to { opacity: 1; clip-path: inset(0); transform: translate3d(0,0,0); }
+}
+@keyframes llp-entry-detail {
+  from { opacity: .35; transform: translate3d(0,8px,0); }
+  to { opacity: 1; transform: translate3d(0,0,0); }
+}
+@keyframes llp-entry-action {
+  from { opacity: .65; transform: translate3d(0,6px,0); }
+  to { opacity: 1; transform: translate3d(0,0,0); }
+}

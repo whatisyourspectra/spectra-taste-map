@@ -18,6 +18,9 @@ import { LANDING_SECTIONS, DEMO_CTA } from './landingContent.js';
 import LaunchTasteJourney, { LaunchDemoPortal, LaunchImportOrbit } from './LaunchTasteJourney';
 import useLandingSound from '../audio/useLandingSound';
 
+// A route return in the same document should open the finished landing.
+let heroEntryShown = false;
+
 export default function LaunchLandingPage({
   onImportTracks,
   importStatus = 'idle',
@@ -33,7 +36,43 @@ export default function LaunchLandingPage({
   useLocale();
   const sound = useLandingSound();
   const landingRef = useRef(null);
+  // Router history keys survive a reload, including keys assigned on the map.
+  // The first landing view in this document is eligible regardless of its key.
+  const entryEligibleRef = useRef(!location.hash);
+  const entryStartRef = useRef(null);
   const [chapter, setChapter] = useState('hero');
+  // Enhance a fresh first view before paint; the normal page is always the
+  // fallback, including restored views, anchor links and reduced motion.
+  React.useLayoutEffect(() => {
+    const root = landingRef.current;
+    const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const navigation = performance.getEntriesByType('navigation')[0];
+    if (!root || !entryEligibleRef.current || (heroEntryShown && entryStartRef.current === null) || motion.matches || window.scrollY > 2
+      || window.location.hash || navigation?.type === 'back_forward' || document.hidden) return undefined;
+    const start = entryStartRef.current ?? performance.now();
+    entryStartRef.current = start;
+    const remaining = 1200 - (performance.now() - start);
+    if (remaining <= 0) return undefined;
+    heroEntryShown = true;
+    root.dataset.heroEntryStart = String(start);
+    root.dataset.heroEntering = 'true';
+    let timer;
+    const cancelEvents = ['pointerdown', 'keydown', 'wheel', 'pagehide'];
+    const onEntryScroll = () => { if (window.scrollY > 2) finish(); };
+    const finish = () => {
+      window.clearTimeout(timer);
+      cancelEvents.forEach(name => window.removeEventListener(name, finish, true));
+      window.removeEventListener('scroll', onEntryScroll, true);
+      motion.removeEventListener('change', finish);
+      delete root.dataset.heroEntering;
+      delete root.dataset.heroEntryStart;
+    };
+    timer = window.setTimeout(finish, remaining);
+    cancelEvents.forEach(name => window.addEventListener(name, finish, { capture: true, passive: true }));
+    window.addEventListener('scroll', onEntryScroll, { capture: true, passive: true });
+    motion.addEventListener('change', finish);
+    return finish;
+  }, []);
   // Resolve the guide's import link after the destination has mounted, including
   // navigation from a mobile menu which unmounts as soon as the guide closes.
   React.useEffect(() => {
