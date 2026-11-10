@@ -39,11 +39,8 @@ test('240-song browsing layout is deterministic, broad and keeps every song', ()
   assert.ok(range('nY') > .6, 'Keep vertical paths and gaps to explore');
 });
 
-for (const [label, collection] of [
-  ['demo', tracks],
-  ['personal import', tracks.map((track, index) => ({ ...track, demoUniverseId: undefined, id: `personal-${index}` }))],
-]) test(`${label} mixes dense neighborhoods with breathing room without burying covers`, () => {
-  const nodes = layout(collection);
+test('demo keeps its current dense neighborhoods and breathing room', () => {
+  const nodes = layout();
   const scale = 5 * Math.sqrt(240 / 110);
   const w = width * scale, h = height * scale;
   const spanX = Math.max(...nodes.map(node => node.nX)) - Math.min(...nodes.map(node => node.nX));
@@ -61,6 +58,31 @@ for (const [label, collection] of [
   assert.ok(nearest[Math.floor(nodes.length * .9)] / nearest[Math.floor(nodes.length * .1)] > 1.7,
     'Loose tracks must retain more space than dense cores');
   assert.ok(nearest.at(-1) > 2, 'Leave isolated satellites beyond the dense cores');
+});
+
+test('personal imports restore tighter feature-based clusters than the demo layout', () => {
+  const personal = tracks.map((track, index) => ({ ...track, demoUniverseId: undefined, id: `personal-${index}` }));
+  const classic = layout(personal, { layoutMode: 'features' });
+  const airy = layout(personal);
+  function meanClusterRadius(nodes) {
+    const clusters = new Map();
+    for (const node of nodes) {
+      if (!clusters.has(node.clusterId)) clusters.set(node.clusterId, []);
+      clusters.get(node.clusterId).push(node);
+    }
+    let total = 0;
+    for (const members of clusters.values()) {
+      const x = members.reduce((sum, node) => sum + node.nX, 0) / members.length;
+      const y = members.reduce((sum, node) => sum + node.nY, 0) / members.length;
+      total += members.reduce((sum, node) => sum + Math.hypot(node.nX - x, node.nY - y), 0);
+    }
+    return total / nodes.length;
+  }
+  assert.equal(classic.length, personal.length);
+  assert.ok(classic.every(node => [node.nX, node.nY, node.nRawX, node.nRawY].every(Number.isFinite)));
+  assert.deepEqual(classic, layout(personal, { layoutMode: 'features' }));
+  assert.ok(meanClusterRadius(classic) < meanClusterRadius(airy) * .65,
+    'Personal songs should form substantially tighter clusters than the demo');
 });
 
 test('new discoveries preserve the exploratory base and sit near their chosen song', () => {

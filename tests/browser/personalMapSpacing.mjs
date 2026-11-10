@@ -1,10 +1,10 @@
-// Personal library fixtures exercise the same layout as demo maps, without API writes.
+// Personal library fixtures restore classic spacing without changing demo maps.
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { getCombinedDemoTracks } from '../../src/taste/demoUniverses.js';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROMIUM_EXECUTABLE || undefined });
-const out = 'output/review/common-map-spacing';
+const out = 'output/review/classic-personal-spacing';
 await mkdir(out, { recursive: true });
 const catalog = getCombinedDemoTracks();
 try {
@@ -17,6 +17,15 @@ try {
         await page.route(/\/src\/auth\/supabaseClient\.js(?:\?.*)?$/, route => route.fulfill({ contentType: 'application/javascript', body: 'export const supabase=null;export function finishGoogleLogin(){return Promise.reject();}' }));
         await page.route('**/api/**', route => route.fulfill({ json: { tracks: [] } }));
         await page.addInitScript(tracks => {
+            window.bubbleLayoutModes = [];
+            const OriginalWorker = window.Worker;
+            window.Worker = class extends OriginalWorker {
+                constructor(url, options) { super(url, options); this.bubbleLayout = String(url).includes('bubbleLayoutWorker'); }
+                postMessage(data, ...rest) {
+                    if (this.bubbleLayout) window.bubbleLayoutModes.push(data.layoutMode);
+                    return super.postMessage(data, ...rest);
+                }
+            };
             sessionStorage.setItem('spectra:taste:v5', JSON.stringify({ tracks, mapId: `personal-spacing-${tracks.length}`,
                 featuresSource: 'spotify-genres', stats: { isDemo: false, totalAvailable: tracks.length, processedCount: tracks.length } }));
             localStorage.setItem('spectra:map-guide:v2:desktop', 'seen');
@@ -26,6 +35,10 @@ try {
         await page.locator('.tm-map-tag-chip--all').click();
         await page.waitForTimeout(700);
         assert.equal(await page.locator('.is-demo-alive').count(), 0, 'Exercise a personal map, not the demo path');
+        assert.deepEqual(await page.evaluate(() => [...new Set(window.bubbleLayoutModes)]), ['features'],
+            'Personal maps must use the original feature-based layout');
+        assert.ok(await page.locator('.tm-bubble-layer').evaluate(element =>
+            Number(element.style.getPropertyValue('--tm-bubble-scale')) >= .86), 'Keep the original cover scale');
         assert.equal(await page.evaluate(() => JSON.parse(sessionStorage.getItem('spectra:taste:v5')).tracks.length), count);
         const geometry = await page.locator('.tm-bubble-item').evaluateAll(items => {
             const covers = items.map(item => {
@@ -42,8 +55,8 @@ try {
         assert.ok(geometry.compact > geometry.count * .35, 'Personal maps retain dense neighborhoods');
         if (count === 240) {
             assert.equal(geometry.count, count);
-            assert.ok(geometry.min > .45 && geometry.q25 < .85 && geometry.p90 > 1,
-                'Dense cores and loose outskirts should both remain visible');
+            assert.ok(geometry.min > 0 && geometry.q25 < .85,
+                'Restore dense cores while retaining distinct song positions');
         }
         await page.screenshot({ path: `${out}/personal-${count}.png` });
         const target = page.locator('.tm-bubble-item .tm-bubble').first();

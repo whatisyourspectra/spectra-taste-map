@@ -1367,9 +1367,9 @@ const BUBBLE_ZOOM_MIN = 0.1;
 const BUBBLE_ZOOM_MAX = 10.0;
 const CONSTELLATION_COVER_ZOOM = 1.12;
 
-function getBubbleVisualScale(zoom, constellation = false) {
+function getBubbleVisualScale(zoom, constellation = false, classicSpacing = false) {
     const normalizedZoom = Math.max(BUBBLE_ZOOM_MIN, Number(zoom) || 1);
-    if (constellation) return Math.min(1.3, Math.max(.86, Math.pow(normalizedZoom / 1.2, .18)));
+    if (constellation || classicSpacing) return Math.min(1.3, Math.max(.86, Math.pow(normalizedZoom / 1.2, .18)));
     return Math.min(1.3, Math.max(0.3, Math.pow(normalizedZoom / 1.2, 0.4)));
 }
 
@@ -2443,7 +2443,7 @@ export default function TasteMapPage() {
         const worker = new Worker(new URL('../workers/bubbleLayoutWorker.js', import.meta.url), { type: 'module' });
         bubbleLayoutWorkerRef.current = worker;
         const baseTracks = bubbleTracks.filter(track => !track.tasteMapPlacement?.anchorId);
-        const baseKey = JSON.stringify(['clustered-neighborhood-v6', mapId, activeMapView, xAxis, yAxis,
+        const baseKey = JSON.stringify(['split-map-spacing-v7', mapId, activeMapView, xAxis, yAxis, isDemoUniverse,
             debouncedFieldSize.w, debouncedFieldSize.h, bubbleWorldScale,
             baseTracks.map(track => [track.id, getTrackFeature(track, xAxis), getTrackFeature(track, yAxis),
                 track.popularity, recentPlayMap.get(track.id), track.artists, getTrackGenres(track)])]);
@@ -2516,7 +2516,9 @@ export default function TasteMapPage() {
             playWeightEntries,
             affinityEntries,
             fixedBaseEntries,
-            layoutMode: activeMapView === 'spotify' ? 'exploratory' : 'features',
+            // Keep the demo's airy neighborhoods; personal imports use the
+            // original feature projection and tighter cluster attraction.
+            layoutMode: activeMapView === 'spotify' && isDemoUniverse ? 'exploratory' : 'features',
         });
         return () => { worker.terminate(); bubbleLayoutWorkerRef.current = null; };
     }, [
@@ -2531,6 +2533,7 @@ export default function TasteMapPage() {
         assignmentByTrackId,
         recentPlayMap,
         assignments.length,
+        isDemoUniverse,
         tracks.length,
         genreGroups,
         tracks,
@@ -3621,7 +3624,7 @@ export default function TasteMapPage() {
             return sprite;
         };
 
-        const bubbleScale = getBubbleVisualScale(bubbleZoom, isConstellationView);
+        const bubbleScale = getBubbleVisualScale(bubbleZoom, isConstellationView, !isDemoUniverse);
         const step = Math.max(1, Math.ceil(visibleBubbleRenderItems.length / 360));
         ctx.globalCompositeOperation = 'lighter';
         for (let i = 0; i < visibleBubbleRenderItems.length; i += step) {
@@ -3638,7 +3641,7 @@ export default function TasteMapPage() {
                 radius * 2,
             );
         }
-    }, [visibleBubbleRenderItems, bubbleFieldSize, viewMode, bubbleZoom, isConstellationView]);
+    }, [visibleBubbleRenderItems, bubbleFieldSize, viewMode, bubbleZoom, isConstellationView, isDemoUniverse]);
 
     // Cluster "region" name labels, placed at the weighted centroid of each
     // cluster's bubbles — reads like place names on a map.
@@ -5970,7 +5973,7 @@ export default function TasteMapPage() {
                                     <div
                                         ref={bubbleLayerRef}
                                         className={`tm-bubble-layer${isDemoUniverse && !isConstellationView ? ' is-demo-alive' : ''}${isConstellationView ? ' tm-constellation-layer' : ''}${isSpectraExpandMode ? ' spectra-expanding' : ''}${visibleBubbleRenderItems.length > 280 ? ' high-density' : ''}${shareMode ? ' selection-mode' : ''}${shareMode && selectionSpacePressed ? ' selection-pan-ready' : ''}`}
-                                        style={{ '--tm-bubble-scale': compactMap && !isConstellationView ? 1 : getBubbleVisualScale(bubbleZoom, isConstellationView) }}
+                                        style={{ '--tm-bubble-scale': compactMap && !isConstellationView ? 1 : getBubbleVisualScale(bubbleZoom, isConstellationView, !isDemoUniverse) }}
                                         onPointerDownCapture={(event) => {
                                             if (event.button === 0 && event.isPrimary !== false && !event.target?.closest?.('.tm-bubble-context-menu, .tm-group-panel')) minimizeMapHeader();
                                         }}
@@ -6067,7 +6070,7 @@ export default function TasteMapPage() {
                                                     onPointerUp={(isConstellationView || shareMode) ? undefined : handleBubbleDragEnd}
                                                     onPointerCancel={(isConstellationView || shareMode) ? undefined : handleBubbleDragEnd}
                                                     style={{
-                                                        '--tm-bubble-size': compactMap && !isConstellationView ? `${Math.max(40, Math.min(66, node.size * getBubbleVisualScale(bubbleZoom)))}px` : node.style['--tm-bubble-size'],
+                                                        '--tm-bubble-size': compactMap && !isConstellationView ? `${Math.max(40, Math.min(66, node.size * getBubbleVisualScale(bubbleZoom, false, !isDemoUniverse)))}px` : node.style['--tm-bubble-size'],
                                                         '--tm-bubble-color': node.style['--tm-bubble-color'],
                                                         '--tm-float-duration': node.style['--tm-float-duration'],
                                                         '--tm-drift-x': node.style['--tm-drift-x'],
