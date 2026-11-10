@@ -1,3 +1,5 @@
+import { getDemoCatalogTrack } from './demoCatalog.js';
+
 const COVERS = {
   "tame impala|the less i know the better": "/demo-covers/currents.jpg",
   "beach house|space song": "/demo-covers/depression-cherry.jpg",
@@ -21,5 +23,6 @@ const COVERS = {
 };
 
 export function getDemoCover(artists, title) {
-  return COVERS[`${String(artists || '').toLowerCase()}|${String(title || '').toLowerCase()}`] || null;
+  return getDemoCatalogTrack(artists, title)?.coverUrl
+    || COVERS[`${String(artists || '').toLowerCase()}|${String(title || '').toLowerCase()}`] || null;
 }

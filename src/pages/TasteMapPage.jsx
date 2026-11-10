@@ -8,7 +8,7 @@ import MapAbsorptionLayer from '../components/MapAbsorptionLayer';
 import React, { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import AccountButton from '../auth/AccountButton';
-import { DEMO_UNIVERSES, getDemoUniverseIndex } from '../taste/demoUniverses';
+import { DEMO_UNIVERSES } from '../taste/demoUniverses';
 import { buildConstellationTopology, buildSeedConstellation, buildVoyageSequence, getVoyageNeighbor } from '../taste/constellationTopology';
 import { createVoyageGraph, extendVoyage, undoVoyageExpansion, restoreVoyage } from '../taste/voyageExpansion';
 import { getGenreIdentity, normalizeGenre } from '../taste/genreIdentity';
@@ -1367,9 +1367,10 @@ const BUBBLE_ZOOM_MIN = 0.1;
 const BUBBLE_ZOOM_MAX = 10.0;
 const CONSTELLATION_COVER_ZOOM = 1.12;
 
-function getBubbleVisualScale(zoom) {
+function getBubbleVisualScale(zoom, constellation = false) {
     const normalizedZoom = Math.max(BUBBLE_ZOOM_MIN, Number(zoom) || 1);
-    return Math.min(1.3, Math.max(0.86, Math.pow(normalizedZoom / 1.2, 0.18)));
+    if (constellation) return Math.min(1.3, Math.max(.86, Math.pow(normalizedZoom / 1.2, .18)));
+    return Math.min(1.3, Math.max(0.3, Math.pow(normalizedZoom / 1.2, 0.4)));
 }
 
 function drawMap(canvas, tracks, assignments, centroids, hoveredIdx, activeTrackIds, xAxis, yAxis, clusterLabels) {
@@ -1904,26 +1905,6 @@ export default function TasteMapPage() {
             return;
         }
 
-        // Curated demo groups remain stable across axis and map-view changes.
-        const demoGroups = tracks.map(getDemoUniverseIndex);
-        if (demoGroups.every(group => group >= 0)) {
-            const points = tracks.map(getTrackVector);
-            const centers = DEMO_UNIVERSES.map((_, group) => {
-                const members = points.filter((_, index) => demoGroups[index] === group);
-                return FEATURE_KEYS.map((_, dimension) => members.length
-                    ? members.reduce((sum, point) => sum + point[dimension], 0) / members.length : 0);
-            });
-            setClusterVectors(points);
-            setAssignments(demoGroups);
-            setGenreGroups([]);
-            setCentroids(centers);
-            setGenreVocab([]);
-            setNoiseClusterId(null);
-            setEffectiveClusterBasis('genre');
-            setClusterLoading(false);
-            return;
-        }
-
         // Build cache key before dispatching to worker
         const trackSignature = `${tracks.length}:${hashText(tracks.map((track) => {
             if (clusterBasis === 'genre') return `${track.id}:${getTrackGenres(track).join(',')}`;
@@ -2019,10 +2000,7 @@ export default function TasteMapPage() {
                 const isNoiseCluster = effectiveClusterBasis === 'genre'
                     && Number.isInteger(noiseClusterId)
                     && j === noiseClusterId;
-                const demoUniverse = members.every(track => getDemoUniverseIndex(track) === j) ? DEMO_UNIVERSES[j] : null;
-                const label = demoUniverse
-                    ? { name: translate(demoUniverse.koreanName, [], lang), symbol: demoUniverse.symbol }
-                    : isNoiseCluster
+                const label = isNoiseCluster
                     ? { name: MIXED_GENRE_LABEL, symbol: 'matrix' }
                     : effectiveClusterBasis === 'genre'
                         ? (genreGroups[j] ? { name: genreGroups[j].name, symbol: 'headset' } : getGenreClusterLabel(representativeClusterGenres(members)))
@@ -2031,7 +2009,7 @@ export default function TasteMapPage() {
                     j,
                     label,
                     count: members.length,
-                    color: demoUniverse?.color || (isNoiseCluster ? '#94a3b8' : CLUSTER_COLORS[j % CLUSTER_COLORS.length]),
+                    color: isNoiseCluster ? '#94a3b8' : CLUSTER_COLORS[j % CLUSTER_COLORS.length],
                     members,
                     centroid: displayCentroid,
                     topGenres,
@@ -2459,15 +2437,16 @@ export default function TasteMapPage() {
     useEffect(() => {
         if (bubbleTracks.length === 0) { setBubbleNodesResult([]); return; }
         if (debouncedFieldSize.w === 0 || debouncedFieldSize.h === 0) return;
+        if (assignments.length !== tracks.length || !assignments.length) return;
 
         bubbleLayoutWorkerRef.current?.terminate();
         const worker = new Worker(new URL('../workers/bubbleLayoutWorker.js', import.meta.url), { type: 'module' });
         bubbleLayoutWorkerRef.current = worker;
         const baseTracks = bubbleTracks.filter(track => !track.tasteMapPlacement?.anchorId);
-        const baseKey = JSON.stringify([mapId, activeMapView, xAxis, yAxis,
+        const baseKey = JSON.stringify(['neighborhood-layout-v4', mapId, activeMapView, xAxis, yAxis, isDemoUniverse,
             debouncedFieldSize.w, debouncedFieldSize.h, bubbleWorldScale,
             baseTracks.map(track => [track.id, getTrackFeature(track, xAxis), getTrackFeature(track, yAxis),
-                track.popularity, recentPlayMap.get(track.id)])]);
+                track.popularity, recentPlayMap.get(track.id), track.artists, getTrackGenres(track)])]);
         const fixedBaseEntries = bubbleBaseLayoutRef.current?.key === baseKey
             ? bubbleBaseLayoutRef.current.entries : [];
 
@@ -2516,6 +2495,8 @@ export default function TasteMapPage() {
 
         const layoutTracks = bubbleTracks.map((track) => ({
             id: track.id,
+            layoutArtist: track.artists,
+            layoutGenreKey: genreGroups[assignmentByTrackId.get(track.id)]?.key,
             [xAxis]: getTrackFeature(track, xAxis),
             [yAxis]: getTrackFeature(track, yAxis),
         }));
@@ -2535,6 +2516,8 @@ export default function TasteMapPage() {
             playWeightEntries,
             affinityEntries,
             fixedBaseEntries,
+            layoutMode: activeMapView === 'spotify' ? 'exploratory' : 'features',
+            spacingProfile: isDemoUniverse ? 'expressive' : undefined,
         });
         return () => { worker.terminate(); bubbleLayoutWorkerRef.current = null; };
     }, [
@@ -2548,6 +2531,10 @@ export default function TasteMapPage() {
         yAxis,
         assignmentByTrackId,
         recentPlayMap,
+        assignments.length,
+        isDemoUniverse,
+        tracks.length,
+        genreGroups,
         tracks,
     ]);
 
@@ -3636,7 +3623,7 @@ export default function TasteMapPage() {
             return sprite;
         };
 
-        const bubbleScale = getBubbleVisualScale(bubbleZoom);
+        const bubbleScale = getBubbleVisualScale(bubbleZoom, isConstellationView);
         const step = Math.max(1, Math.ceil(visibleBubbleRenderItems.length / 360));
         ctx.globalCompositeOperation = 'lighter';
         for (let i = 0; i < visibleBubbleRenderItems.length; i += step) {
@@ -3653,7 +3640,7 @@ export default function TasteMapPage() {
                 radius * 2,
             );
         }
-    }, [visibleBubbleRenderItems, bubbleFieldSize, viewMode, bubbleZoom]);
+    }, [visibleBubbleRenderItems, bubbleFieldSize, viewMode, bubbleZoom, isConstellationView]);
 
     // Cluster "region" name labels, placed at the weighted centroid of each
     // cluster's bubbles — reads like place names on a map.
@@ -3926,8 +3913,8 @@ export default function TasteMapPage() {
         const boxH = Math.max(1, maxY - minY);
         const margin = 120;
 
-        const fitZoomX = bubbleFieldSize.w / (boxW + margin * 2);
-        const fitZoomY = bubbleFieldSize.h / (boxH + margin * 2);
+        const fitZoomX = Math.max(240, bubbleFieldSize.w - 64) / (boxW + margin * 2);
+        const fitZoomY = Math.max(200, bubbleFieldSize.h - 180) / (boxH + margin * 2);
         const targetZoom = clampZoom(Math.min(fitZoomX, fitZoomY));
         const viewportW = bubbleFieldSize.w / targetZoom;
         const viewportH = bubbleFieldSize.h / targetZoom;
@@ -3970,8 +3957,8 @@ export default function TasteMapPage() {
         const boxH = Math.max(1, maxY - minY);
         const margin = 140;
 
-        const fitZoomX = bubbleFieldSize.w / (boxW + margin * 2);
-        const fitZoomY = bubbleFieldSize.h / (boxH + margin * 2);
+        const fitZoomX = Math.max(240, bubbleFieldSize.w - 64) / (boxW + margin * 2);
+        const fitZoomY = Math.max(200, bubbleFieldSize.h - 180) / (boxH + margin * 2);
         const targetZoom = clampZoom(Math.min(fitZoomX, fitZoomY, 1.45));
         const viewportW = bubbleFieldSize.w / targetZoom;
         const viewportH = bubbleFieldSize.h / targetZoom;
@@ -3999,11 +3986,11 @@ export default function TasteMapPage() {
     useEffect(() => {
         if (!isDemoUniverse || !importedStats?.demoUniverse || demoEntryAppliedRef.current === mapId) return;
         const group = DEMO_UNIVERSES.findIndex(universe => universe.id === importedStats.demoUniverse);
-        const cluster = clusterStats.find(item => item.j === group && item.members.every(track => getDemoUniverseIndex(track) === group));
+        const seedId = `demo-${DEMO_UNIVERSES[group]?.id}-0`;
+        const cluster = clusterStats.find(item => item.members.some(track => track.id === seedId));
         if (!cluster) return;
         demoEntryAppliedRef.current = mapId;
-        pendingBubbleFocusRef.current = { mode: 'cluster', clusterId: group };
-        setSelectedCluster(group);
+        pendingBubbleFocusRef.current = { mode: 'entry', clusterId: cluster.j };
     }, [isDemoUniverse, importedStats?.demoUniverse, mapId, clusterStats]);
 
     const handleClusterSelect = useCallback((clusterId) => {
@@ -4036,7 +4023,8 @@ export default function TasteMapPage() {
         const id = window.requestAnimationFrame(() => {
             if (pendingBubbleFocusRef.current !== pending) return;
             pendingBubbleFocusRef.current = null;
-            focusCurrentBubbles({ smooth: pending.mode !== 'cluster' });
+            if (pending.mode === 'entry') focusCluster(pending.clusterId);
+            else focusCurrentBubbles({ smooth: pending.mode !== 'cluster' });
         });
         return () => window.cancelAnimationFrame(id);
     }, [
@@ -4045,6 +4033,7 @@ export default function TasteMapPage() {
         bubbleNodesResult,
         bubbleRenderItems,
         focusCurrentBubbles,
+        focusCluster,
         tracksSource,
     ]);
     useEffect(() => {
@@ -5982,8 +5971,8 @@ export default function TasteMapPage() {
                                     )}
                                     <div
                                         ref={bubbleLayerRef}
-                                        className={`tm-bubble-layer${isConstellationView ? ' tm-constellation-layer' : ''}${isSpectraExpandMode ? ' spectra-expanding' : ''}${visibleBubbleRenderItems.length > 280 ? ' high-density' : ''}${shareMode ? ' selection-mode' : ''}${shareMode && selectionSpacePressed ? ' selection-pan-ready' : ''}`}
-                                        style={{ '--tm-bubble-scale': compactMap && !isConstellationView ? 1 : getBubbleVisualScale(bubbleZoom) }}
+                                        className={`tm-bubble-layer${isDemoUniverse && !isConstellationView ? ' is-demo-alive' : ''}${isConstellationView ? ' tm-constellation-layer' : ''}${isSpectraExpandMode ? ' spectra-expanding' : ''}${visibleBubbleRenderItems.length > 280 ? ' high-density' : ''}${shareMode ? ' selection-mode' : ''}${shareMode && selectionSpacePressed ? ' selection-pan-ready' : ''}`}
+                                        style={{ '--tm-bubble-scale': compactMap && !isConstellationView ? 1 : getBubbleVisualScale(bubbleZoom, isConstellationView) }}
                                         onPointerDownCapture={(event) => {
                                             if (event.button === 0 && event.isPrimary !== false && !event.target?.closest?.('.tm-bubble-context-menu, .tm-group-panel')) minimizeMapHeader();
                                         }}
@@ -6064,7 +6053,9 @@ export default function TasteMapPage() {
                                             const absorbing = absorbingTrackIds.has(node.track.id);
                                             const spectraBlur = isSpectraExpandMode && node.track.id !== spectraExpandTrackId && !justAdded;
                                             const spectraAnchor = isSpectraExpandMode && node.track.id === spectraExpandTrackId;
-                                            const nodeClusterId = assignmentByTrackId.get(node.track.id);
+                                            const motionGroup = String(node.track.artists || node.track.id).trim().toLowerCase();
+                                            const groupDuration = pickInRange(hash01(`${motionGroup}:current-duration`), 18, 28);
+                                            const floatDuration = pickInRange(hash01(`${node.track.id}:live-duration`), 7, 12);
                                             const isVoyageStar = voyageState.active && voyageTrackIdSet.has(node.track.id);
                                             const isVoyageActive = voyageState.active && node.track.id === voyageState.trackId;
                                             const isVoyageDimmed = voyageState.active && !isVoyageStar;
@@ -6084,6 +6075,16 @@ export default function TasteMapPage() {
                                                         '--tm-drift-x': node.style['--tm-drift-x'],
                                                         '--tm-drift-y': node.style['--tm-drift-y'],
                                                         '--tm-float-delay': node.style['--tm-float-delay'],
+                                                        ...(isDemoUniverse && !isConstellationView ? {
+                                                            '--tm-demo-current-duration': `${groupDuration}s`,
+                                                            '--tm-demo-current-delay': `${-hash01(`${motionGroup}:current-phase`) * groupDuration}s`,
+                                                            '--tm-demo-current-x': `${pickInRange(hash01(`${motionGroup}:current-x`), 6, 11)}px`,
+                                                            '--tm-demo-current-y': `${pickInRange(hash01(`${motionGroup}:current-y`), -10, -5)}px`,
+                                                            '--tm-demo-live-duration': `${floatDuration}s`,
+                                                            '--tm-demo-live-delay': `${-hash01(`${node.track.id}:live-phase`) * floatDuration}s`,
+                                                            '--tm-demo-live-x': `${pickInRange(hash01(`${node.track.id}:live-x`), 6, 13)}px`,
+                                                            '--tm-demo-live-y': `${pickInRange(hash01(`${node.track.id}:live-y`), 5, 11)}px`,
+                                                        } : {}),
                                                         '--tm-constellation-point-size': `${Math.round(Math.max(7, Math.min(13, 5 + node.size * 0.07)))}px`,
                                                         left: `${xPercent}%`,
                                                         top: `${yPercent}%`,

@@ -5,10 +5,11 @@ import React, {
     useRef,
     useState,
 } from 'react';
+import { YOUTUBE_MATCH_TTL_MS, youtubeMatchExpiry } from '../audio/youtubeCachePolicy.js';
 
 const API_BASE = import.meta?.env?.VITE_API_BASE || '';
 const VIDEO_CACHE_PREFIX = 'spectra.youtube-video.v1.';
-const VIDEO_CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+const VIDEO_CACHE_TTL_MS = YOUTUBE_MATCH_TTL_MS;
 
 let youtubeIframeApiPromise = null;
 
@@ -57,7 +58,8 @@ function readCachedVideo(track) {
         const raw = window.localStorage.getItem(getVideoCacheKey(track));
         if (!raw) return null;
         const parsed = JSON.parse(raw);
-        if (!parsed?.video?.videoId || Date.now() >= Number(parsed.expiresAt || 0)) {
+        const expiresAt = Number(parsed?.expiresAt);
+        if (!parsed?.video?.videoId || !Number.isFinite(expiresAt) || Date.now() >= expiresAt) {
             window.localStorage.removeItem(getVideoCacheKey(track));
             return null;
         }
@@ -67,12 +69,15 @@ function readCachedVideo(track) {
     }
 }
 
-function writeCachedVideo(track, video) {
+function writeCachedVideo(track, video, match) {
     if (typeof window === 'undefined' || !video?.videoId) return;
     try {
+        const expiresAt = match?.fetchedAt != null
+            ? youtubeMatchExpiry(match) : Date.now() + VIDEO_CACHE_TTL_MS;
+        if (expiresAt <= Date.now()) return;
         window.localStorage.setItem(getVideoCacheKey(track), JSON.stringify({
             video,
-            expiresAt: Date.now() + VIDEO_CACHE_TTL_MS,
+            expiresAt,
         }));
     } catch {
         // Playback still works when storage is unavailable or full.
@@ -354,10 +359,11 @@ const MetroYouTubePlayer = forwardRef(function MetroYouTubePlayer({
                     error.code = data?.code || 'YOUTUBE_SEARCH_FAILED';
                     throw error;
                 }
-                return data?.video || null;
+                return data;
             })
-            .then((resolvedVideo) => {
+            .then((match) => {
                 if (controller.signal.aborted || lookupGenerationRef.current !== generation) return;
+                const resolvedVideo = match?.video || null;
                 if (!resolvedVideo?.videoId) {
                     const error = { code: 'YOUTUBE_VIDEO_NOT_FOUND', message: copy.unavailable };
                     setLookupError(error);
@@ -368,7 +374,7 @@ const MetroYouTubePlayer = forwardRef(function MetroYouTubePlayer({
                     }
                     return;
                 }
-                writeCachedVideo(track, resolvedVideo);
+                writeCachedVideo(track, resolvedVideo, match);
                 setVideo(resolvedVideo);
                 setLookupState('ready');
             })

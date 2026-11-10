@@ -1,4 +1,5 @@
 import { deduplicateTracks } from '../utils/trackIdentity.js';
+import { refreshDemoCatalog } from './demoUniverses.js';
 
 export const GUEST_TASTE_STORAGE_KEY = 'spectra:taste:v5';
 export function tasteStorageKey(ownerId) {
@@ -26,6 +27,7 @@ function parseTaste(raw) {
 
 // Repair legacy maps on read without changing their revision or import history.
 function normalizeTaste(data) {
+    data = refreshDemoCatalog(data);
     const tracks = deduplicateTracks(data.tracks);
     if (tracks.length === data.tracks.length) return data;
     return {

@@ -21,8 +21,9 @@ import {
 } from './src/server/lastfm.js';
 import {
     isYouTubeConfigured,
-    searchYouTubeTrack,
+    resolveYouTubeTrack,
 } from './src/server/youtube.js';
+import { youtubeCacheControl } from './src/audio/youtubeCachePolicy.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -159,12 +160,7 @@ function externalSearchUrl(artist, title) {
 // Returns one embeddable YouTube video candidate. The API key stays server-side.
 
 app.get('/api/youtube/search', asyncRoute(async (req, res) => {
-    if (!isYouTubeConfigured()) {
-        return res.status(503).json({
-            code: 'YOUTUBE_NOT_CONFIGURED',
-            error: 'YOUTUBE_API_KEY is not configured on the server.',
-        });
-    }
+    res.set('Cache-Control', 'no-store');
     const artist = String(req.query.artist || '').trim();
     const title = String(req.query.title || '').trim();
     if (!artist || !title) {
@@ -174,8 +170,9 @@ app.get('/api/youtube/search', asyncRoute(async (req, res) => {
         });
     }
     try {
-        const video = await searchYouTubeTrack(artist, title);
-        return res.json({ video });
+        const match = await resolveYouTubeTrack(artist, title);
+        res.set('Cache-Control', youtubeCacheControl(match));
+        return res.json({ video: match.video, fetchedAt: match.fetchedAt, expiresAt: match.expiresAt });
     } catch (error) {
         const status = Number.isInteger(error?.status) ? error.status : 502;
         return res.status(status).json({
@@ -619,7 +616,7 @@ if (!isLastfmConfigured()) {
     console.warn('[Last.fm] LASTFM_API_KEY not set — Taste Field enrichment and discovery will return 503. Add it to .env.');
 }
 if (!isYouTubeConfigured()) {
-    console.warn('[YouTube] YOUTUBE_API_KEY not set — Metro video playback will ask for configuration.');
+    console.warn('[YouTube] YOUTUBE_API_KEY not set — uncached tracks cannot be resolved. Prepared demo matches remain available.');
 }
 
 if (isDirectRun) {

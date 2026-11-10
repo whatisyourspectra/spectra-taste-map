@@ -2059,6 +2059,11 @@
     filter: blur(28px) saturate(105%);
 }
 
+.tm-bubble-wrap:not(.tm-constellation-view) .tm-heatmap-layer:not(.day) {
+    opacity: 0.34;
+    filter: blur(34px) saturate(112%);
+}
+
 .tm-region-label-layer {
     position: absolute;
     inset: 0;
@@ -2626,6 +2631,66 @@
     }
     100% {
         transform: translate3d(0, 0, 0);
+    }
+}
+
+/* Demo artwork drifts in small artist currents, with a separate local orbit.
+   Divide by the artwork scale so the overview retains visible screen movement.
+   Longhands preserve the existing camera/drag animation pause rules. */
+.tm-bubble-layer.is-demo-alive .tm-bubble-item .tm-bubble-float {
+    animation-name: tm-demo-current, tm-demo-live;
+    animation-duration: var(--tm-demo-current-duration), var(--tm-demo-live-duration);
+    animation-delay: var(--tm-demo-current-delay), var(--tm-demo-live-delay);
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+}
+
+@keyframes tm-demo-current {
+    0%, 100% {
+        translate: calc(var(--tm-demo-current-x) * -.65 / var(--tm-bubble-scale, 1))
+            calc(var(--tm-demo-current-y) * .35 / var(--tm-bubble-scale, 1));
+    }
+    33% {
+        translate: calc(var(--tm-demo-current-x) / var(--tm-bubble-scale, 1))
+            calc(var(--tm-demo-current-y) * -.4 / var(--tm-bubble-scale, 1));
+    }
+    66% {
+        translate: calc(var(--tm-demo-current-x) * -.3 / var(--tm-bubble-scale, 1))
+            calc(var(--tm-demo-current-y) / var(--tm-bubble-scale, 1));
+    }
+}
+
+@keyframes tm-demo-live {
+    0%, 100% {
+        transform: translate3d(calc(var(--tm-demo-live-x) * .75 / var(--tm-bubble-scale, 1)),
+            calc(var(--tm-demo-live-y) * .15 / var(--tm-bubble-scale, 1)), 0);
+    }
+    25% {
+        transform: translate3d(calc(var(--tm-demo-live-x) * .1 / var(--tm-bubble-scale, 1)),
+            calc(var(--tm-demo-live-y) / var(--tm-bubble-scale, 1)), 0);
+    }
+    50% {
+        transform: translate3d(calc(var(--tm-demo-live-x) * -.8 / var(--tm-bubble-scale, 1)),
+            calc(var(--tm-demo-live-y) * .2 / var(--tm-bubble-scale, 1)), 0);
+    }
+    75% {
+        transform: translate3d(calc(var(--tm-demo-live-x) * -.15 / var(--tm-bubble-scale, 1)),
+            calc(var(--tm-demo-live-y) * -.8 / var(--tm-bubble-scale, 1)), 0);
+    }
+}
+
+.tm-bubble-layer.is-demo-alive .tm-bubble-item:is(:hover, :focus-within, .hovered, .detail-selected, .dragging, .is-absorbing) .tm-bubble-float,
+.tm-bubble-layer.is-demo-alive.selection-mode .tm-bubble-float {
+    animation-play-state: paused;
+}
+
+.tm-bubble-layer.is-demo-alive.high-density .tm-bubble-item .tm-bubble-float {
+    animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .tm-bubble-layer.is-demo-alive .tm-bubble-item .tm-bubble-float {
+        animation: none;
     }
 }
 

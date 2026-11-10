@@ -5,6 +5,36 @@
  */
 
 import { generateAestheticCoverSvg, getCachedArtwork } from './demoArtwork.js';
+import { DEMO_TRACK_ADDITIONS } from './demoTrackAdditions.js';
+import { getDemoCatalogTrack } from './demoCatalog.js';
+import { deduplicateTracks } from '../utils/trackIdentity.js';
+
+export const DEMO_CATALOG_VERSION = 2;
+
+// Landing themes describe three entry experiences; they are not genre labels.
+// Original demo artists need their own evidence just like the later additions.
+const ORIGINAL_ARTIST_GENRES = {
+  'Tame Impala': ['psychedelic pop', 'indie rock'],
+  'Beach House': ['dream pop'],
+  'Cigarettes After Sex': ['dream pop', 'ambient pop'],
+  'Men I Trust': ['indie pop', 'dream pop'],
+  'Mac DeMarco': ['indie rock', 'psychedelic pop'],
+  'Hyukoh': ['indie rock', 'alternative rock'],
+  'The Drums': ['indie pop', 'indie rock'],
+  'Daft Punk': ['french house', 'disco', 'electronic'],
+  'Justice': ['electro house', 'french house'],
+  'Kavinsky': ['synthwave'],
+  'The Weeknd': ['synth pop', 'r&b'],
+  'Gesaffelstein, The Weeknd': ['electropop', 'r&b'],
+  'M83': ['synth pop', 'dream pop'],
+  'Tom Misch': ['neo soul', 'jazz funk'],
+  'Masego, FKJ': ['neo soul', 'jazz fusion'],
+  'FKJ': ['nu jazz', 'downtempo'],
+  'The Black Skirts': ['indie rock'],
+  'Yerin Baek': ['alternative r&b', 'neo soul'],
+  'Laufey': ['vocal jazz', 'jazz pop'],
+  'Lady Gaga, Bruno Mars': ['pop', 'soul'],
+};
 
 export const DEMO_UNIVERSES = [
   {
@@ -34,7 +64,7 @@ export const DEMO_UNIVERSES = [
       { name: 'Sweet', artists: 'Cigarettes After Sex' },
       { name: 'Wiing Wiing', artists: 'Hyukoh' },
       { name: 'My Kind of Woman', artists: 'Mac DeMarco' },
-      { name: 'Nunjucks', artists: 'Men I Trust' },
+      { name: 'Numb', artists: 'Men I Trust' },
       { name: 'Borderline', artists: 'Tame Impala' },
       { name: 'K.', artists: 'Cigarettes After Sex' },
       { name: 'Days', artists: 'The Drums' },
@@ -42,6 +72,7 @@ export const DEMO_UNIVERSES = [
       { name: 'Master of None', artists: 'Beach House' },
       { name: 'On the Level', artists: 'Mac DeMarco' },
       { name: 'Seven', artists: 'Men I Trust' },
+      ...DEMO_TRACK_ADDITIONS['cosmic-dreampop'],
     ],
   },
   {
@@ -78,6 +109,7 @@ export const DEMO_UNIVERSES = [
       { name: 'Something About Us', artists: 'Daft Punk' },
       { name: 'I Feel It Coming', artists: 'The Weeknd' },
       { name: 'Midnight City', artists: 'M83' },
+      ...DEMO_TRACK_ADDITIONS['cyber-synthwave'],
     ],
   },
   {
@@ -93,7 +125,7 @@ export const DEMO_UNIVERSES = [
     tracks: [
       { name: 'South of the River', artists: 'Tom Misch' },
       { name: 'Tadow', artists: 'Masego, FKJ' },
-      { name: 'Everything Goes', artists: 'The Black Skirts' },
+      { name: 'Everything', artists: 'The Black Skirts' },
       { name: 'Square', artists: 'Yerin Baek' },
       { name: 'From the Start', artists: 'Laufey' },
       { name: 'Disco Yes', artists: 'Tom Misch' },
@@ -113,6 +145,7 @@ export const DEMO_UNIVERSES = [
       { name: 'Falling Behind', artists: 'Laufey' },
       { name: 'Lost in Paris', artists: 'Tom Misch' },
       { name: 'Die With A Smile', artists: 'Lady Gaga, Bruno Mars' },
+      ...DEMO_TRACK_ADDITIONS['midnight-jazz'],
     ],
   },
 ];
@@ -132,6 +165,8 @@ export function getEnrichedDemoTracks(universe) {
     : ['dream pop', 'psychedelic', 'indie'];
 
   return universe.tracks.map((t, idx) => {
+    const catalog = getDemoCatalogTrack(t.artists, t.name);
+    const trackGenres = t.genres || ORIGINAL_ARTIST_GENRES[t.artists] || baseGenres;
     const seed = hash01(`${universe.id}:${t.name}:${t.artists}:${idx}`);
     let valence, energy, danceability, acousticness;
 
@@ -166,7 +201,8 @@ export function getEnrichedDemoTracks(universe) {
       demoUniverseId: universe.id,
       name: t.name,
       artists: t.artists,
-      album: `${t.artists} - ${t.name}`,
+      album: catalog?.album || `${t.artists} - ${t.name}`,
+      ...(catalog ? { appleMusicUrl: catalog.appleMusicUrl, catalogTrackId: catalog.trackId } : {}),
       coverUrl,
       albumArt: coverUrl,
       imageUrl: coverUrl,
@@ -175,15 +211,15 @@ export function getEnrichedDemoTracks(universe) {
       danceability: Math.round(danceability * 100) / 100,
       acousticness: Math.round(acousticness * 100) / 100,
       instrumentalness: seed > 0.65 ? 0.55 : 0.02,
-      genres: [t.artists.toLowerCase(), ...baseGenres],
-      spotifyGenres: baseGenres,
+      genres: trackGenres,
+      spotifyGenres: trackGenres,
       featuresSource: 'spotify-genres',
       popularity: 70 + Math.round(seed * 28),
     };
   });
 }
 
-// The three entry cards are filters over one shared demo field.
+// Three landing entry cards introduce one shared, independently clustered field.
 export function getCombinedDemoTracks() {
   return DEMO_UNIVERSES.flatMap(getEnrichedDemoTracks);
 }
@@ -191,4 +227,26 @@ export function getCombinedDemoTracks() {
 export function getDemoUniverseIndex(track) {
   return DEMO_UNIVERSES.findIndex(universe => track?.demoUniverseId === universe.id
     || String(track?.id || '').startsWith(`demo-${universe.id}-`));
+}
+
+// Update only known demo previews; personal imports are never expanded. Keep
+// the map ID, selected entry theme, saved constellations, and discovered songs.
+export function refreshDemoCatalog(data) {
+  if (!data?.tracks?.length || data.stats?.demoCatalogVersion === DEMO_CATALOG_VERSION
+    || !data.tracks.some(track => getDemoUniverseIndex(track) >= 0)) return data;
+  const catalog = getCombinedDemoTracks();
+  const ids = new Set(catalog.map(track => track.id));
+  const tracks = deduplicateTracks([...catalog, ...data.tracks.filter(track => !ids.has(track.id))]);
+  return {
+    ...data,
+    tracks,
+    stats: {
+      ...data.stats,
+      isDemo: true,
+      demoCatalogVersion: DEMO_CATALOG_VERSION,
+      fetchedCount: tracks.length,
+      totalAvailable: tracks.length,
+      processedCount: tracks.length,
+    },
+  };
 }

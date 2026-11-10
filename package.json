@@ -9,6 +9,7 @@
     "server": "nodemon server.js",
     "dev:all": "npm run dev",
     "test": "node --test tests/*.test.mjs",
+    "demo:playback": "node scripts/prepareDemoPlayback.mjs",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",

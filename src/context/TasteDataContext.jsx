@@ -30,6 +30,7 @@ const MIN_RECOVERY_CHUNK_SIZE = 10;
 
 import { MAX_IMPORT_TRACKS, limitImportTracks } from '../utils/sampleTracks.js';
 import { enrichTracksWithArtwork } from '../taste/demoArtwork.js';
+import { DEMO_CATALOG_VERSION } from '../taste/demoUniverses.js';
 import { snapshotVoyage } from '../taste/voyageExpansion.js';
 export { MAX_IMPORT_TRACKS, limitImportTracks };
 
@@ -186,8 +187,10 @@ export function TasteDataProvider({ children, ownerId = null }) {
             const runId = ++importRunRef.current;
             const id = options.mapId || newMapId();
             const source = options.featuresSource || 'spotify-genres';
+            const demo = isDemoTaste({ tracks: list });
             const nextStats = {
-                isDemo: isDemoTaste({ tracks: list }),
+                isDemo: demo,
+                ...(demo ? { demoCatalogVersion: DEMO_CATALOG_VERSION } : {}),
                 demoUniverse: options.demoUniverse || null,
                 fetchedCount: list.length,
                 totalAvailable: list.length,

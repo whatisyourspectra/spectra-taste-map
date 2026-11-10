@@ -23,6 +23,98 @@ function hash01(str) {
 
 function pickInRange(seed, min, max) { return min + (max - min) * seed; }
 
+// Stable, well-mixed samples: sequential demo/provider IDs must not line up.
+function scatterHash(value) {
+    let hash = 2166136261;
+    for (const character of String(value)) hash = Math.imul(hash ^ character.charCodeAt(0), 16777619);
+    hash ^= hash >>> 16;
+    hash = Math.imul(hash, 0x7feb352d);
+    hash ^= hash >>> 15;
+    return (hash >>> 0) / 4294967296;
+}
+
+function exploratoryAnchors(tracks, assignments, expressiveSpacing = false) {
+    const groups = new Map();
+    for (const track of tracks) {
+        const cluster = assignments.get(track.id) ?? 0;
+        const artist = String(track.layoutArtist || track.id).trim().toLowerCase();
+        const key = `${cluster}:${artist}`;
+        if (!groups.has(key)) groups.set(key, { key, cluster, genre: track.layoutGenreKey || `region-${cluster}`, members: [] });
+        groups.get(key).members.push(track);
+    }
+    const regions = new Map();
+    for (const group of groups.values()) {
+        if (!regions.has(group.genre)) regions.set(group.genre, { key: group.genre, family: group.genre.split('/')[0], count: 0 });
+        regions.get(group.genre).count += group.members.length;
+    }
+    const families = [...new Set([...regions.values()].map(region => region.family))].sort();
+    const familyAnchors = new Map();
+    for (const family of families) {
+        let best = null;
+        for (let attempt = 0; attempt < 64; attempt++) {
+            const x = .15 + scatterHash(`${family}:${attempt}:x`) * .7;
+            const y = .15 + scatterHash(`${family}:${attempt}:y`) * .7;
+            const clearance = familyAnchors.size
+                ? Math.min(...[...familyAnchors.values()].map(point => Math.hypot(point.x - x, point.y - y)))
+                : .3;
+            const score = clearance * (.85 + scatterHash(`${family}:${attempt}:variation`) * .3);
+            if (!best || score > best.score) best = { x, y, score };
+        }
+        familyAnchors.set(family, families.length === 1 ? { x: .5, y: .5 } : best);
+    }
+    for (const region of regions.values()) {
+        const parent = familyAnchors.get(region.family);
+        const angle = scatterHash(`${region.key}:bearing`) * Math.PI * 2;
+        const radius = .025 + scatterHash(`${region.key}:offset`) * .05;
+        region.x = parent.x + Math.cos(angle) * radius;
+        region.y = parent.y + Math.sin(angle) * radius;
+    }
+    const anchors = new Map();
+    for (const group of groups.values()) {
+        const region = regions.get(group.genre);
+        const angle = scatterHash(`${group.key}:bearing`) * Math.PI * 2;
+        const reach = families.length === 1 ? .3 : .035 + .1 * Math.sqrt(region.count / tracks.length);
+        const radius = Math.sqrt(scatterHash(`${group.key}:distance`)) * reach
+            * (expressiveSpacing ? .6 + scatterHash(`${group.key}:reach`) * 1.1 : 1);
+        let centerX = region.x + Math.cos(angle) * radius * 1.1;
+        let centerY = region.y + Math.sin(angle) * radius;
+        // A few artist neighborhoods drift into the gaps, producing sparse
+        // bridges and outliers rather than a ring, wave, or uniform cloud.
+        if (scatterHash(`${group.key}:outlier`) > .85) {
+            centerX = centerX * .4 + (.08 + scatterHash(`${group.key}:far-x`) * .84) * .6;
+            centerY = centerY * .4 + (.08 + scatterHash(`${group.key}:far-y`) * .84) * .6;
+        }
+        const orientation = scatterHash(`${group.key}:tilt`) * Math.PI * 2;
+        for (const track of group.members) {
+            const angle = scatterHash(`${track.id}:angle`) * Math.PI * 2;
+            // Dense artist cores with a few loose satellites. Keeping most
+            // anchors close makes neighborhoods readable at a glance; zooming
+            // separates their lightly overlapping artwork for inspection.
+            const tail = scatterHash(`${track.id}:tail`) > .85 ? 3.2 : 1;
+            const role = scatterHash(`${track.id}:spacing-role`);
+            const fringe = expressiveSpacing && role >= .68;
+            const radius = fringe
+                ? .7 + scatterHash(`${track.id}:radius`) * 2.8
+                : Math.pow(scatterHash(`${track.id}:radius`), expressiveSpacing ? 2.1 : 1.8) * tail;
+            const spread = Math.min(.04, .004 + Math.sqrt(group.members.length) * .003);
+            const stretch = expressiveSpacing ? .7 + scatterHash(`${group.key}:stretch`) * 1.4 : 1;
+            const dx = Math.cos(angle) * radius * spread * 1.5 * stretch;
+            const dy = Math.sin(angle) * radius * spread * .72 / Math.sqrt(stretch);
+            let x = centerX + dx * Math.cos(orientation) - dy * Math.sin(orientation);
+            let y = centerY + dx * Math.sin(orientation) + dy * Math.cos(orientation);
+            if (scatterHash(`${track.id}:wanderer`) > .9) {
+                x = x * .3 + (.05 + scatterHash(`${track.id}:wide-x`) * .9) * .7;
+                y = y * .3 + (.06 + scatterHash(`${track.id}:wide-y`) * .88) * .7;
+            }
+            anchors.set(track.id, [
+                Math.max(.06, Math.min(.94, x)),
+                Math.max(.08, Math.min(.92, y)),
+            ]);
+        }
+    }
+    return anchors;
+}
+
 self.onmessage = ({ data }) => {
     const {
         tracks: allTracks,
@@ -36,6 +128,8 @@ self.onmessage = ({ data }) => {
         assignmentEntries,
         playWeightEntries,
         projected2dEntries,
+        layoutMode,
+        spacingProfile,
     } = data;
 
     const assignmentByTrackId = new Map(assignmentEntries);
@@ -52,6 +146,9 @@ self.onmessage = ({ data }) => {
     if (count === 0) { self.postMessage({ nodes: [] }); return; }
 
     const isGenreProjected = projected2dByTrackId.size > 0;
+    const exploratory = layoutMode === 'exploratory';
+    const expressiveSpacing = exploratory && spacingProfile === 'expressive';
+    const neighborhoodAnchors = exploratory ? exploratoryAnchors(tracks, assignmentByTrackId, expressiveSpacing) : new Map();
     const virtualW = Math.max(1, fieldW * worldScale);
     const virtualH = Math.max(1, fieldH * worldScale);
 
@@ -64,6 +161,8 @@ self.onmessage = ({ data }) => {
     const jitterRange = count > 2000 ? 84 : count > 500 ? 72 : count > 300 ? 58 : 44;
     const spacingFactor = isGenreProjected ? 0.76 : 1.0;
     const sepPadAdjusted = sepPad * spacingFactor;
+    const overviewZoom = Math.max(.1, 1 / Math.max(1, worldScale));
+    const overviewCoverScale = Math.max(.3, Math.min(1.3, Math.pow(overviewZoom / 1.2, .4)));
 
     // Precompute normalized weight [0,1] for each track.
     // Recent-play counts get a stronger nonlinear stretch so relative size
@@ -100,13 +199,13 @@ self.onmessage = ({ data }) => {
     const nodes = tracks.map((track) => {
         const t = getSizeT(track.id);
         const size = sizeMin + (sizeMax - sizeMin) * t;
-        const projected = projected2dByTrackId.get(track.id);
+        const projected = exploratory ? neighborhoodAnchors.get(track.id) : projected2dByTrackId.get(track.id);
         const hasProjected = Array.isArray(projected) && projected.length >= 2;
         const xRaw = hasProjected ? Math.min(1, Math.max(0, projected[0])) : getTrackFeature(track, xAxis);
         const yRaw = hasProjected ? Math.min(1, Math.max(0, projected[1])) : getTrackFeature(track, yAxis);
         // In genre projection mode, gently compress around center to avoid over-separated islands.
-        const xVal = hasProjected ? 0.5 + (xRaw - 0.5) * 0.84 : xRaw;
-        const yVal = hasProjected ? 0.5 + (yRaw - 0.5) * 0.84 : yRaw;
+        const xVal = hasProjected && !exploratory ? 0.5 + (xRaw - 0.5) * 0.84 : xRaw;
+        const yVal = hasProjected && !exploratory ? 0.5 + (yRaw - 0.5) * 0.84 : yRaw;
         const jx = pickInRange(hash01(track.id + 'jx'), -jitterRange, jitterRange);
         const jy = pickInRange(hash01(track.id + 'jy'), -jitterRange, jitterRange);
         const rawX = Math.min(virtualW - pad, Math.max(pad, pad + xVal * (virtualW - pad * 2) + jx));
@@ -114,7 +213,16 @@ self.onmessage = ({ data }) => {
         const clusterId = assignmentByTrackId.get(track.id);
         const color = CLUSTER_COLORS[(clusterId ?? 0) % CLUSTER_COLORS.length];
         const fixed = fixedBase.get(track.id);
+        const fringe = expressiveSpacing && scatterHash(`${track.id}:spacing-role`) >= .68;
         return { id: track.id, rawX, rawY, x: rawX, y: rawY, size, color, clusterId,
+            // Leave room around fringe tracks while retaining compact cores.
+            // Applying the same large gap to every song flattens the density.
+            spacing: exploratory ? fringe ? 12 + scatterHash(`${track.id}:gap`) * 24
+                : 1 + Math.pow(scatterHash(`${track.id}:gap`), 2) * 10 : 0,
+            packing: fringe ? 1.35 + scatterHash(`${track.id}:air`) * .95
+                : .62 + Math.pow(scatterHash(`${track.layoutArtist || track.id}:density`), 2) * .95,
+            clearance: fringe ? 1.15 : 1,
+            artist: track.layoutArtist,
             ...(fixed ? { x: fixed.nX * virtualW, y: fixed.nY * virtualH,
                 rawX: fixed.nRawX * virtualW, rawY: fixed.nRawY * virtualH } : {}) };
     });
@@ -139,7 +247,9 @@ self.onmessage = ({ data }) => {
     );
 
     const clusterPull = count > 2000 ? 0.012 : count > 1000 ? 0.016 : count > 600 ? 0.022 : count > 300 ? 0.028 : 0.034;
-    const cellSize = (sizeMax + sepPadAdjusted) * 2.0;
+    const cellSize = Math.max((sizeMax + sepPadAdjusted) * 2.0,
+        exploratory ? (sizeMax * overviewCoverScale * (expressiveSpacing ? 2.3 : 1.57)
+            + (expressiveSpacing ? 36 : 11)) / overviewZoom : 0);
     // Large imports favor fast, stable placement over imperceptible late-pass
     // collision refinements. This keeps multi-thousand-track layouts fast and responsive.
     const layoutIterations = count > 2500 ? 18 : count > 1600 ? 22 : count > 900 ? 28 : count > 450 ? 36 : 44;
@@ -182,7 +292,13 @@ self.onmessage = ({ data }) => {
                         const clusterGap = sameCluster
                             ? sepPadAdjusted * (isGenreProjected ? 0.98 : 1.12)
                             : sepPadAdjusted * (isGenreProjected ? 1.18 : 1.62);
-                        const minDist = (a.size + b.size) / 2 + clusterGap;
+                        const sameArtist = a.artist && a.artist === b.artist;
+                        const gap = (a.spacing + b.spacing) / 2 * (sameArtist ? .2 : 1);
+                        const packing = sameArtist ? (a.packing + b.packing) / 2
+                            : Math.max(a.clearance, b.clearance) * (sameCluster ? .94 : 1);
+                        const minDist = exploratory
+                            ? ((a.size + b.size) / 2 * overviewCoverScale * packing + gap) / overviewZoom
+                            : (a.size + b.size) / 2 + clusterGap;
                         const dx = b.x - a.x;
                         const dy = b.y - a.y;
                         const dist = Math.hypot(dx, dy) || 0.001;
@@ -204,12 +320,17 @@ self.onmessage = ({ data }) => {
         for (let i = 0; i < nodes.length; i++) {
             const node = nodes[i];
             if (!Number.isInteger(node.clusterId)) continue;
-            const center = clusterCenters.get(node.clusterId);
+            const center = exploratory ? { x: node.rawX, y: node.rawY } : clusterCenters.get(node.clusterId);
             if (!center) continue;
-            node.x = Math.max(pad, Math.min(virtualW - pad, node.x + (center.x - node.x) * clusterPull));
-            node.y = Math.max(pad, Math.min(virtualH - pad, node.y + (center.y - node.y) * clusterPull));
+            const pull = exploratory ? .002 : clusterPull;
+            node.x = Math.max(pad, Math.min(virtualW - pad, node.x + (center.x - node.x) * pull));
+            node.y = Math.max(pad, Math.min(virtualH - pad, node.y + (center.y - node.y) * pull));
         }
     }
+
+    // Do not blend the separated positions back into crowded raw anchors at
+    // render time. Every consumer (navigator, selection and additions) agrees.
+    if (exploratory) for (const node of nodes) { node.rawX = node.x; node.rawY = node.y; }
 
     const nodeById = new Map(nodes.map(node => [node.id, node]));
     const pending = allTracks.filter(track => affinity.has(track.id));

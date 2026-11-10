@@ -82,5 +82,922 @@
   "slow-rush": {
     "image": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/65/e3/e7/65e3e740-b69f-f5cb-f2e6-7dedb5265ac9/19UMGIM96748.rgb.jpg/400x400bb.jpg",
     "path": "/demo-covers/slow-rush.jpg"
+  },
+  "catalog-1497230760": {
+    "album": "The Slow Rush",
+    "artist": "Tame Impala",
+    "page": "https://music.apple.com/us/album/borderline/1497230760",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/65/e3/e7/65e3e740-b69f-f5cb-f2e6-7dedb5265ac9/19UMGIM96748.rgb.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1497230760.jpg"
+  },
+  "catalog-1450778313": {
+    "album": "23",
+    "artist": "HYUKOH",
+    "page": "https://music.apple.com/us/album/tomboy/1450778313",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/20/de/43/20de43fe-733e-3734-cab9-7bd787411260/Cover_HYUKOH_23.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1450778313.jpg"
+  },
+  "catalog-509665145": {
+    "album": "Bloom",
+    "artist": "Beach House",
+    "page": "https://music.apple.com/us/album/myth/509665145",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/8b/b7/08/8bb7086b-cdb5-1ffe-926b-e7637bda6a0d/BeachHouse_Bloom_iTunes.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-509665145.jpg"
+  },
+  "catalog-6789812611": {
+    "album": "2",
+    "artist": "Mac DeMarco",
+    "page": "https://music.apple.com/us/album/my-kind-of-woman/6789812611",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/a9/ca/9c/a9ca9c83-4b8f-090e-0bb8-5e6b1e5eebfd/cover.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-6789812611.jpg"
+  },
+  "catalog-349535407": {
+    "album": "Teen Dream (Bonus Track Version)",
+    "artist": "Beach House",
+    "page": "https://music.apple.com/us/album/silver-soul/349535407",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/d2/0c/e5/d20ce58d-27dc-a429-a4c2-41096d901ee6/mzi.ixtppvys.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-349535407.jpg"
+  },
+  "catalog-1720768197": {
+    "album": "Tailwhip - Single",
+    "artist": "Men I Trust",
+    "page": "https://music.apple.com/us/album/tailwhip/1720768197",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music116/v4/de/dd/88/dedd8896-0102-dbac-6cca-adb2275ce7e2/artwork.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1720768197.jpg"
+  },
+  "catalog-1450779334": {
+    "album": "20 - EP",
+    "artist": "HYUKOH",
+    "page": "https://music.apple.com/us/album/wi-ing-wi-ing/1450779334",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/21/d2/d3/21d2d3e3-ea98-140a-ef2d-33beeb06889f/dj.hbgytaml.png/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1450779334.jpg"
+  },
+  "catalog-1458981357": {
+    "album": "Numb - Single",
+    "artist": "Men I Trust",
+    "page": "https://music.apple.com/us/album/numb/1458981357",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/5d/78/90/5d78904a-661a-8896-975c-33b506b5b4ca/artwork.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1458981357.jpg"
+  },
+  "catalog-1581702290": {
+    "album": "Portamento",
+    "artist": "The Drums",
+    "page": "https://music.apple.com/us/album/days/1581702290",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/c3/06/d0/c306d060-8f16-f74d-7772-02079fd1280b/21UMGIM82481.rgb.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1581702290.jpg"
+  },
+  "catalog-1248058009": {
+    "album": "Beach House",
+    "artist": "Beach House",
+    "page": "https://music.apple.com/us/album/master-of-none/1248058009",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music118/v4/13/ca/b8/13cab847-b13e-1053-d934-c54bd1c96849/dj.evcgrean.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1248058009.jpg"
+  },
+  "catalog-6789830961": {
+    "album": "This Old Dog",
+    "artist": "Mac DeMarco",
+    "page": "https://music.apple.com/us/album/on-the-level/6789830961",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/ff/24/6a/ff246ab2-1664-3693-2d65-bacacd833526/cover.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-6789830961.jpg"
+  },
+  "catalog-1720792668": {
+    "album": "Seven - Single",
+    "artist": "Men I Trust",
+    "page": "https://music.apple.com/us/album/seven/1720792668",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music116/v4/64/e4/c3/64e4c302-daea-3683-0c4e-e76d68559117/artwork.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1720792668.jpg"
+  },
+  "catalog-1651310191": {
+    "album": "Alvvays",
+    "artist": "Alvvays",
+    "page": "https://music.apple.com/us/album/adult-diversion/1651310191",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music122/v4/90/78/52/907852ec-15c8-c6cb-c810-6912dd18577d/644110028297.png/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1651310191.jpg"
+  },
+  "catalog-1651326694": {
+    "album": "Antisocialites",
+    "artist": "Alvvays",
+    "page": "https://music.apple.com/us/album/in-undertow/1651326694",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music116/v4/3b/81/8f/3b818fd2-e308-eee4-cd86-d0b18f98522b/644110033499.png/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1651326694.jpg"
+  },
+  "catalog-1210172617": {
+    "album": "Slowdive",
+    "artist": "Slowdive",
+    "page": "https://music.apple.com/us/album/star-roving/1210172617",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/81/42/f5/8142f595-dc02-1b4f-0cea-b265ac6c85f3/656605143262.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1210172617.jpg"
+  },
+  "catalog-292885238": {
+    "album": "Souvlaki",
+    "artist": "Slowdive",
+    "page": "https://music.apple.com/us/album/when-the-sun-hits/292885238",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/1b/50/ad/1b50adc8-139b-1ad9-8500-cc2eb93faf17/888880730831.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-292885238.jpg"
+  },
+  "catalog-258198881": {
+    "album": "Heaven Or Las Vegas (Remastered)",
+    "artist": "Cocteau Twins",
+    "page": "https://music.apple.com/us/album/iceblink-luck/258198881",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music116/v4/76/cd/61/76cd61e7-0714-dce5-c48e-0f05f8fcb84b/652637001280.png/600x600bb.jpg",
+    "path": "/demo-covers/catalog-258198881.jpg"
+  },
+  "catalog-1027469081": {
+    "album": "Treasure",
+    "artist": "Cocteau Twins",
+    "page": "https://music.apple.com/us/album/lorelei/1027469081",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music116/v4/88/93/da/8893da24-c559-a08a-b750-07185eb9960a/652637041200.png/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1027469081.jpg"
+  },
+  "catalog-1440848808": {
+    "album": "So Tonight That I Might See",
+    "artist": "Mazzy Star",
+    "page": "https://music.apple.com/us/album/blue-light/1440848808",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music116/v4/0f/03/ea/0f03ead1-d1eb-27fd-0734-b257b515692f/13UABIM59278.rgb.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1440848808.jpg"
+  },
+  "catalog-724609718": {
+    "album": "Among My Swan",
+    "artist": "Mazzy Star",
+    "page": "https://music.apple.com/us/album/flowers-in-december/724609718",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/c8/b0/7b/c8b07b78-7610-5969-0d34-57dd520d70b1/00724382722458.rgb.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-724609718.jpg"
+  },
+  "catalog-1110226847": {
+    "album": "Skiptracing",
+    "artist": "Mild High Club",
+    "page": "https://music.apple.com/us/album/tesselation/1110226847",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music114/v4/69/b0/c3/69b0c397-dc3c-381f-386e-f7f4a3d9f754/Skiptracing.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1110226847.jpg"
+  },
+  "catalog-1014767571": {
+    "album": "Timeline",
+    "artist": "Mild High Club",
+    "page": "https://music.apple.com/us/album/windowpane/1014767571",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music122/v4/36/f5/68/36f5680b-316c-54a0-e146-a9b0f9a871eb/729.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1014767571.jpg"
+  },
+  "catalog-1465125802": {
+    "album": "Locket - EP",
+    "artist": "Crumb",
+    "page": "https://music.apple.com/us/album/plants/1465125802",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/a0/b1/28/a0b128b5-4340-4f10-da1a-4d32f434557e/cover.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1465125802.jpg"
+  },
+  "catalog-1456789832": {
+    "album": "Jinx",
+    "artist": "Crumb",
+    "page": "https://music.apple.com/us/album/part-iii/1456789832",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music114/v4/83/13/f1/8313f143-ba0e-ee4c-eb85-5c259b1ec5e3/656605343648.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1456789832.jpg"
+  },
+  "catalog-1580843107": {
+    "album": "If This Isn’t Nice, I Don’t Know What Is",
+    "artist": "Still Woozy",
+    "page": "https://music.apple.com/us/album/window/1580843107",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/b9/ff/50/b9ff501d-d2d5-1586-bc72-433b60f5b1dc/21UMGIM55278.rgb.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1580843107.jpg"
+  },
+  "catalog-1483284061": {
+    "album": "Cooks - Single",
+    "artist": "Still Woozy",
+    "page": "https://music.apple.com/us/album/cooks/1483284061",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/d9/58/05/d9580512-d411-aa0e-a6cf-5065b0cbb2b1/19UMGIM91970.rgb.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1483284061.jpg"
+  },
+  "catalog-1234864053": {
+    "album": "Roy Pablo - EP",
+    "artist": "boy pablo",
+    "page": "https://music.apple.com/us/album/dance-baby/1234864053",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/84/66/5a/84665a1b-2cd3-e3ed-ccf4-8e852c10a176/191515394835_Cover.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1234864053.jpg"
+  },
+  "catalog-1435798612": {
+    "album": "Soy Pablo - EP",
+    "artist": "boy pablo",
+    "page": "https://music.apple.com/us/album/feeling-lonely/1435798612",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/56/25/dc/5625dcd5-7e97-6dc7-6421-1bbb9dd7d0c4/192641179129_Cover.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1435798612.jpg"
+  },
+  "catalog-1519352199": {
+    "album": "Wachito Rico",
+    "artist": "boy pablo",
+    "page": "https://music.apple.com/us/album/hey-girl/1519352199",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/ca/b1/b0/cab1b068-f140-db12-fbe9-64001921a7dd/192641517174_Cover.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1519352199.jpg"
+  },
+  "catalog-1553364590": {
+    "album": "Jubilee",
+    "artist": "Japanese Breakfast",
+    "page": "https://music.apple.com/us/album/kokomo-in/1553364590",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music126/v4/93/8b/8b/938b8b5d-1022-414f-995e-a25608fc68c3/17251.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1553364590.jpg"
+  },
+  "catalog-1227860261": {
+    "album": "Soft Sounds from Another Planet",
+    "artist": "Japanese Breakfast",
+    "page": "https://music.apple.com/us/album/road-head/1227860261",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music114/v4/20/47/60/20476017-7ede-d198-3ddb-1c7ae8b48105/656605143361.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1227860261.jpg"
+  },
+  "catalog-1563957170": {
+    "album": "CINEMA",
+    "artist": "The Marías",
+    "page": "https://music.apple.com/us/album/hush/1563957170",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/0b/67/3f/0b673fd4-5e49-fccd-6193-3076bef03f53/075679792389.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1563957170.jpg"
+  },
+  "catalog-1436703562": {
+    "album": "Superclean, Vol. II - EP",
+    "artist": "The Marías",
+    "page": "https://music.apple.com/us/album/ruthless/1436703562",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/71/5f/fc/715ffc50-c006-500b-ad3e-830a6a6bbc70/artwork.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1436703562.jpg"
+  },
+  "catalog-1302158479": {
+    "album": "Superclean, Vol. I - EP",
+    "artist": "The Marías",
+    "page": "https://music.apple.com/us/album/only-in-my-dreams/1302158479",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music114/v4/6c/3e/4d/6c3e4d69-a98e-8d66-968e-66a5875d76ea/artwork.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1302158479.jpg"
+  },
+  "catalog-1850810462": {
+    "album": "xx",
+    "artist": "The xx",
+    "page": "https://music.apple.com/us/album/crystalised/1850810462",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/28/44/8e/28448e14-19be-438b-bc9b-8c1d3f68f578/609008295069.png/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1850810462.jpg"
+  },
+  "catalog-555642294": {
+    "album": "Coexist",
+    "artist": "The xx",
+    "page": "https://music.apple.com/us/album/angels/555642294",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music122/v4/57/81/34/5781340f-df6f-7f35-e24e-94ba71895d6e/634904608064.png/600x600bb.jpg",
+    "path": "/demo-covers/catalog-555642294.jpg"
+  },
+  "catalog-1299241642": {
+    "album": "Con Todo El Mundo",
+    "artist": "Khruangbin",
+    "page": "https://music.apple.com/us/album/august-10/1299241642",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/17/67/2e/17672e3b-9d01-2d5e-9b43-38f44b40f654/656605145365.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1299241642.jpg"
+  },
+  "catalog-1501585499": {
+    "album": "Mordechai",
+    "artist": "Khruangbin",
+    "page": "https://music.apple.com/us/album/so-we-wont-forget/1501585499",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/94/a7/44/94a74465-1fe9-b897-a1ed-99b2e5b3b497/656605149363.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1501585499.jpg"
+  },
+  "catalog-1893175128": {
+    "album": "Immunity",
+    "artist": "Clairo",
+    "page": "https://music.apple.com/us/album/sofia/1893175128",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/f2/47/06/f24706bc-a90c-f730-bd8a-586ddde8af3e/829299184631.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1893175128.jpg"
+  },
+  "catalog-1571215405": {
+    "album": "Sling",
+    "artist": "Clairo",
+    "page": "https://music.apple.com/us/album/amoeba/1571215405",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/77/62/4a/77624a46-f824-57bd-2cfa-f2808761724e/21UMGIM42676.rgb.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1571215405.jpg"
+  },
+  "catalog-1893174883": {
+    "album": "diary 001 - EP",
+    "artist": "Clairo",
+    "page": "https://music.apple.com/us/album/pretty-girl/1893174883",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/37/51/a0/3751a092-c2a7-e0ae-3071-3e7416d23cec/829299181432.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1893174883.jpg"
+  },
+  "catalog-1781856626": {
+    "album": "summer flows 0.02 - EP",
+    "artist": "wave to earth",
+    "page": "https://music.apple.com/us/album/seasons/1781856626",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/fa/c5/61/fac561dc-8db4-b2e9-d3db-6e246da72bfa/5054197890017.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1781856626.jpg"
+  },
+  "catalog-1770274106": {
+    "album": "0.1 flaws and all.",
+    "artist": "wave to earth",
+    "page": "https://music.apple.com/us/album/peach-eyes/1770274106",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/71/b6/82/71b6820b-97a2-9968-c5a8-b659103030b1/5054197659843.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1770274106.jpg"
+  },
+  "catalog-1442447952": {
+    "album": "Nightcall",
+    "artist": "Kavinsky",
+    "page": "https://music.apple.com/us/album/pacific-coast-highway/1442447952",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/c1/2d/fe/c12dfe8f-cdf6-e179-d69a-8ec35f760266/00602537248681.rgb.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1442447952.jpg"
+  },
+  "catalog-1499378108": {
+    "album": "After Hours",
+    "artist": "The Weeknd",
+    "page": "https://music.apple.com/us/album/blinding-lights/1499378108",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/6f/bc/e6/6fbce6c4-c38c-72d8-4fd0-66cfff32f679/20UMGIM12176.rgb.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1499378108.jpg"
+  },
+  "catalog-696884422": {
+    "album": "Homework",
+    "artist": "Daft Punk",
+    "page": "https://music.apple.com/us/album/around-the-world/696884422",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Features115/v4/34/8d/c7/348dc71c-d75e-9baf-671a-994e9e74b018/dj.pimdxdmf.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-696884422.jpg"
+  },
+  "catalog-1151157609": {
+    "album": "Woman",
+    "artist": "Justice",
+    "page": "https://music.apple.com/us/album/safe-and-sound/1151157609",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/26/ed/e3/26ede311-5273-5927-3e41-deabd08f720f/5060421566818_cover.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1151157609.jpg"
+  },
+  "catalog-1603171516": {
+    "album": "Dawn FM",
+    "artist": "The Weeknd",
+    "page": "https://music.apple.com/us/album/take-my-breath/1603171516",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music126/v4/2f/22/a9/2f22a9a6-5af1-5846-a44e-ba016724ed69/21UM1IM58860.rgb.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1603171516.jpg"
+  },
+  "catalog-1440871397": {
+    "album": "Starboy",
+    "artist": "The Weeknd",
+    "page": "https://music.apple.com/us/album/i-feel-it-coming-feat-daft-punk/1440871397",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/e2/61/f8/e261f8c1-73db-9a7a-c89e-1068f19970e0/16UMGIM67863.rgb.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1440871397.jpg"
+  },
+  "catalog-1674216738": {
+    "album": "Hurry up, We're Dreaming",
+    "artist": "M83",
+    "page": "https://music.apple.com/us/album/outro/1674216738",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/73/c6/ed/73c6edb3-924c-27f0-28f8-1470906d6780/cover.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1674216738.jpg"
+  },
+  "catalog-705962680": {
+    "album": "Aleph",
+    "artist": "Gesaffelstein",
+    "page": "https://music.apple.com/us/album/aleph/705962680",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/1f/82/22/1f822220-b801-ed26-ee1b-9a77cf2357f4/825646397471.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-705962680.jpg"
+  },
+  "catalog-1771710587": {
+    "album": "Every Open Eye",
+    "artist": "CHVRCHES",
+    "page": "https://music.apple.com/us/album/clearest-blue/1771710587",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/46/e6/72/46e67229-774d-567b-8d40-d6d4018ca685/0044003182189_Cover.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1771710587.jpg"
+  },
+  "catalog-1771718231": {
+    "album": "Every Open Eye (Extended Edition)",
+    "artist": "CHVRCHES",
+    "page": "https://music.apple.com/us/album/leave-a-trace/1771718231",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/33/b2/33/33b23327-3d8f-a131-91d7-015d358ae01a/0044003186804_Cover.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1771718231.jpg"
+  },
+  "catalog-1771703110": {
+    "album": "The Bones of What You Believe",
+    "artist": "CHVRCHES",
+    "page": "https://music.apple.com/us/album/recover/1771703110",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/e8/91/31/e89131bc-2c49-9c46-daa3-fc155809fe0e/0044003171008_Cover.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1771703110.jpg"
+  },
+  "catalog-535907905": {
+    "album": "Shrines",
+    "artist": "Purity Ring",
+    "page": "https://music.apple.com/us/album/obedear/535907905",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music116/v4/94/a3/53/94a3534b-38fb-3cc0-6cb1-3a573d2ea14d/652637321869.png/600x600bb.jpg",
+    "path": "/demo-covers/catalog-535907905.jpg"
+  },
+  "catalog-953409287": {
+    "album": "Another Eternity",
+    "artist": "Purity Ring",
+    "page": "https://music.apple.com/us/album/begin-again/953409287",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/ac/a3/e6/aca3e603-e59d-7957-5b2e-1a77dc9da5a3/cover.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-953409287.jpg"
+  },
+  "catalog-1440894748": {
+    "album": "Trilogy",
+    "artist": "Carpenter Brut",
+    "page": "https://music.apple.com/us/album/roller-mobster/1440894748",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/f3/67/b9/f367b929-406d-ef08-6b62-a4322c62c8da/00602557606782.rgb.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1440894748.jpg"
+  },
+  "catalog-1758759164": {
+    "album": "Endless Summer",
+    "artist": "The Midnight",
+    "page": "https://music.apple.com/us/album/vampires/1758759164",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/35/8c/46/358c46cf-6a73-7345-3541-ecdf4119efc9/859717991428_cover.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1758759164.jpg"
+  },
+  "catalog-1758760030": {
+    "album": "Days of Thunder",
+    "artist": "The Midnight",
+    "page": "https://music.apple.com/us/album/days-of-thunder/1758760030",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/5a/0f/a4/5a0fa413-e1b8-7cb6-7ecc-7c22e656d33d/194271526137_cover.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1758760030.jpg"
+  },
+  "catalog-998104509": {
+    "album": "GUNSHIP",
+    "artist": "GUNSHIP",
+    "page": "https://music.apple.com/us/album/fly-for-your-life/998104509",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/14/82/82/14828219-fd3d-531f-2f05-8a40083fb07f/889326256694_Cover.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-998104509.jpg"
+  },
+  "catalog-1406634586": {
+    "album": "Dark All Day",
+    "artist": "GUNSHIP",
+    "page": "https://music.apple.com/us/album/dark-all-day-feat-tim-cappello-indiana/1406634586",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/d6/fa/e8/d6fae8a6-e964-13ba-ee25-d238399da8a2/192641133589_Cover.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1406634586.jpg"
+  },
+  "catalog-1842390497": {
+    "album": "Atlas",
+    "artist": "FM-84",
+    "page": "https://music.apple.com/us/album/arcade-summer/1842390497",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/82/9a/7f/829a7f0d-7819-5e2a-7976-5a24e68450ae/872132121799_cover.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1842390497.jpg"
+  },
+  "catalog-679488051": {
+    "album": "Galactic Melt",
+    "artist": "Com Truise",
+    "page": "https://music.apple.com/us/album/brokendate/679488051",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/90/a7/76/90a7760a-0b19-ab65-a646-26136eadb892/cover.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-679488051.jpg"
+  },
+  "catalog-1218824738": {
+    "album": "Iteration",
+    "artist": "Com Truise",
+    "page": "https://music.apple.com/us/album/propagation/1218824738",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/c6/fd/9c/c6fd9cdf-8b56-caf6-78fe-e63ff5ad5f28/804297829623.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1218824738.jpg"
+  },
+  "catalog-679252017": {
+    "album": "In Decay",
+    "artist": "Com Truise",
+    "page": "https://music.apple.com/us/album/open/679252017",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music114/v4/69/8a/59/698a591f-db6e-39e6-517c-39c8fdc3cb3e/cover.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-679252017.jpg"
+  },
+  "catalog-1451077320": {
+    "album": "Kiasmos",
+    "artist": "Kiasmos",
+    "page": "https://music.apple.com/us/album/thrown/1451077320",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/60/f2/63/60f263ac-0348-2f85-30e7-2e4fb6655724/4050486109618_cover.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1451077320.jpg"
+  },
+  "catalog-1240586047": {
+    "album": "Bicep",
+    "artist": "Bicep",
+    "page": "https://music.apple.com/us/album/glue/1240586047",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music122/v4/79/cf/44/79cf445f-4b04-7a27-54a4-cdf57cf1d6ac/5054429119084.png/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1240586047.jpg"
+  },
+  "catalog-1531704818": {
+    "album": "Isles",
+    "artist": "Bicep",
+    "page": "https://music.apple.com/us/album/atlas/1531704818",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music116/v4/69/12/b0/6912b05d-b728-f9f6-cb2b-ba99082c9123/5054429139228.png/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1531704818.jpg"
+  },
+  "catalog-1169245868": {
+    "album": "Migration",
+    "artist": "Bonobo",
+    "page": "https://music.apple.com/us/album/kerala/1169245868",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music126/v4/be/f1/d0/bef1d063-ed73-bd7d-3899-2217762cdcda/5054429005721.png/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1169245868.jpg"
+  },
+  "catalog-611171778": {
+    "album": "The North Borders",
+    "artist": "Bonobo",
+    "page": "https://music.apple.com/us/album/cirrus/611171778",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/dd/ec/66/ddec66e4-9034-4409-f310-ee87da874487/5021392806198.png/600x600bb.jpg",
+    "path": "/demo-covers/catalog-611171778.jpg"
+  },
+  "catalog-416292276": {
+    "album": "Black Sands",
+    "artist": "Bonobo",
+    "page": "https://music.apple.com/us/album/kiara/416292276",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/c1/bf/c2/c1bfc295-9310-5e5d-0322-7deee6dd4128/5021392584195.png/600x600bb.jpg",
+    "path": "/demo-covers/catalog-416292276.jpg"
+  },
+  "catalog-793928184": {
+    "album": "Awake",
+    "artist": "Tycho",
+    "page": "https://music.apple.com/us/album/montana/793928184",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/7b/b8/d6/7bb8d640-dfdc-1473-3948-4060af9a3819/804297820828.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-793928184.jpg"
+  },
+  "catalog-679251532": {
+    "album": "Dive",
+    "artist": "Tycho",
+    "page": "https://music.apple.com/us/album/a-walk/679251532",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/46/be/ed/46beed8a-5d0f-1077-cbeb-aace15e69f44/cover.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-679251532.jpg"
+  },
+  "catalog-1240361817": {
+    "album": "A Moment Apart",
+    "artist": "ODESZA",
+    "page": "https://music.apple.com/us/album/line-of-sight-feat-mansionair-wynne/1240361817",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/eb/d4/22/ebd422d1-b959-dd5d-b395-f9413044cff1/5054429119183.png/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1240361817.jpg"
+  },
+  "catalog-897564246": {
+    "album": "In Return",
+    "artist": "ODESZA",
+    "page": "https://music.apple.com/us/album/say-my-name-feat-zyra/897564246",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music112/v4/76/5d/55/765d554e-e421-0299-783f-d78ad559d5e5/5021392959191.png/600x600bb.jpg",
+    "path": "/demo-covers/catalog-897564246.jpg"
+  },
+  "catalog-872853887": {
+    "album": "Jungle",
+    "artist": "Jungle",
+    "page": "https://music.apple.com/us/album/busy-earnin/872853887",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music122/v4/c1/05/54/c105548a-9e3b-071f-05a8-01bc689c1b37/634904164768.png/600x600bb.jpg",
+    "path": "/demo-covers/catalog-872853887.jpg"
+  },
+  "catalog-1409552051": {
+    "album": "For Ever",
+    "artist": "Jungle",
+    "page": "https://music.apple.com/us/album/casio/1409552051",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/8f/74/f7/8f74f7e6-c436-6064-3302-9ac833a0c331/191404092750.png/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1409552051.jpg"
+  },
+  "catalog-1555318008": {
+    "album": "Loving In Stereo",
+    "artist": "Jungle",
+    "page": "https://music.apple.com/us/album/keep-moving/1555318008",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/1a/ef/f5/1aeff531-e697-3c07-7eaf-d209563888ad/5056167160984_1.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1555318008.jpg"
+  },
+  "catalog-1420157166": {
+    "album": "Parcels",
+    "artist": "Parcels",
+    "page": "https://music.apple.com/us/album/lightenup/1420157166",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/83/80/45/83804592-d6b6-2289-8cbf-57ba91496613/5060525437427_cover.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1420157166.jpg"
+  },
+  "catalog-1484102924": {
+    "album": "Overnight - Single",
+    "artist": "Parcels",
+    "page": "https://music.apple.com/us/album/overnight/1484102924",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/7f/18/a7/7f18a741-de7a-47d0-2da8-8a54480179bc/5060686505560_cover.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1484102924.jpg"
+  },
+  "catalog-1483283927": {
+    "album": "Goodie Bag - Single",
+    "artist": "Still Woozy",
+    "page": "https://music.apple.com/us/album/goodie-bag/1483283927",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/86/97/5a/86975af8-8f6b-b15f-8b4d-c105b575ac64/19UMGIM91975.rgb.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1483283927.jpg"
+  },
+  "catalog-1483298321": {
+    "album": "Lately - EP",
+    "artist": "Still Woozy",
+    "page": "https://music.apple.com/us/album/habit/1483298321",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music113/v4/ef/09/e5/ef09e583-7d30-f36e-4062-b0f17e11110c/19UMGIM92376.rgb.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1483298321.jpg"
+  },
+  "catalog-1453895416": {
+    "album": "Hyperion",
+    "artist": "Gesaffelstein & The Weeknd",
+    "page": "https://music.apple.com/us/album/lost-in-the-fire/1453895416",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music116/v4/48/5e/f9/485ef94d-5b93-9e23-6899-017b9771c744/886447435878.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1453895416.jpg"
+  },
+  "catalog-1663629922": {
+    "album": "We Are Your Friends",
+    "artist": "Simian & Justice",
+    "page": "https://music.apple.com/us/album/we-are-your-friends-justice-vs-simian/1663629922",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music113/v4/d6/23/ca/d623ca0b-a7bf-1837-6b01-484c7e7ca31f/5400863122140_cover.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1663629922.jpg"
+  },
+  "catalog-1058740883": {
+    "album": "Bloom",
+    "artist": "RÜFÜS DU SOL",
+    "page": "https://music.apple.com/us/album/you-were-right/1058740883",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/aa/5f/d8/aa5fd889-4c2e-7e24-e8b2-428beaf9d4fe/SWEATA009.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1058740883.jpg"
+  },
+  "catalog-1434579572": {
+    "album": "SOLACE",
+    "artist": "RÜFÜS DU SOL",
+    "page": "https://music.apple.com/us/album/underwater/1434579572",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/14/50/c8/1450c820-3cb3-ac9f-1bbf-0137d4344452/093624903192.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1434579572.jpg"
+  },
+  "catalog-1881381523": {
+    "album": "Ylang Ylang - EP",
+    "artist": "FKJ & ((( O )))",
+    "page": "https://music.apple.com/us/album/ylang-ylang/1881381523",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/bb/b7/ab/bbb7aba4-e046-a42c-49e3-d5ebb39c7e32/112178.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1881381523.jpg"
+  },
+  "catalog-1316404325": {
+    "album": "201 (Special Edition)",
+    "artist": "The Black Skirts",
+    "page": "https://music.apple.com/us/album/antifreeze/1316404325",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music128/v4/59/85/0b/59850bdc-1a15-bbe8-68b2-63a11e639f22/201_cover.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1316404325.jpg"
+  },
+  "catalog-1698534871": {
+    "album": "Our Love is Great",
+    "artist": "Yerin Baek",
+    "page": "https://music.apple.com/us/album/maybe-its-not-our-fault/1698534871",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music116/v4/c1/64/9b/c1649bef-ff89-77c3-9500-61aabe6daf7c/738676857252_Cover.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1698534871.jpg"
+  },
+  "catalog-1641539616": {
+    "album": "Everything I Know About Love",
+    "artist": "Laufey",
+    "page": "https://music.apple.com/us/album/falling-behind/1641539616",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music112/v4/a4/e7/5e/a4e75e8c-2875-4576-12d8-ac8d2f865815/5056167175841_1.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1641539616.jpg"
+  },
+  "catalog-1666672725": {
+    "album": "French Kiwi Juice",
+    "artist": "FKJ & ((( O )))",
+    "page": "https://music.apple.com/us/album/vibin-out/1666672725",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music113/v4/31/78/e3/3178e3e3-0e2c-17cd-e7a7-a44b6efef202/cover.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1666672725.jpg"
+  },
+  "catalog-1666509485": {
+    "album": "Time for a Change - EP",
+    "artist": "FKJ",
+    "page": "https://music.apple.com/us/album/so-much-to-me/1666509485",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music123/v4/09/2d/f1/092df1ff-5f1f-433e-cff0-599a32f3fcf1/cover.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1666509485.jpg"
+  },
+  "catalog-1792666546": {
+    "album": "MAYHEM",
+    "artist": "Lady Gaga & Bruno Mars",
+    "page": "https://music.apple.com/us/album/die-with-a-smile/1792666546",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/be/11/d1/be11d187-1aeb-99f3-01c5-597ed65cdb6a/25UMGIM07433.rgb.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1792666546.jpg"
+  },
+  "catalog-1146195596": {
+    "album": "Blonde",
+    "artist": "Frank Ocean",
+    "page": "https://music.apple.com/us/album/nights/1146195596",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/bb/45/68/bb4568f3-68cd-619d-fbcb-4e179916545d/BlondCover-Final.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1146195596.jpg"
+  },
+  "catalog-1440765580": {
+    "album": "channel ORANGE",
+    "artist": "Frank Ocean",
+    "page": "https://music.apple.com/us/album/thinkin-bout-you/1440765580",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/04/f8/63/04f863fc-2852-604f-c910-a97ac069506b/12UMGIM40339.rgb.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1440765580.jpg"
+  },
+  "catalog-1799080774": {
+    "album": "Freudian",
+    "artist": "Daniel Caesar",
+    "page": "https://music.apple.com/us/album/best-part-feat-h-e-r/1799080774",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/b6/cd/1a/b6cd1a5b-83af-a1e2-0ad7-ea530fcf2522/859722261219.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1799080774.jpg"
+  },
+  "catalog-1799080474": {
+    "album": "Get You - Single",
+    "artist": "Daniel Caesar",
+    "page": "https://music.apple.com/us/album/japanese-denim/1799080474",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/03/6b/41/036b4137-ffe3-0006-9d32-3e6bdc07172d/859718291305.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1799080474.jpg"
+  },
+  "catalog-1671667136": {
+    "album": "NEVER ENOUGH",
+    "artist": "Daniel Caesar",
+    "page": "https://music.apple.com/us/album/always/1671667136",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music126/v4/24/4f/ec/244fec58-ea20-e0b0-eea6-e06c6aff948b/23UMGIM14483.rgb.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1671667136.jpg"
+  },
+  "catalog-1658650093": {
+    "album": "SOS",
+    "artist": "SZA",
+    "page": "https://music.apple.com/us/album/snooze/1658650093",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music122/v4/62/93/13/6293132e-20ff-67ab-3d1f-96bb6797a6ba/196589564955.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1658650093.jpg"
+  },
+  "catalog-1239977075": {
+    "album": "Ctrl",
+    "artist": "SZA",
+    "page": "https://music.apple.com/us/album/broken-clocks/1239977075",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/a2/bc/ad/a2bcad46-b389-4be1-8bac-5a0959b0b8e4/886446548449.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1239977075.jpg"
+  },
+  "catalog-211429791": {
+    "album": "Diamond Life",
+    "artist": "Sade",
+    "page": "https://music.apple.com/us/album/smooth-operator/211429791",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music/51/d0/6a/mzi.zxcjkymx.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-211429791.jpg"
+  },
+  "catalog-604770232": {
+    "album": "The Best of Sade",
+    "artist": "Sade",
+    "page": "https://music.apple.com/us/album/kiss-of-life/604770232",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/5f/ad/2a/5fad2aca-d998-701d-7b27-c074339d5fd0/886972262628.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-604770232.jpg"
+  },
+  "catalog-193532145": {
+    "album": "Lovers Rock",
+    "artist": "Sade",
+    "page": "https://music.apple.com/us/album/by-your-side/193532145",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/85/d9/05/85d9053a-565b-723d-0823-c0c2a0dbff87/mzi.ifrkjjuc.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-193532145.jpg"
+  },
+  "catalog-1624173298": {
+    "album": "Come Away with Me (Remastered)",
+    "artist": "Norah Jones",
+    "page": "https://music.apple.com/us/album/turn-me-on/1624173298",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music122/v4/a0/a0/8d/a0a08df2-390b-ad05-0d32-6673bcf7a2a9/13UABIM02784.rgb.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1624173298.jpg"
+  },
+  "catalog-721258539": {
+    "album": "Feels Like Home",
+    "artist": "Norah Jones",
+    "page": "https://music.apple.com/us/album/sunrise/721258539",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/16/bf/bd/16bfbd53-3e83-c840-bdf6-053326af381b/05099946404855.rgb.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-721258539.jpg"
+  },
+  "catalog-1078914477": {
+    "album": "Modal Soul",
+    "artist": "Nujabes",
+    "page": "https://music.apple.com/us/album/reflection-eternal/1078914477",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/79/7e/a1/797ea11f-b90c-c4c5-f874-6a6ccd2c22a7/HPD5.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1078914477.jpg"
+  },
+  "catalog-1721842998": {
+    "album": "Samurai Champloo Music Record Departure",
+    "artist": "Nujabes",
+    "page": "https://music.apple.com/us/album/aruarian-dance/1721842998",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music116/v4/be/59/2b/be592b54-496f-bd59-9e46-49fa2f45a717/VICL-61411.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1721842998.jpg"
+  },
+  "catalog-1608122086": {
+    "album": "IV",
+    "artist": "BADBADNOTGOOD",
+    "page": "https://music.apple.com/us/album/speaking-gently/1608122086",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music116/v4/cf/7a/c1/cf7ac163-867a-3d6a-6613-abb7d594aad0/196626360007.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1608122086.jpg"
+  },
+  "catalog-1397175439": {
+    "album": "Café del Mar, Vol. 24",
+    "artist": "BADBADNOTGOOD",
+    "page": "https://music.apple.com/us/album/in-your-eyes/1397175439",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/12/c1/1d/12c11ddd-c0f3-708a-65aa-c1bcf2db1c0d/8431042030137.png/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1397175439.jpg"
+  },
+  "catalog-1683439010": {
+    "album": "Black Classical Music",
+    "artist": "Yussef Dayes",
+    "page": "https://music.apple.com/us/album/tioga-pass-feat-rocco-palladino/1683439010",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music126/v4/d4/21/b3/d421b356-6a90-dbad-de33-cfe591eb32e6/075597903331.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1683439010.jpg"
+  },
+  "catalog-716753527": {
+    "album": "Black Radio",
+    "artist": "Robert Glasper Experiment",
+    "page": "https://music.apple.com/us/album/afro-blue-feat-erykah-badu/716753527",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music116/v4/2f/d7/e6/2fd7e69c-d339-050a-cbe8-80295d68cfd0/13UABIM02211.rgb.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-716753527.jpg"
+  },
+  "catalog-715554859": {
+    "album": "Ah Yeah (feat. Musiq Soulchild & Chrisette Michele) - Single",
+    "artist": "Robert Glasper Experiment, Musiq Soulchild & Chrisette Michele",
+    "page": "https://music.apple.com/us/album/ah-yeah-feat-musiq-soulchild-chrisette-michele/715554859",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/e6/9e/86/e69e86d2-f72d-3482-90a3-720cc3461682/05099930133853.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-715554859.jpg"
+  },
+  "catalog-1444063061": {
+    "album": "Brown Sugar",
+    "artist": "D'Angelo",
+    "page": "https://music.apple.com/us/album/brown-sugar/1444063061",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music122/v4/8d/aa/fa/8daafacd-6c82-37f8-d0dd-48b2fd41edcb/16UMGIM86256.rgb.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1444063061.jpg"
+  },
+  "catalog-950764300": {
+    "album": "Black Messiah",
+    "artist": "D’Angelo and The Vanguard",
+    "page": "https://music.apple.com/us/album/really-love/950764300",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music114/v4/01/38/24/01382463-de8c-2a33-f8fe-fb3a008dfc87/886444977449.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-950764300.jpg"
+  },
+  "catalog-1440842296": {
+    "album": "Brown Sugar",
+    "artist": "D'Angelo",
+    "page": "https://music.apple.com/us/album/lady/1440842296",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music112/v4/3d/b7/01/3db701ab-9511-83e3-54d6-a6ccfcf560a2/13UABIM50177.rgb.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1440842296.jpg"
+  },
+  "catalog-1440837269": {
+    "album": "Baduizm",
+    "artist": "Erykah Badu",
+    "page": "https://music.apple.com/us/album/on-on/1440837269",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music122/v4/86/ce/c1/86cec101-bf1f-c565-e794-656b108f3ee1/15UMGIM77651.rgb.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1440837269.jpg"
+  },
+  "catalog-1440755899": {
+    "album": "Mama's Gun",
+    "artist": "Erykah Badu",
+    "page": "https://music.apple.com/us/album/bag-lady/1440755899",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music112/v4/63/9c/05/639c0568-e961-2146-f4cb-819a1f9226d3/06UMGIM01547.rgb.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1440755899.jpg"
+  },
+  "catalog-1257093380": {
+    "album": "Wallflower",
+    "artist": "Jordan Rakei",
+    "page": "https://music.apple.com/us/album/sorceress/1257093380",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/99/8f/83/998f8303-c973-56e0-078a-1e34a033d167/5054429119657.png/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1257093380.jpg"
+  },
+  "catalog-1540037358": {
+    "album": "Cloak",
+    "artist": "Jordan Rakei",
+    "page": "https://music.apple.com/us/album/talk-to-me/1540037358",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/d8/65/b1/d865b1a9-9fb0-6c0a-27b2-787b9160b88c/859743553478_cover.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1540037358.jpg"
+  },
+  "catalog-1517262368": {
+    "album": "Blue Note Re:imagined",
+    "artist": "Jordan Rakei",
+    "page": "https://music.apple.com/us/album/wind-parade/1517262368",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/e8/73/e3/e873e355-4b97-5019-4180-7f9ffa6cce9a/20UMGIM34503.rgb.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1517262368.jpg"
+  },
+  "catalog-986317401": {
+    "album": "Blood",
+    "artist": "Lianne La Havas",
+    "page": "https://music.apple.com/us/album/green-gold/986317401",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music7/v4/4a/1e/6b/4a1e6b00-8429-dcbc-0593-129dd4659c02/825646101566.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-986317401.jpg"
+  },
+  "catalog-1545263511": {
+    "album": "Lianne La Havas",
+    "artist": "Lianne La Havas",
+    "page": "https://music.apple.com/us/album/bittersweet/1545263511",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/b7/b5/1b/b7b51b05-3001-ceee-7a18-4b70a3b9c94f/190295048013.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1545263511.jpg"
+  },
+  "catalog-1504276245": {
+    "album": "Rose in the Dark",
+    "artist": "Cleo Sol",
+    "page": "https://music.apple.com/us/album/rose-in-the-dark/1504276245",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/a4/d3/aa/a4d3aadc-014d-7cdc-5e8b-ec0dcf2bf12b/859734840785_cover.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1504276245.jpg"
+  },
+  "catalog-1676252821": {
+    "album": "Messy",
+    "artist": "Olivia Dean",
+    "page": "https://music.apple.com/us/album/dive/1676252821",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music116/v4/26/8d/bb/268dbb59-4df1-36c3-525e-8d24c921ee25/23UMGIM04594.rgb.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1676252821.jpg"
+  },
+  "catalog-1576791264": {
+    "album": "Growth - EP",
+    "artist": "Olivia Dean",
+    "page": "https://music.apple.com/us/album/slowly/1576791264",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/e2/bc/9c/e2bc9cf9-92d7-3f24-1034-c1442264cf2a/21UMGIM47969.rgb.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1576791264.jpg"
+  },
+  "catalog-1440926168": {
+    "album": "Everybody Digs Bill Evans (Keepnews Collection)",
+    "artist": "Bill Evans",
+    "page": "https://music.apple.com/us/album/peace-piece/1440926168",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/3a/7a/39/3a7a398f-28ab-9038-a372-40131b14256c/07UMGIM05289.rgb.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1440926168.jpg"
+  },
+  "catalog-1440791686": {
+    "album": "The Best of Bill Evans (Remastered)",
+    "artist": "Cannonball Adderley & Bill Evans",
+    "page": "https://music.apple.com/us/album/waltz-for-debby/1440791686",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music116/v4/b0/b5/b4/b0b5b462-99cf-d15c-e026-e6fabe5816fa/09CMGIM01568.rgb.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1440791686.jpg"
+  },
+  "catalog-1440864756": {
+    "album": "Chet Baker Sings",
+    "artist": "Chet Baker",
+    "page": "https://music.apple.com/us/album/my-funny-valentine/1440864756",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/2f/99/e5/2f99e569-3920-07ab-b29e-c2da9b50468d/16UMGIM49055.rgb.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1440864756.jpg"
+  },
+  "catalog-1445667726": {
+    "album": "I Put a Spell On You",
+    "artist": "Nina Simone",
+    "page": "https://music.apple.com/us/album/i-put-a-spell-on-you/1445667726",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music126/v4/18/db/05/18db0507-f276-d93d-a4a7-e856a3f1590a/13UAAIM08283.rgb.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-1445667726.jpg"
+  },
+  "catalog-268443092": {
+    "album": "Kind of Blue",
+    "artist": "Miles Davis",
+    "page": "https://music.apple.com/us/album/blue-in-green/268443092",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music/7f/9f/d6/mzi.vtnaewef.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-268443092.jpg"
+  },
+  "catalog-266601952": {
+    "album": "A Giant Step In Jazz",
+    "artist": "John Coltrane",
+    "page": "https://music.apple.com/us/album/naima/266601952",
+    "image": "https://is1-ssl.mzstatic.com/image/thumb/Music/35/b9/37/mzi.yzckktka.jpg/600x600bb.jpg",
+    "path": "/demo-covers/catalog-266601952.jpg"
   }
 }
