@@ -16,6 +16,7 @@ import { useAuth } from '../auth/AuthContext';
 import { useTasteData } from '../context/TasteDataContext';
 import SharedMapCanvas from '../share/SharedMapCanvas';
 import SpectraShareDialog from '../share/SpectraShareDialog';
+import MapViewExport from '../share/MapViewExport.jsx';
 import { buildMobileMapModel, mobileDiscoveryQuery } from '../taste/mobileMapModel';
 import { isDemoTaste } from '../taste/tasteStorage';
 import { loadReflection, reflectionKey } from '../reflection/reflectionStorage';
@@ -180,7 +181,7 @@ function MobileMapExplorer({ requestedStar }) {
             <Link className="public-map-home" to="/" aria-label={translate("SPECTRA 홈")}><SpectraLogo decorative /></Link>
             <Link className={`mtm-save-state ${cloudSaveStatus}`} aria-label={saveLabel} title={saveLabel} to={`/auth/login?returnTo=${encodeURIComponent(location.pathname + location.search)}`}><i /><span className="mtm-save-label-full">{saveLabel}</span><span className="mtm-save-label-compact" aria-hidden="true">{compactSaveLabel}</span></Link>
             <LanguageSwitcher className="mtm-language-switcher" compact />
-            <details ref={menuRef} className="mtm-more-menu" onKeyDown={event => { if (event.key === 'Escape') { event.stopPropagation(); menuRef.current.open = false; menuRef.current.querySelector('summary').focus(); } }}><summary aria-label={en ? 'More options' : '더 보기'}>···</summary><div className="mtm-more-panel"><AccountButton lang={lang} /><Link to="/" onClick={() => { menuRef.current.open = false; }}><MobileMusicIcon name="upload" />{en ? 'Import music' : '음악 가져오기'}</Link><HelpCenter inMenu onOpened={() => { menuRef.current.open = false; }} /></div></details>
+            <details ref={menuRef} className="mtm-more-menu" onKeyDown={event => { if (event.key === 'Escape') { event.stopPropagation(); menuRef.current.open = false; menuRef.current.querySelector('summary').focus(); } }}><summary aria-label={en ? 'More options' : '더 보기'}>···</summary><div className="mtm-more-panel"><AccountButton lang={lang} /><MapViewExport className="mtm-png-entry" getCaptureTarget={() => pageRef.current?.querySelector('.public-map-canvas')} lang={lang} disabled={tab !== 'map'} showLabel /><Link to="/" onClick={() => { menuRef.current.open = false; }}><MobileMusicIcon name="upload" />{en ? 'Import music' : '음악 가져오기'}</Link><HelpCenter inMenu onOpened={() => { menuRef.current.open = false; }} /></div></details>
         </header>
         <div className="mtm-map-content" hidden={tab !== 'map'}>
         <section className="mtm-intro"><div className="mtm-intro-heading"><div><span className="public-map-eyebrow">{en ? "Your own music collection" : "음악으로 채운 나만의 공간"}</span><h1>{en ? 'My map' : '내 지도'} <span>{model.library.length.toLocaleString()}{en ? ' tracks' : '곡'}</span></h1></div><button className="mtm-share-entry" type="button" aria-label={t('내 취향 지도 공유하기', 'Share my taste map')} aria-haspopup="dialog" onClick={() => setShareChannel('card')} disabled={!model.library.length}><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 15V3m-4 4 4-4 4 4M5 13v7h14v-7" /></svg><span>{t('공유', 'Share')}</span></button></div><p>{status === 'enriching' ? translate("곡 정보를 연결하고 있어요 · {0} / {1}", [progress.done, progress.total]) : t('좋아하는 음악에서, 다음 취향으로.', 'Your favorite music, your next discovery.')}</p></section>

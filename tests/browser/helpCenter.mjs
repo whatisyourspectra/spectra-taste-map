@@ -87,7 +87,7 @@ try {
                 if (step === 1 || step === 3) await page.screenshot({ path: `output/review/help-center/${lang}-${width}-tour-${step + 1}.png` });
                 if (lang === 'en') assert.doesNotMatch(await tour.innerText(), /[가-힣]/);
                 if (step === 4) {
-                    await page.locator('.tm-dock-actions .tm-dock-action').last().click();
+                    await page.locator('.tm-dock-actions').getByRole('button', { name: /^(선택|Select)$/ }).click();
                     const name = page.locator('#tm-custom-group-name');
                     await name.fill('Night');
                     await name.press('ArrowLeft');

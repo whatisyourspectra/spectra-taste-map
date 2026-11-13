@@ -1,0 +1,11 @@
+.map-view-export-dialog { width: min(760px, calc(100vw - 32px)); }
+.map-view-export-dialog .spectra-share-description > span { color: #bfa5e5; font-size: 11px; }
+.map-view-export-dialog .spectra-share-preview { padding: 8px; }
+.map-view-export-dialog .spectra-share-preview > img { width: auto; height: auto; max-height: 58dvh; max-width: 100%; object-fit: contain; }
+.map-view-export-dialog .spectra-share-primary { background: linear-gradient(115deg, #d3b2ec, #b69cf2); color: #251833; }
+.map-view-export-dialog .spectra-share-styles > button[aria-pressed=true] { background: #b99be524; border-color: #c6a1ee55; color: #ebd9fa; }
+.map-view-export-dialog .spectra-share-styles > button:disabled { opacity: .5; cursor: wait; }
+.map-view-export-error { color: #e6b7ca; font-size: 12px; }
+.tm-dock-export:disabled { opacity: .4; cursor: wait; }
+.tm-dock-export > svg, .mtm-png-entry > svg { flex-shrink: 0; width: 18px; height: 18px; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+@media (max-width: 599px) { .map-view-export-dialog { width: 100%; } }

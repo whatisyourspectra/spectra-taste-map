@@ -94,7 +94,7 @@ try {
         }));
     });
     await page.reload();
-    await page.locator('.tm-dock-action').last().click();
+    await page.locator('.tm-dock-actions').getByRole('button', { name: /^(선택|Select)$/ }).click();
     await page.locator('.tm-saved-group-main').filter({ hasText: 'Regression group' }).click();
     await page.waitForFunction(() => document.querySelectorAll('.tm-bubble-item').length === 2);
     await page.waitForTimeout(700);

@@ -1,4 +1,4 @@
-/* Keep the actual buttons still and clickable; light and icons do the inviting. */
+/* Shared by demo and personal maps. Keep buttons still; light and icons invite. */
 .tm-axis-panel .tm-dock-action.demo-discovery-action,
 .ccp-card .ccp-action-chip.demo-discovery-action {
     position: relative;

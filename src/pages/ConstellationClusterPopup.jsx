@@ -26,7 +26,6 @@ export default function ConstellationClusterPopup({
     onAddTrack,
     onOpenTrack,
     lang = 'ko',
-    demoMode = false,
     highlightDiscovery = false,
     docked = false,
 }) {
@@ -271,13 +270,13 @@ export default function ConstellationClusterPopup({
                     {onExploreTrack && (
                         <button
                             type="button"
-                            className={`ccp-action-chip${demoMode && cluster ? ' demo-discovery-action' : ''}${highlightDiscovery && cluster ? ' is-demo-discovery-cued' : ''}`}
+                            className={`ccp-action-chip${cluster ? ' demo-discovery-action' : ''}${highlightDiscovery && cluster ? ' is-demo-discovery-cued' : ''}`}
                             disabled={!cluster}
                             onClick={onExploreTrack}
                             title={lang === 'en' ? 'Explore around track' : '이 곡 기준으로 탐색'}
                         >
                             <span className="demo-discovery-icon" aria-hidden="true">◎</span> {lang === 'en' ? 'Find similar songs' : '비슷한 곡 찾기'}
-                            {demoMode && <span className="demo-discovery-arrow" aria-hidden="true">↗</span>}
+                            {cluster && <span className="demo-discovery-arrow" aria-hidden="true">↗</span>}
                         </button>
                     )}
                 </div>

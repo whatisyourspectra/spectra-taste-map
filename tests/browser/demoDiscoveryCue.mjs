@@ -94,10 +94,18 @@ try {
     await page.close();
 
     const { page: personal, calls: personalCalls } = await open(false);
+    const personalNewMusic = personal.locator('.tm-dock-action').filter({ hasText: '새 음악 찾기' });
+    assert.ok(await personalNewMusic.evaluate(node => node.classList.contains('is-demo-discovery-cued')),
+        'Personal maps invite new-music discovery too');
+    await personal.mouse.move(700, 200);
+    assert.match(await personalNewMusic.evaluate(node => getComputedStyle(node).animationName), /demo-discovery-breathe/);
     await personal.locator('.tm-bubble-item .tm-bubble').first().dispatchEvent('click');
     await personal.locator('.ccp-card').waitFor();
     await personal.waitForTimeout(360);
     const personalPopup = personal.locator('.ccp-card');
+    const personalSimilar = personalPopup.getByRole('button', { name: /비슷한 곡 찾기/ });
+    assert.ok(await personalSimilar.evaluate(node => node.classList.contains('is-demo-discovery-cued')));
+    assert.equal(await personalSimilar.locator('.demo-discovery-arrow').count(), 1);
     for (const viewport of [{ width: 1440, height: 1000 }, { width: 1024, height: 640 }]) {
         await personal.setViewportSize(viewport);
         const box = await personalPopup.boundingBox();
@@ -108,13 +116,32 @@ try {
     const expanded = await personalPopup.boundingBox();
     assert.ok(expanded.y >= 16 && expanded.y + expanded.height <= 624, 'Expanded evidence stays inside a short screen');
     await personal.screenshot({ path: `${out}/centered-short-screen.png` });
-    assert.equal(await personal.locator('.demo-discovery-action').count(), 0, 'Personal maps retain their normal control styling');
+    assert.equal(await personal.locator('.demo-discovery-action').count(), 2, 'Personal maps share both discovery highlights');
     assert.equal(personalCalls.length, 0);
+    await personal.emulateMedia({ reducedMotion: 'reduce' });
+    assert.equal(await personalNewMusic.evaluate(node => node.getAnimations({ subtree: true }).length), 0);
+    assert.equal(await personalSimilar.evaluate(node => node.getAnimations({ subtree: true }).length), 0);
     await personal.keyboard.press('Escape');
     assert.equal(await personalPopup.count(), 0, 'Escape still closes the centered preview');
+    await personal.setViewportSize({ width: 1440, height: 1000 });
+    await personalNewMusic.click();
+    await personal.waitForFunction(() => document.querySelectorAll('.tm-discovery-song-list li').length === 2);
+    assert.ok(personalCalls.length > 0);
+    assert.equal(await personalNewMusic.evaluate(node => node.classList.contains('is-demo-discovery-cued')), false);
+    await personal.getByRole('button', { name: '추천 목록 닫기', exact: true }).click();
+    assert.equal(await personalNewMusic.evaluate(node => node.classList.contains('is-demo-discovery-cued')), false,
+        'Closing personal discovery does not restart its animation');
+    await personal.locator('.tm-bubble-item .tm-bubble').first().dispatchEvent('click');
+    await personalPopup.waitFor();
+    const beforePersonalSimilar = personalCalls.length;
+    await personalSimilar.focus();
+    await personalSimilar.press('Enter');
+    await personal.waitForFunction(() => !document.querySelector('.ccp-card .is-demo-discovery-cued'));
+    await personal.waitForFunction(() => document.querySelectorAll('.tm-discovery-song-list li').length === 2);
+    assert.ok(personalCalls.length > beforePersonalSimilar && personalCalls.at(-1).searchParams.get('seedTracks'));
     await personal.close();
     assert.deepEqual(errors, []);
-    console.log('Demo discovery cues passed: both controls are highlighted, pointer targets stay stable, clicks/Enter preserve discovery, used cues stop, reduced motion is static, and personal maps/API calls remain unchanged.');
+    console.log('Demo and personal discovery cues passed: both controls are highlighted, pointer targets stay stable, clicks/Enter preserve discovery, used cues stop, reduced motion is static, and visual cues never request recommendations.');
 } catch (error) {
     for (const context of browser.contexts()) for (const page of context.pages()) await page.screenshot({ path: `${out}/failure.png` }).catch(() => {});
     console.error('Page errors:', errors);

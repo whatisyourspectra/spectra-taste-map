@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
+import { partitionGenreTracks } from '../../src/taste/genreClustering.js';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const base = process.env.BASE_URL || 'http://127.0.0.1:5188';
 const server = process.env.START_VITE === '1' ? spawn(process.execPath, ['node_modules/vite/bin/vite.js', '--host', '127.0.0.1', '--port', new URL(base).port, '--strictPort'], { stdio: 'ignore' }) : null;
@@ -24,7 +25,11 @@ const frankTags = ['rnb', 'soul', 'hip-hop', 'r&b', 'neo-soul', 'alternative rnb
 const profiles = [frankTags, ['taiwanese indie', 'chinese indie', 'indie', 'indie pop'], ['japanese indie', 'indie', 'indie rock'], []];
 const tracks = profiles.flatMap((genres, group) => Array.from({ length: 12 }, (_, i) => ({
     id: `genre-qa-${group}-${i}`, name: `Fixture Song ${group}-${i}`, artists: group === 0 ? 'Frank Ocean' : `Fixture Artist ${group}`,
-    genres, spotifyGenres: genres, valence: .5, energy: .5, danceability: .5, acousticness: .3, instrumentalness: .1,
+    // Deliberately conflicting, empty and missing Spotify metadata must never
+    // replace the original Spectra classification or feature coordinates.
+    genres, spotifyGenres: i % 3 === 0 ? [] : i % 3 === 1 ? ['techno'] : undefined,
+    spotifyFeatures: { valence: .95, energy: .05 },
+    valence: .5, energy: .5, danceability: .5, acousticness: .3, instrumentalness: .1,
     coverUrl: '/demo-covers/currents.jpg',
 })));
 const page = await browser.newPage({ viewport: { width: 1600, height: 1100 }, reducedMotion: 'reduce' });
@@ -32,12 +37,28 @@ const errors = [];
 page.on('pageerror', error => errors.push(error.message));
 try {
     await page.addInitScript(tracks => {
+        window.clusterRequests = [];
+        window.layoutRequests = [];
+        const OriginalWorker = window.Worker;
+        window.Worker = class extends OriginalWorker {
+            constructor(url, options) {
+                super(url, options);
+                this.isCluster = String(url).includes('kmeansWorker');
+                this.isLayout = String(url).includes('bubbleLayoutWorker');
+            }
+            postMessage(data, ...rest) {
+                if (this.isCluster) window.clusterRequests.push(data);
+                if (this.isLayout) window.layoutRequests.push(data);
+                return super.postMessage(data, ...rest);
+            }
+        };
         sessionStorage.setItem('spectra:taste:v5', JSON.stringify({ tracks, mapId: 'genre-regression', featuresSource: 'lastfm', stats: {} }));
         localStorage.setItem('spectra:map-guide:v2:desktop', 'seen');
         // A stale cache must never be read by the new implementation.
         sessionStorage.setItem('taste-map-cluster-v5|stale', JSON.stringify({ assignments: tracks.map(() => 0) }));
     }, tracks);
     await page.route(/\/src\/auth\/supabaseClient\.js(?:\?.*)?$/, route => route.fulfill({ contentType: 'application/javascript', body: 'export const supabase=null;export function finishGoogleLogin(){return Promise.reject();}' }));
+    await page.route('**/api/**', route => route.fulfill({ json: { tracks: [] } }));
     await page.goto(`${base}/taste-map`);
     const chips = page.locator('.tm-map-tag-chip[data-region]');
     await page.waitForFunction(() => document.querySelectorAll('.tm-map-tag-chip[data-region]').length === 4);
@@ -55,6 +76,43 @@ try {
         [...document.querySelectorAll('.tm-bubble-item.cluster-focus')].every(node => node.dataset.bubbleId.startsWith('genre-qa-1-')));
     const cache = await page.evaluate(() => Object.keys(sessionStorage).filter(key => key.startsWith('taste-map-cluster-v6|')));
     assert.equal(cache.length, 1);
+    assert.ok(cache[0].includes('|s:lastfm|'), 'Both renderers use the Spectra cache namespace');
+    const expected = partitionGenreTracks(tracks);
+    const initial = await page.evaluate(key => ({
+        payload: JSON.parse(sessionStorage.getItem(key)).payload,
+        requests: window.clusterRequests.length,
+    }), cache[0]);
+    assert.deepEqual(initial.payload.assignments, expected.labels);
+    assert.deepEqual(await page.evaluate(() => window.clusterRequests.at(-1).tracks.map(track => track.genres)), tracks.map(track => track.genres));
+    // Keep a valid-looking obsolete Spotify cache to verify it cannot win when
+    // returning to the bubble renderer, even across a reload.
+    await page.evaluate(key => {
+        const stale = JSON.parse(sessionStorage.getItem(key));
+        stale.payload.assignments.fill(0);
+        stale.payload.centroids = [stale.payload.centroids[0]];
+        stale.payload.genreGroups = [{ key: 'techno', name: 'Techno', count: stale.payload.assignments.length }];
+        sessionStorage.setItem(key.replace('|s:lastfm|', '|s:spotify|'), JSON.stringify(stale));
+    }, cache[0]);
+    for (const view of ['constellation', 'spotify', 'constellation', 'spotify']) {
+        await page.locator(`[data-map-view=${view}]`).click();
+        await page.waitForFunction(view => document.querySelector(`[data-map-view=${view}]`)?.classList.contains('active'), view);
+        for (let id = 0; id < initial.payload.genreGroups.length; id++) {
+            const expectedIds = tracks.filter((_, index) => expected.labels[index] === id).map(track => track.id).sort();
+            await page.locator(`.tm-map-tag-chip[data-region="cluster-${id}"]`).click();
+            await page.waitForFunction(ids => {
+                const current = [...document.querySelectorAll('.tm-bubble-item.cluster-focus')].map(node => node.dataset.bubbleId).sort();
+                return JSON.stringify(current) === JSON.stringify(ids);
+            }, expectedIds);
+        }
+        assert.deepEqual((await chips.locator('.tm-map-tag-name').allTextContents()).sort(), names);
+        assert.equal(await page.evaluate(() => window.clusterRequests.length), initial.requests,
+            'Switching renderers reuses assignments without restarting clustering');
+        await page.locator('.tm-map-tag-chip--all').click();
+        await page.waitForFunction(count => window.layoutRequests.at(-1)?.tracks.length === count &&
+            window.layoutRequests.at(-1).tracks.every(track => track.valence === .5 && track.energy === .5), tracks.length);
+        assert.deepEqual(await page.evaluate(() => window.layoutRequests.at(-1).assignmentEntries),
+            tracks.map((track, index) => [track.id, expected.labels[index]]));
+    }
     await page.evaluate(key => {
         const oldKey = key.replace('cluster-v6', 'cluster-v5').replace('genre-partition-v2', 'genre-anchor-v1');
         const entry = JSON.parse(sessionStorage.getItem(key));
@@ -115,7 +173,7 @@ try {
     await mobile.screenshot({ path: `${output}/complete-mobile-tags.png` });
     await mobile.close(); await complete.close();
     assert.deepEqual(errors, []);
-    console.log('Complete genre partition passed: 15 tags, all 85 imported tracks including pending metadata, matching desktop/mobile counts, Frank Ocean separation, unknown selection and cached reload.');
+    console.log('Shared Spectra partition passed: repeated view switches preserve every membership and feature without reclustering; conflicting Spotify metadata and obsolete caches ignored; 15 tags cover all 85 imports, with matching desktop/mobile counts and cached reload.');
 } catch (error) {
     await page.screenshot({ path: `${output}/failure.png` });
     console.error(JSON.stringify({ errors, chips: await page.locator('.tm-map-tag-chip').allTextContents(), text: (await page.locator('body').innerText()).slice(0, 1800) }));
