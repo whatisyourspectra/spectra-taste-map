@@ -4,30 +4,67 @@
 
 .ccp-card {
     position: fixed;
-    bottom: 24px;
-    right: 24px;
-    width: 380px;
+    top: 50%;
+    left: 50%;
+    bottom: auto;
+    right: auto;
+    translate: -50% -50%;
+    box-sizing: border-box;
+    width: 460px;
     max-width: calc(100vw - 32px);
     max-height: calc(100dvh - 48px);
     overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
     z-index: 920;
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    padding: 16px;
-    background: rgba(11, 17, 33, 0.94);
+    gap: 16px;
+    padding: 22px;
+    background:
+        radial-gradient(ellipse at 0 0, color-mix(in srgb, var(--ccp-accent) 13%, transparent), transparent 52%) padding-box,
+        linear-gradient(155deg, #222336f5, #0c101cfb 62%) padding-box,
+        linear-gradient(145deg, #e3dcff66, color-mix(in srgb, var(--ccp-accent) 34%, #ffffff10) 30%, #ffffff08 62%, #b7d7ef33) border-box;
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
-    border: 1px solid rgba(255, 255, 255, 0.13);
-    border-radius: 14px;
+    border: 1px solid transparent;
+    border-radius: 28px;
     box-shadow:
-        0 24px 60px rgba(0, 0, 0, 0.72),
-        0 0 32px rgba(100, 150, 255, 0.16),
-        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+        0 0 0 100vmax #03050b30,
+        0 42px 100px -16px #000d,
+        0 12px 30px -12px color-mix(in srgb, var(--ccp-accent) 28%, transparent),
+        inset 0 1px 0 #ffffff1a,
+        inset 0 -1px 0 #0007;
     color: #f8fafc;
     animation: ccp-slide-up 320ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
     user-select: none;
+    transition: left 460ms cubic-bezier(.22,.8,.25,1), translate 460ms cubic-bezier(.22,.8,.25,1), width 360ms ease, padding 360ms ease, box-shadow 300ms ease;
 }
+
+.ccp-card > * { flex-shrink: 0; }
+
+/* Give the recommendation map its center back while keeping the seed handy. */
+.ccp-card.is-docked {
+    left: calc(100% - 24px);
+    translate: -100% -50%;
+    width: 360px;
+    max-height: calc(100dvh - 168px);
+    gap: 12px;
+    padding: 18px;
+    border-radius: 24px;
+    box-shadow:
+        0 0 0 100vmax #03050b00,
+        0 24px 64px -16px #000b,
+        0 8px 24px -12px color-mix(in srgb, var(--ccp-accent) 22%, transparent),
+        inset 0 1px 0 #ffffff1a,
+        inset 0 -1px 0 #0007;
+}
+.ccp-card.is-docked .ccp-constellation-canvas { height: 160px; }
+.ccp-card.is-docked .ccp-track-box { padding: 13px; gap: 12px; }
+.ccp-card.is-docked .ccp-track-cover { width: 46px; height: 46px; }
+.ccp-card.is-docked .ccp-track-name { font-size: 14px; }
+.ccp-card.is-docked .ccp-primary-actions { gap: 6px; }
+.ccp-card.is-docked .ccp-primary-actions button { padding-inline: 7px; font-size: 11px; }
 
 @keyframes ccp-slide-up {
     from {
@@ -45,13 +82,15 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 8px;
+    gap: 16px;
+    padding: 2px 2px 4px;
 }
 
 .ccp-badge-group {
     display: flex;
-    align-items: center;
-    gap: 8px;
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 7px;
     min-width: 0;
     flex: 1;
 }
@@ -60,16 +99,19 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 4px 10px;
+    padding: 6px 11px;
+    max-width: 100%;
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid var(--ccp-accent, #93c5fd);
+    background: linear-gradient(160deg, #ffffff12, #ffffff05);
+    border: 1px solid color-mix(in srgb, var(--ccp-accent) 58%, transparent);
     color: #ffffff;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 600;
     white-space: nowrap;
-    box-shadow: 0 0 12px rgba(147, 197, 253, 0.2);
+    box-shadow: 0 3px 10px #0003, inset 0 1px 0 #fff2;
 }
+
+.ccp-constellation-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 
 .ccp-symbol {
     font-size: 13px;
@@ -79,18 +121,23 @@
 
 .ccp-essence-text {
     font-size: 11px;
-    color: rgba(255, 255, 255, 0.6);
+    color: #a8abc0;
+    max-width: 100%;
+    padding-left: 2px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
 .ccp-close-btn {
-    width: 28px;
-    height: 28px;
+    flex: none;
+    align-self: flex-start;
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
-    border: none;
-    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid #ffffff14;
+    background: linear-gradient(155deg, #ffffff10, #ffffff03);
+    box-shadow: inset 0 1px 0 #ffffff0a, 0 4px 9px #0003;
     color: rgba(255, 255, 255, 0.75);
     display: flex;
     align-items: center;
@@ -110,19 +157,32 @@
 .ccp-constellation-canvas {
     position: relative;
     width: 100%;
-    height: 190px;
-    border-radius: 12px;
-    background: radial-gradient(circle at 50% 50%, rgba(20, 32, 60, 0.6) 0%, rgba(8, 12, 24, 0.85) 100%);
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    box-shadow: inset 0 4px 18px rgba(0, 0, 0, 0.42), inset 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 0 rgba(235, 242, 255, 0.06);
+    height: 248px;
+    border-radius: 20px;
+    background: radial-gradient(ellipse at 50% 78%, color-mix(in srgb, var(--ccp-accent) 10%, transparent), transparent 65%), linear-gradient(#080c17, #111728);
+    border: 1px solid #03050a;
+    box-shadow: inset 0 8px 18px #0007, inset 0 1px 2px #000c, 0 1px 0 #ffffff1c, 0 0 0 1px #ffffff05;
     overflow: hidden;
     display: grid;
     grid-template-rows: minmax(0, 1fr) auto;
     gap: 8px;
-    padding: 10px 10px 12px;
+    padding: 34px 14px 14px;
 }
 
+.ccp-constellation-canvas::before {
+    content: ''; position: absolute; inset: 55% -30% -15%; pointer-events: none;
+    background: linear-gradient(#b1a1d012 1px, transparent 1px), linear-gradient(90deg, #b1a1d012 1px, transparent 1px);
+    background-size: 28px 28px; transform: perspective(240px) rotateX(60deg); transform-origin: bottom;
+    mask-image: radial-gradient(ellipse, #0008, transparent 68%);
+}
+.ccp-scene-meta { position: absolute; inset: 14px 16px auto; display: flex; align-items: center; justify-content: space-between; gap: 12px; color: #989bb4; }
+.ccp-scene-meta > span { display: inline-flex; align-items: center; gap: 6px; font-size: 9px; letter-spacing: .06em; }
+.ccp-scene-meta i { width: 4px; height: 4px; border-radius: 50%; background: var(--ccp-accent); box-shadow: 0 0 8px var(--ccp-accent); }
+.ccp-scene-meta small { color: #81869d; font-size: 9px; font-variant-numeric: tabular-nums; }
+.ccp-sky-orbits { opacity: .16; }
+
 .ccp-constellation-svg {
+    position: relative;
     width: 100%;
     height: 100%;
     min-height: 0;
@@ -165,28 +225,31 @@
 .ccp-track-box {
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    padding: 12px;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.09);
-    border-radius: 12px;
-    box-shadow: 0 9px 22px -8px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(235, 242, 255, 0.08);
+    gap: 14px;
+    padding: 17px;
+    background: linear-gradient(145deg, #ffffff09, #ffffff02), #181d2c;
+    border: 1px solid #ffffff13;
+    border-radius: 20px;
+    box-shadow: 0 14px 25px -12px #000c, 0 3px 6px #0002, inset 0 1px 0 #ffffff16;
 }
 
 .ccp-track-info-row {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 14px;
+    padding: 1px 0 4px;
 }
 
 .ccp-track-cover {
-    width: 44px;
-    height: 44px;
-    border-radius: 8px;
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
     object-fit: cover;
     background: rgba(255, 255, 255, 0.08);
     border: 1px solid rgba(255, 255, 255, 0.12);
     flex-shrink: 0;
+    transform: translateY(-2px) rotate(-3deg);
+    box-shadow: 0 10px 16px -7px #000b, 0 0 0 4px #ffffff04;
 }
 
 .ccp-track-cover--fallback {
@@ -202,7 +265,7 @@
     min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 5px;
 }
 
 .ccp-track-eyebrow {
@@ -215,10 +278,13 @@
 
 .ccp-track-name {
     margin: 0;
-    font-size: 13px;
+    font-size: 15px;
     font-weight: 600;
     color: #ffffff;
-    white-space: nowrap;
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
     overflow: hidden;
     text-overflow: ellipsis;
     line-height: 1.3;
@@ -227,7 +293,7 @@
 .ccp-track-artist {
     margin: 0;
     font-size: 11px;
-    color: rgba(255, 255, 255, 0.55);
+    color: #a1a6bd;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -239,11 +305,11 @@
     align-items: center;
     justify-content: center;
     gap: 6px;
-    min-height: 44px;
+    min-height: 48px;
     padding: 8px 10px;
-    border-radius: 10px;
+    border-radius: 12px;
     border: 1px solid rgba(255, 255, 255, 0.2);
-    background: rgba(255, 255, 255, 0.07);
+    background: linear-gradient(155deg, #3b4052, #242a3c);
     color: #edf3ff;
     font-size: 12px;
     font-weight: 700;
@@ -275,16 +341,16 @@
     align-items: center;
     justify-content: center;
     gap: 6px;
-    min-height: 44px;
+    min-height: 48px;
     padding: 8px 10px;
-    border: 0;
-    border-radius: 10px;
-    background: linear-gradient(135deg, var(--ccp-accent, #3b82f6), #6366f1);
+    border: 1px solid #ffffff1c;
+    border-radius: 12px;
+    background: linear-gradient(120deg, #bb4f95, #7258cd);
     color: #fff;
     font-size: 12px;
     font-weight: 700;
     cursor: pointer;
-    box-shadow: 0 9px 20px -7px rgba(64, 77, 187, 0.62), inset 0 1px 0 rgba(255, 255, 255, 0.23);
+    box-shadow: 0 8px 18px -8px #9560d887, inset 0 1px 0 #ffffff42, inset 0 -2px 0 #0002;
 }
 
 .ccp-listen-btn:hover { filter: brightness(1.1); }
@@ -294,15 +360,15 @@
 .ccp-action-bar {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 7px;
     flex-wrap: wrap;
-    padding-top: 4px;
+    padding-top: 12px;
     border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .ccp-action-label {
     flex-basis: 100%;
-    color: rgba(255, 255, 255, 0.52);
+    color: #989db3;
     font-size: 10px;
     font-weight: 700;
     letter-spacing: 0.08em;
@@ -314,9 +380,9 @@
     gap: 4px;
     min-height: 36px;
     padding: 7px 10px;
-    border-radius: 6px;
+    border-radius: 9px;
     border: 1px solid rgba(255, 255, 255, 0.1);
-    background: rgba(255, 255, 255, 0.05);
+    background: linear-gradient(160deg, #ffffff0b, #ffffff03);
     color: rgba(255, 255, 255, 0.7);
     font-size: 11px;
     font-weight: 500;
@@ -341,21 +407,9 @@
     outline-offset: 2px;
 }
 
-/* Responsive adjustment for Mobile */
-@media (max-width: 640px) {
-    .ccp-card {
-        bottom: 16px;
-        right: 12px;
-        left: 12px;
-        width: auto;
-        max-width: none;
-        max-height: calc(100dvh - 32px);
-    }
-}
-
 @media (max-width: 699px) {
- .ccp-card { left: 8px; right: 8px; bottom: max(8px, env(safe-area-inset-bottom)); width: auto; max-width: none; max-height: 56dvh; padding: 14px; gap: 10px; border-radius: 22px 22px 16px 16px; }
- .ccp-card::before { content: ''; width: 36px; height: 4px; border-radius: 4px; background: #ffffff40; align-self: center; }
+ .ccp-card { width: min(380px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); padding: 14px; gap: 10px; border-radius: 22px; }
+ .ccp-card.is-docked { left: 50%; top: auto; bottom: max(84px, env(safe-area-inset-bottom)); translate: -50% 0; width: min(380px, calc(100vw - 32px)); max-height: 42dvh; padding: 14px; }
  .ccp-constellation-canvas { display: none; }
  .ccp-essence-text { display: none; }
  .ccp-constellation-pill { max-width: calc(100vw - 90px); }
@@ -368,7 +422,10 @@
  .ccp-action-bar { flex-wrap: wrap; }
  .ccp-action-chip { min-height: 40px; font-size: 13px; }
 }
-.ccp-evidence { margin: 0 18px 12px; border-top: 1px solid #b6c8ed18; padding-top: 10px; }
-.ccp-evidence > summary { cursor: pointer; color: #b5c7e2; font-size: 12px; padding: 6px 0; }
+.ccp-evidence { margin: 0 2px; border: 1px solid #ffffff08; padding: 0 13px; border-radius: 12px; background: #070a1226; box-shadow: inset 0 1px 3px #0002; }
+.ccp-evidence > summary { cursor: pointer; color: #b5b8ce; font-size: 11px; padding: 12px 0; }
 .ccp-evidence .tm-cluster-evidence { padding-top: 10px; }
 .ccp-constellation-canvas .ccp-display-name { font-size: 12px; color: #9bacc8; }
+@media (prefers-reduced-motion: reduce) {
+ .ccp-card, .ccp-pulse-ring { animation: none; transition: none; }
+}

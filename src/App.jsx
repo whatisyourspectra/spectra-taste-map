@@ -21,6 +21,7 @@ import SocialPage from './social/SocialPage';
 import SpectraLogo from './components/SpectraLogo';
 import { isDemoTaste } from './taste/tasteStorage';
 import './styles/mobileDesign.css';
+import DemoMapInvite from './components/DemoMapInvite';
 
 function AppInner({ onRestorePersonalMap }) {
   const { hasTaste, tracks, stats, cloudSyncing, importTracks, status, progress, error, reset } = useTasteData();
@@ -100,6 +101,7 @@ function LegacyMobileTasteRoute() {
 }
 
 function ResponsiveTasteMapRoute() {
+  const { tracks, stats, mapId } = useTasteData();
   const location = useLocation();
   const params = new URLSearchParams(location.search);
   const mobileDestination = ['map', 'today', 'discover'].includes(params.get('tab')) || params.get('view') === 'immersive';
@@ -120,7 +122,10 @@ function ResponsiveTasteMapRoute() {
     return () => mq.removeListener(onChange);
   }, []);
 
-  return <>{isMobile || mobileDestination ? <MobileMusicMap /> : <TasteMapPage />}{!isMobile && !mobileDestination && <MapOnboarding />}</>;
+  const showingMap = !['today', 'discover'].includes(params.get('tab'));
+  return <>{isMobile || mobileDestination ? <MobileMusicMap /> : <TasteMapPage />}{!isMobile && !mobileDestination && <MapOnboarding />}
+    {isDemoTaste({ tracks, stats }) && <DemoMapInvite key={mapId} enabled={showingMap} />}
+  </>;
 }
 
 function TasteSession() {

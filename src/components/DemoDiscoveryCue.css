@@ -1,0 +1,64 @@
+/* Keep the actual buttons still and clickable; light and icons do the inviting. */
+.tm-axis-panel .tm-dock-action.demo-discovery-action,
+.ccp-card .ccp-action-chip.demo-discovery-action {
+    position: relative;
+    isolation: isolate;
+    border: 1px solid #bca0ee5c;
+    background: linear-gradient(115deg, #b28aeb25, #ee91c51a);
+    color: #ecdefe;
+    box-shadow: inset 0 1px 0 #fff1, 0 2px 12px #b18be810;
+}
+.tm-axis-panel .tm-dock-action.demo-discovery-action > .demo-discovery-icon,
+.ccp-card .ccp-action-chip.demo-discovery-action > .demo-discovery-icon { color: #d2b4ff; }
+.tm-axis-panel .tm-dock-action.demo-discovery-action > .demo-discovery-arrow,
+.ccp-card .ccp-action-chip.demo-discovery-action > .demo-discovery-arrow {
+    display: inline-block; color: #efa2d1; font-size: 12px; margin-left: 2px;
+}
+.tm-axis-panel .tm-dock-action.is-demo-discovery-cued,
+.ccp-card .ccp-action-chip.is-demo-discovery-cued {
+    border-color: #cfadffbb;
+    background: linear-gradient(105deg, transparent 32%, #ffffff2b 47%, transparent 62%) -180% 0 / 240% 100% no-repeat,
+        linear-gradient(115deg, #b28aeb45, #ee91c530);
+    color: #fff5ff;
+    animation: demo-discovery-breathe 3.8s ease-in-out infinite, demo-discovery-sheen 7s ease-in-out infinite;
+}
+.is-demo-discovery-cued::after {
+    content: ''; position: absolute; inset: -4px; border: 1px solid #c9a3f44d;
+    border-radius: inherit; pointer-events: none;
+    animation: demo-discovery-ring 3.8s ease-out infinite;
+}
+.is-demo-discovery-cued > .demo-discovery-icon {
+    display: inline-block; transform-origin: center;
+    animation: demo-discovery-spark 3.8s ease-in-out infinite;
+}
+.is-demo-discovery-cued > .demo-discovery-arrow { animation: demo-discovery-nudge 3.8s ease-in-out infinite; }
+.tm-axis-panel .tm-dock-action.demo-discovery-action:is(:hover, :focus-visible),
+.ccp-card .ccp-action-chip.demo-discovery-action:is(:hover, :focus-visible) {
+    animation: none; transform: none; background: linear-gradient(115deg, #b28aeb60, #ee91c543);
+    border-color: #e0c3ff; color: #fff;
+    box-shadow: 0 0 0 3px #b998e51a, 0 0 24px #c09af133, inset 0 1px 0 #fff2;
+}
+.is-demo-discovery-cued:is(:hover, :focus-visible)::after,
+.is-demo-discovery-cued:is(:hover, :focus-visible) > .demo-discovery-icon,
+.is-demo-discovery-cued:is(:hover, :focus-visible) > .demo-discovery-arrow { animation: none; }
+.is-demo-discovery-cued:is(:hover, :focus-visible)::after { opacity: 0; }
+.tm-axis-panel .tm-dock-action.demo-discovery-action:active,
+.ccp-card .ccp-action-chip.demo-discovery-action:active { transform: scale(.97); }
+@keyframes demo-discovery-breathe {
+    0%, 100% { box-shadow: 0 0 0 0 #b68df01a, 0 0 12px #c699ed22, inset 0 1px 0 #fff2; }
+    45% { box-shadow: 0 0 0 3px #b68df012, 0 0 22px #c699ed55, inset 0 1px 0 #fff3; }
+}
+@keyframes demo-discovery-ring { 0%, 100% { opacity: 0; transform: scale(.99); } 18% { opacity: .8; } 70% { opacity: 0; transform: scale(1.07, 1.2); } }
+@keyframes demo-discovery-sheen { 0%, 58% { background-position: -180% 0, 0 0; } 86%, 100% { background-position: 200% 0, 0 0; } }
+@keyframes demo-discovery-spark { 0%, 62%, 100% { transform: scale(1) rotate(0); } 23% { transform: scale(1.2) rotate(-12deg); } 39% { transform: scale(1.1) rotate(10deg); } }
+@keyframes demo-discovery-nudge { 0%, 62%, 100% { transform: translate(0); } 25% { transform: translate(2px, -2px); } }
+@media (prefers-reduced-motion: reduce) {
+    .tm-axis-panel .tm-dock-action.is-demo-discovery-cued,
+    .ccp-card .ccp-action-chip.is-demo-discovery-cued,
+    .is-demo-discovery-cued::after,
+    .is-demo-discovery-cued > .demo-discovery-icon,
+    .is-demo-discovery-cued > .demo-discovery-arrow { animation: none; }
+    .is-demo-discovery-cued::after { display: none; }
+    .tm-axis-panel .tm-dock-action.demo-discovery-action,
+    .ccp-card .ccp-action-chip.demo-discovery-action { transition: none; }
+}

@@ -26,6 +26,9 @@ export default function ConstellationClusterPopup({
     onAddTrack,
     onOpenTrack,
     lang = 'ko',
+    demoMode = false,
+    highlightDiscovery = false,
+    docked = false,
 }) {
     const track = trackContext?.track;
     const cluster = trackContext?.cluster;
@@ -38,12 +41,18 @@ export default function ConstellationClusterPopup({
         () => buildConstellationPreviewGeometry(clusterNodes, clusterEdges, track?.id),
         [clusterNodes, clusterEdges, track?.id],
     );
+    const skyDust = useMemo(() => Array.from({ length: 36 }, (_, i) => ({
+        x: hash01(`${nameSeed}:sky-x:${i}`) * previewGeometry.svgW,
+        y: hash01(`${nameSeed}:sky-y:${i}`) * previewGeometry.svgH,
+        radius: .45 + hash01(`${nameSeed}:sky-r:${i}`) * .75,
+        opacity: .12 + hash01(`${nameSeed}:sky-a:${i}`) * .36,
+    })), [nameSeed, previewGeometry.svgW, previewGeometry.svgH]);
 
     if (!track) return null;
 
     return (
         <aside
-            className="ccp-card"
+            className={`ccp-card${docked ? ' is-docked' : ''}`}
             style={{ '--ccp-accent': info.color }}
             aria-label={lang === 'en' ? 'Constellation Track Preview' : '별자리 곡 프리뷰'}
         >
@@ -70,12 +79,17 @@ export default function ConstellationClusterPopup({
 
             {/* Middle: Constellation Art Canvas */}
             <div className="ccp-constellation-canvas">
+                <div className="ccp-scene-meta"><span><i aria-hidden="true" />{lang === 'en' ? 'TASTE CONSTELLATION' : '취향의 별자리'}</span><small>{previewGeometry.nodes.length}{lang === 'en' ? ' stars' : '개의 별'}</small></div>
                 <svg
                     viewBox={`0 0 ${previewGeometry.svgW} ${previewGeometry.svgH}`}
                     className="ccp-constellation-svg"
                     aria-hidden="true"
                 >
                     <defs>
+                        <radialGradient id="ccp-stage-glow">
+                            <stop stopColor={info.color} stopOpacity=".2" />
+                            <stop offset="1" stopColor={info.color} stopOpacity="0" />
+                        </radialGradient>
                         <radialGradient id="ccp-star-glow" cx="50%" cy="50%" r="50%">
                             <stop offset="0%" stopColor={info.color} stopOpacity="0.9" />
                             <stop offset="35%" stopColor={info.color} stopOpacity="0.35" />
@@ -95,6 +109,13 @@ export default function ConstellationClusterPopup({
                             </feMerge>
                         </filter>
                     </defs>
+
+                    <ellipse cx={previewGeometry.svgW / 2} cy={previewGeometry.svgH * .75} rx={previewGeometry.svgW * .42} ry={previewGeometry.svgH * .25} fill="url(#ccp-stage-glow)" />
+                    <g className="ccp-sky-dust" fill="#d5d6f4">{skyDust.map((star, i) => <circle key={i} cx={star.x} cy={star.y} r={star.radius} opacity={star.opacity} />)}</g>
+                    <g className="ccp-sky-orbits" fill="none" stroke={info.color} strokeWidth=".65">
+                        <ellipse cx={previewGeometry.svgW / 2} cy={previewGeometry.svgH * .6} rx={previewGeometry.svgW * .36} ry={previewGeometry.svgH * .2} transform={`rotate(-16 ${previewGeometry.svgW / 2} ${previewGeometry.svgH * .6})`} />
+                        <ellipse cx={previewGeometry.svgW / 2} cy={previewGeometry.svgH * .6} rx={previewGeometry.svgW * .29} ry={previewGeometry.svgH * .3} transform={`rotate(24 ${previewGeometry.svgW / 2} ${previewGeometry.svgH * .6})`} />
+                    </g>
 
                     {/* Starlight connection lines */}
                     {previewGeometry.edges.map((e, idx) => (
@@ -197,7 +218,7 @@ export default function ConstellationClusterPopup({
                     )}
                     <div className="ccp-track-meta">
                         <span className="ccp-track-eyebrow">
-                            {lang === 'en' ? 'PRESCRIBED STAR' : '선택한 별'}
+                            {lang === 'en' ? 'SELECTED STAR' : '선택한 별'}
                         </span>
                         <h4 className="ccp-track-name" title={track.name}>
                             {track.name}
@@ -250,12 +271,13 @@ export default function ConstellationClusterPopup({
                     {onExploreTrack && (
                         <button
                             type="button"
-                            className="ccp-action-chip"
+                            className={`ccp-action-chip${demoMode && cluster ? ' demo-discovery-action' : ''}${highlightDiscovery && cluster ? ' is-demo-discovery-cued' : ''}`}
                             disabled={!cluster}
                             onClick={onExploreTrack}
                             title={lang === 'en' ? 'Explore around track' : '이 곡 기준으로 탐색'}
                         >
-                            <span>◎</span> {lang === 'en' ? 'Find similar songs' : '비슷한 곡 찾기'}
+                            <span className="demo-discovery-icon" aria-hidden="true">◎</span> {lang === 'en' ? 'Find similar songs' : '비슷한 곡 찾기'}
+                            {demoMode && <span className="demo-discovery-arrow" aria-hidden="true">↗</span>}
                         </button>
                     )}
                 </div>

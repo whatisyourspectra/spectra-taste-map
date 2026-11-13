@@ -25,6 +25,7 @@ import ConstellationClusterPopup from './ConstellationClusterPopup';
 import './TasteMapPage.css';
 import './ConstellationVoyager.css';
 import './ConstellationClusterPopup.css';
+import '../components/DemoDiscoveryCue.css';
 
 const FeatureBar = ({ label, value }) => (
     <div className="tm-feat-row">
@@ -1651,6 +1652,16 @@ export default function TasteMapPage() {
     const libraryError = null;
     const [mapFullscreen, setMapFullscreen] = useState(false);
     const [exploreEnabled, setExploreEnabled] = useState(false);
+    const [demoDiscoveryTried, setDemoDiscoveryTried] = useState({ mapId: null, newMusic: false, similar: false });
+    const newMusicCue = isDemoUniverse && !exploreEnabled && (demoDiscoveryTried.mapId !== mapId || !demoDiscoveryTried.newMusic);
+    const similarMusicCue = isDemoUniverse && (demoDiscoveryTried.mapId !== mapId || !demoDiscoveryTried.similar);
+    const markDemoDiscoveryTried = useCallback(action => {
+        if (!isDemoUniverse) return;
+        setDemoDiscoveryTried(current => ({
+            ...(current.mapId === mapId ? current : { mapId, newMusic: false, similar: false }),
+            [action]: true,
+        }));
+    }, [isDemoUniverse, mapId]);
     const [exploreLoading, setExploreLoading] = useState(false);
     const [exploreError, setExploreError] = useState(null);
     const [exploreRecs, setExploreRecs] = useState([]);
@@ -5653,12 +5664,13 @@ export default function TasteMapPage() {
                         <div className="tm-dock-actions">
                             <button
                                 type="button"
-                                className={`tm-dock-action${exploreEnabled ? ' active' : ''}`}
-                                onClick={toggleExplore}
+                                className={`tm-dock-action${exploreEnabled ? ' active' : ''}${isDemoUniverse ? ' demo-discovery-action' : ''}${newMusicCue ? ' is-demo-discovery-cued' : ''}`}
+                                onClick={() => { markDemoDiscoveryTried('newMusic'); toggleExplore(); }}
                                 aria-pressed={exploreEnabled}
                                 title={lang === 'en' ? 'Open new music recommendations' : '새 음악 추천 목록 열기'}
                             >
-                                <span aria-hidden>✦</span>{lang === 'en' ? 'New music' : '새 음악 찾기'}
+                                <span className="demo-discovery-icon" aria-hidden>✦</span>{lang === 'en' ? 'New music' : '새 음악 찾기'}
+                                {isDemoUniverse && <span className="demo-discovery-arrow" aria-hidden="true">↗</span>}
                                 {exploreRecs.length > 0 && <span className="tm-dock-badge">{exploreRecs.length}</span>}
                             </button>
                             <button
@@ -6589,6 +6601,7 @@ export default function TasteMapPage() {
                     }}
                     onExploreTrack={() => {
                         if (selectedTrackDetails?.cluster) {
+                            markDemoDiscoveryTried('similar');
                             applySpectraExpandByTrackId(selectedTrackDetails.track.id);
                         }
                     }}
@@ -6603,6 +6616,9 @@ export default function TasteMapPage() {
                         }
                     }}
                     lang={lang}
+                    demoMode={isDemoUniverse}
+                    highlightDiscovery={similarMusicCue}
+                    docked={isSpectraExpandMode}
                 />
             )}
 
