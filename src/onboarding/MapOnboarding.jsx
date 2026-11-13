@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import './MapOnboarding.css';
 import { positionGuide } from './guidePosition';
-import { OPEN_MAP_GUIDE_EVENT } from './mapGuideEvents.js';
+import { CLOSE_MAP_GUIDE_EVENT, OPEN_MAP_GUIDE_EVENT } from './mapGuideEvents.js';
 
 const MOBILE = [
   { target: '.tmm-avatar-stage', label: '음악 살펴보기', title: '내 음악이 만든 모습을 봐요', action: '별을 누르면', text: ' 어떤 곡인지 확인할 수 있어요.' },
@@ -42,10 +42,13 @@ export default function MapOnboarding({ mobile = false }) {
     if (restoreFocus.current?.isConnected) restoreFocus.current.focus({ preventScroll: true });
   }, [key]);
   useEffect(() => {
+    window.addEventListener(CLOSE_MAP_GUIDE_EVENT, close);
+    return () => window.removeEventListener(CLOSE_MAP_GUIDE_EVENT, close);
+  }, [close]);
+  useEffect(() => {
     if (step === null) return undefined;
     const previous = document.activeElement;
     if (step === 0 && !restoreFocus.current) restoreFocus.current = previous;
-    panelRef.current?.focus({ preventScroll: true });
     let target;
     let scrolled = false;
     let openedTrack = false;
@@ -105,6 +108,10 @@ export default function MapOnboarding({ mobile = false }) {
     window.addEventListener('keydown', handleKeyDown, true);
     return () => { host?.remove(); if (mobile) setMobileHost(null); if (openedTrack) document.querySelector('.ccp-close-btn')?.click(); window.clearInterval(timer); observer.disconnect(); window.removeEventListener('scroll', update, true); window.removeEventListener('resize', update); window.removeEventListener('keydown', handleKeyDown, true); };
   }, [step, mobile, steps, close]);
+  const panelVisible = step !== null && (mobile ? Boolean(mobileHost) : Boolean(placement));
+  useEffect(() => {
+    if (panelVisible) panelRef.current?.focus({ preventScroll: true });
+  }, [step, mobile, panelVisible]);
   if (step === null) return null;
   const panel = (
     <section ref={panelRef} tabIndex={-1} role="dialog" aria-labelledby="map-guide-title" aria-describedby="map-guide-description" aria-keyshortcuts="ArrowLeft ArrowRight"

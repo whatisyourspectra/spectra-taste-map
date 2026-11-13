@@ -124,7 +124,7 @@ function ResponsiveTasteMapRoute() {
 
   const showingMap = !['today', 'discover'].includes(params.get('tab'));
   return <>{isMobile || mobileDestination ? <MobileMusicMap /> : <TasteMapPage />}{!isMobile && !mobileDestination && <MapOnboarding />}
-    {isDemoTaste({ tracks, stats }) && <DemoMapInvite key={mapId} enabled={showingMap} />}
+    {showingMap && isDemoTaste({ tracks, stats }) && <DemoMapInvite key={mapId} startGuideOnDismiss={!isMobile && !mobileDestination} />}
   </>;
 }
 
